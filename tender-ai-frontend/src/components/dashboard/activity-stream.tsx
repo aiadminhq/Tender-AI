@@ -42,7 +42,7 @@ export function ActivityStream({ limit = 8 }: { limit?: number }) {
         <p className="text-[12px] text-ink-dim">{t("noActivity")}</p>
       ) : (
         <ul className="space-y-3.5">
-          {items.map((a, idx) => {
+          {items.map((a) => {
             const m = kindMap[a.kind];
             const Icon = m.icon;
             const name = userById(a.userId)?.name ?? a.userId;
