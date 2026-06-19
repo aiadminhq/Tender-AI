@@ -20,6 +20,7 @@ function makeItem(id: number) {
     days_left: null,
     first_seen: null,
     last_seen: null,
+    feasibility_score: null,
   };
 }
 
