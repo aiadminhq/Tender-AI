@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { PieChart } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
 import type { Category } from "@/types/domain";
@@ -48,6 +49,19 @@ export function CategoryChart() {
       });
     return { arcs, segments, total };
   }, [filteredTenders]);
+
+  // 空狀態：無資料時不渲染空環圈，改以教學式提示說明此圖隨篩選即時反映。
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2.5 py-10 text-center">
+        <div className="grid h-16 w-16 place-items-center rounded-full border-2 border-dashed border-hairline">
+          <PieChart size={20} strokeWidth={1.5} className="text-ink-dim" />
+        </div>
+        <p className="text-[13px] font-medium text-ink">{t("emptyTitle")}</p>
+        <p className="max-w-[220px] text-[12px] text-ink-dim">{t("emptyHint")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-4">

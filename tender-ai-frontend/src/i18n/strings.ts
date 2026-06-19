@@ -22,6 +22,8 @@ export const STRINGS = {
     kanbanSub: "拖曳卡片更新投標進度",
     rulesSub: "調整 AI 的篩選與排除偏好",
     focusToday: "今日焦點",
+    demoData: "示範資料",
+    liveData: "即時資料",
     // assistant（小助手）
     assistant: "小助手",
     assistantTitle: "標案知識小助手",
@@ -251,6 +253,8 @@ export const STRINGS = {
     kanbanSub: "Drag cards to update bid status",
     rulesSub: "Tune the AI's screening and exclusions",
     focusToday: "Focus today",
+    demoData: "Demo data",
+    liveData: "Live data",
     // assistant
     assistant: "Assistant",
     assistantTitle: "Tender knowledge assistant",
