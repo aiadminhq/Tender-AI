@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# screenshot artifacts（mock 示範資料，不入版控）
+screenshots/
