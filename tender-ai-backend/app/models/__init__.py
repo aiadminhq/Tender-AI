@@ -1,7 +1,7 @@
 """ORM models 匯總（供 Alembic autogenerate 掃描 Base.metadata）。
 
 - Layer A 標案 Corpus：公開可重生。
-- Layer B 行為/回饋：私有 schema（資料永不進公開 repo，但 schema/code 需入版控）。
+- Layer B 行為/回饋：白名單合作範圍內共享、對外不揭露（資料永不進公開 repo，但 schema/code 需入版控）。
 - Layer C 知識/RAG：tender_vectors（P3，公開衍生向量）。
 """
 from app.models.behavior import (

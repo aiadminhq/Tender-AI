@@ -12,7 +12,7 @@
 ``tenders`` 的現值投影欄(``current_revision_id`` / ``detail_checked_at``)定義於
 ``app.models.tender``(與 tenders 同表),此處只建四張新表。
 
-隱私:型別欄與 ``raw_fields`` 僅含**公開來源資訊**,不放任何 Layer B 私有資料。
+隱私:型別欄與 ``raw_fields`` 僅含**公開來源資訊**(Layer A),不放任何 Layer B 行為資料。
 """
 from __future__ import annotations
 

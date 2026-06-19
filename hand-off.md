@@ -122,7 +122,7 @@ interface TenderListItem {
 | `nextStep`                   | 後端無                  | 可用最新一筆 `note`(annotation)替代,或先留空。                                                                                              |
 | `owner`                      | 無對應                  | 後端有「個人狀態」(收藏/狀態/星)但無「指派負責人」概念;看板 `assignee` 維持前端狀態。                                                       |
 
-> 私有資料原則:行為/評價/註記只進本地 DB,不會出現在公開 repo 或日報。前端照常呼叫寫入 API 即可。
+> 資料原則（合作範圍模型）:行為/評價/註記在白名單(@hqdesign.tw)合作範圍內共享、依登入帳號具名,只進自架 DB、不會出現在公開 repo 或日報,對外不揭露。前端照常呼叫寫入 API 即可。詳見 `CLAUDE.md`。
 
 ### 3.4 Adapter 範例(建議新增 `src/lib/api-adapters.ts`)
 
@@ -575,8 +575,8 @@ export const api = {
 - **預算單位**:後端一律「萬元」(`budget_wan`、`budget_min/max`),前端 `Tender.budget` 是 TWD,差 10000 倍,進出都要換算。
 - **id 型別**:後端 int、前端 string;adapter 統一 `String(id)`,送回後端時數字字串可直接用。
 - **日期**:`deadline`/`first_seen` 等是 ISO 日期字串,可直接餵 `formatDate`/`daysLeft`(`src/lib/format.ts`)。`days_left` 後端已算好(取自快照),與前端 `daysLeft(deadline)` 可能差 1~2 天(基準日不同),擇一使用、別混用。
-- **隱私**:行為/評價/註記只進本地 DB,不入公開 repo;前端照常呼叫即可,不需特別處理。
-- **單租戶開發**:暫時所有寫入都省略 `user_id`(落預設使用者)。要做多人時,後端需先提供「建立/查詢使用者」端點回 int id(目前尚未開放)。
+- **隱私（合作範圍模型）**:行為/評價/註記在白名單合作範圍內共享、依登入帳號具名,只進自架 DB、不入公開 repo,對外不揭露;前端照常呼叫即可。
+- **單租戶開發（暫行）**:目前尚未建登入,暫時所有寫入省略 `user_id`(落預設使用者)。**目標模型**:上線白名單登入(原則 @hqdesign.tw)後帶 `user_id` 並依登入帳號具名;屆時後端需提供「建立/查詢使用者」端點回 int id(目前尚未開放)。詳見 `CLAUDE.md`。
 
 ---
 

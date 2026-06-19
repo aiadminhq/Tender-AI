@@ -2,8 +2,8 @@
 """Layer C 知識/RAG models。
 
 P3：``tender_vectors`` — 每筆標案的語意向量（name + org + category 嵌入），
-供「語意搜尋」與「相似標案」。此表由公開 Corpus 衍生、可重生，**非私有**
-（與 P5 規劃的 ``decision_vectors``〔個案評價向量，私有〕不同）。
+供「語意搜尋」與「相似標案」。此表由公開 Corpus 衍生、可重生（Layer A 公開）
+（與 P5 規劃的 ``decision_vectors``〔個案評價向量，Layer B/C，白名單合作範圍內共享、對外不揭露〕不同）。
 
 向量維度跟著 ``EMBED_MODEL``（bge-m3 = 1024）；換模型須出新 migration 並重嵌。
 向量 metadata 不含人名／email（僅標案公開欄位），符合隱私鐵則。
@@ -230,7 +230,7 @@ class DocSummary(Base):
 
 
 class DecisionVector(Base):
-    """層級 C：評估決策向量（P5 用，私有）。
+    """層級 C：評估決策向量（P5 用；白名單合作範圍內共享、對外不揭露）。
     
     每筆 evaluation（user_id, tender_id, feasible, criteria, rationale）
     嵌入為向量；用以尋找「類似可行案」與「相似不可行案」。
