@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "tender-ai-frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "tender-ai-frontend/dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "tender-ai-frontend/dist/index.html"
+    }
+  ]
+}
