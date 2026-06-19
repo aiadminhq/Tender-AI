@@ -126,6 +126,8 @@ interface AppDataValue {
   hasFocus: (t: Tender) => boolean;
   // 資料來源狀態：true=後端真實資料、false=mock fallback
   usingLiveData: boolean;
+  // 初次抓取中：用於列表 skeleton（純 mock 模式恆為 false）
+  tendersLoading: boolean;
   // 星號
   isStarred: (tenderId: string) => boolean;
   toggleStar: (tenderId: string) => void;
@@ -170,6 +172,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // 後端對接：初始為 mock，掛載後抓真實標案；失敗則維持 mock，不中斷 UI。
   const [tenders, setTenders] = useState<Tender[]>(TENDERS);
   const [usingLiveData, setUsingLiveData] = useState(false);
+  // 初次抓取狀態：API 模式為 true（顯示 skeleton），純 mock 模式直接 false。
+  const [tendersLoading, setTendersLoading] = useState(
+    import.meta.env.VITE_USE_API !== "false",
+  );
   useEffect(() => {
     if (import.meta.env.VITE_USE_API === "false") return;
     const ac = new AbortController();
@@ -184,7 +190,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         /* 後端未啟動／錯誤：保留 mock 資料 */
-      });
+      })
+      .finally(() => setTendersLoading(false));
     return () => ac.abort();
   }, []);
 
@@ -717,6 +724,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       excludeReasonOf,
       hasFocus,
       usingLiveData,
+      tendersLoading,
       isStarred,
       toggleStar,
       accept,
@@ -753,6 +761,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       excludeReasonOf,
       hasFocus,
       usingLiveData,
+      tendersLoading,
       isStarred,
       toggleStar,
       accept,

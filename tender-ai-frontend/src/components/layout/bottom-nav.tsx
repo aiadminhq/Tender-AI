@@ -8,7 +8,7 @@ export function BottomNav() {
   const { t } = useApp();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface-1/95 backdrop-blur md:hidden">
-      {NAV.map((item) => (
+      {NAV.filter((item) => item.primary).map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
