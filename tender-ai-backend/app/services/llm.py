@@ -7,7 +7,7 @@
 - 任何網路／逾時／非 2xx 一律 ``LlmError``，由呼叫端決定退回模板（assistant.py）。
 - CI／測試不連 Ollama：以 ``monkeypatch.setattr("app.services.llm.stream_chat", ...)``
   替換；故呼叫端請用模組屬性存取（``llm.stream_chat(...)``）而非 import 後綁定。
-- 鐵則：不在此處落任何 Layer B 私有資料；prompt 由 assistant.py 以公開證據組裝。
+- 鐵則：不在此處落任何 Layer B 行為明細（避免送入外部模型）；prompt 由 assistant.py 以公開證據組裝。
 """
 from __future__ import annotations
 

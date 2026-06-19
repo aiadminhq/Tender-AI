@@ -13,7 +13,7 @@ Ollama（app.services.llm）串流回答；Ollama 不可用／逾時／空輸出
 鐵則：
 - 防幻覺——system prompt 要求標案事實只能引用「候選標案清單」、方法規則只能依
   「知識庫片段」，不得虛構清單外標案。
-- 證據只含公開欄位（A 層）與公開領域知識；不在此處組裝任何 Layer B 私有資料。
+- 證據只含公開欄位（A 層）與公開領域知識；不在此處組裝任何 Layer B 行為明細。
 """
 from __future__ import annotations
 

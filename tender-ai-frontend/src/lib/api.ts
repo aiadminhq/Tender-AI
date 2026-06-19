@@ -319,10 +319,11 @@ export async function fetchTenderReasoning(
   };
 }
 
-// ── 行為回寫（Layer B 私有學習迴圈，fire-and-forget） ──────────────
-// 後端 app/api/v1/behavior.py。一律省略 user_id（後端落到預設使用者，
-// 不送任何 PII，遵守 Layer B 鐵則）。localStorage 仍是前端真相來源，
-// 後端僅作學習匯入：失敗靜默、不阻塞 UI、不回滾樂觀更新。
+// ── 行為回寫（Layer B 共享學習迴圈，fire-and-forget） ──────────────
+// 後端 app/api/v1/behavior.py。Layer B 在白名單(@hqdesign.tw)合作範圍內共享，
+// 供同事與 AI/agent 互相學習。現行 demo 尚未建登入，故暫時省略 user_id（後端
+// 落到預設使用者）；目標模型為白名單登入後帶 user_id 並依登入帳號具名（見 CLAUDE.md）。
+// localStorage 仍是前端真相來源，後端僅作學習匯入：失敗靜默、不阻塞 UI、不回滾。
 async function postBehavior(path: string, body: unknown): Promise<void> {
   if (import.meta.env.VITE_USE_API === "false") return; // 純 mock 模式不外連
   try {
@@ -362,7 +363,7 @@ export function postShare(id: string, channel: string): void {
 }
 
 // ── saved-searches（篩選預設；非 fire-and-forget，UI 需要回傳資料） ──────
-// 後端 app/api/v1/behavior.py，掛在 /api/v1 下。依 Layer B 省略 user_id。
+// 後端 app/api/v1/behavior.py，掛在 /api/v1 下。現行 demo 暫省略 user_id（目標：白名單登入後具名，見 CLAUDE.md）。
 interface SavedSearchOut {
   id: number;
   user_id: number;

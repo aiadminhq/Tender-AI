@@ -10,7 +10,7 @@
 - 每個測試前 ``TRUNCATE ... RESTART IDENTITY CASCADE``，確保隔離與可預期的自增 id。
 - 以 ``app.dependency_overrides`` 覆寫 ``get_session``，讓 API 走測試庫 session。
 
-私有資料硬規則：本層僅用合成種子資料測試，真實行為/評價資料永不進版控。
+資料硬規則（Layer B）：本層僅用合成種子資料測試，真實行為/評價資料永不進版控。
 """
 from __future__ import annotations
 

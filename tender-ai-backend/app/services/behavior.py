@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Layer B 行為/回饋寫入服務（**私有資料**：永不進任何公開 repo）。
+"""Layer B 行為/回饋寫入服務（白名單合作範圍內共享、對外不揭露；永不進任何公開 repo）。
 
 對應 handoff 附錄 C 行為端點：save/accept/rate/note/share、events、saved-searches。
 user_id 省略時落到「預設使用者」（單一團隊；名稱中性，不放真實人名／email）。

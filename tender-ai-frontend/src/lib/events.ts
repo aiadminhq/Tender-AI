@@ -30,7 +30,7 @@ function trackingEnabled(): boolean {
 
 /**
  * 送出一筆行為事件到 POST /events（fire-and-forget）。
- * - 不帶 user_id：後端自動取／建立預設使用者。
+ * - 不帶 user_id：現行 demo 尚未建登入，後端自動取／建立預設使用者（目標：白名單登入後帶 user_id 具名，見 CLAUDE.md）。
  * - tenderId 字串 → Number；NaN 則省略 tender_id（apply_filter/search/sort 不帶）。
  * - 失敗（後端未啟動／網路錯誤）一律靜默吞錯，不影響 UI。
  */

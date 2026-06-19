@@ -31,7 +31,7 @@ author: claude-cowork
 分三層，職責清楚、隱私邊界明確：
 
 - **Layer A — 標案 Corpus**（公開可重生，等同現行報表資料）
-- **Layer B — 行為／回饋**（David 的使用訊號，**私有，絕不發佈到公開 repo**）
+- **Layer B — 行為／回饋**（同事的使用訊號，**白名單(@hqdesign.tw)合作範圍內共享＋依登入帳號具名；絕不發佈到公開 repo、對外不揭露**）
 - **Layer C — 知識／RAG**（向量索引 + 學習出的權重與摘要）
 
 ### 1.1 Layer A：標案 Corpus（D1）
@@ -80,7 +80,7 @@ CREATE TABLE daily_tender (   -- 某案在某日報表出現（同案可跨日�
 );
 ```
 
-### 1.2 Layer B：行為／回饋（D1，私有）
+### 1.2 Layer B：行為／回饋（D1，白名單合作範圍內共享、對外私有）
 
 捕捉「David 怎麼用」——這是學習的燃料。分**外顯訊號**（明確表態）與**內隱訊號**（操作軌跡）。
 
@@ -163,7 +163,7 @@ CREATE TABLE doc_summaries (
 - `tender_vectors`：每筆標案（name + org + category）→ 向量；metadata：tender_id, category, city, budget_band。供**語意搜尋**。
 - `decision_vectors`：David 的每筆 evaluation（個案 + criteria + rationale）→ 向量；metadata：tender_id, feasible。供**「相似可行案」與可行性助手**。
 
-> 隱私鐵則：Layer B、`decision_vectors`、annotations 皆為**內部私有**，存 D1 私有 + Vectorize 私有，**永不寫進公開 `tender-reports` repo**；向量 metadata 不放人名／email。
+> 隱私鐵則（合作範圍模型）：Layer B、`decision_vectors`、annotations 在**白名單(@hqdesign.tw)合作範圍內共享、依登入帳號具名**，存於自架 D1 + Vectorize（對外私有），**永不寫進公開 `tender-reports` repo**；對外揭露的向量 metadata 須去識別化、不放人名／email。
 
 ---
 
@@ -238,7 +238,7 @@ CREATE TABLE doc_summaries (
 - 餵入 `design-handoff-claude-design.md` §5：重點/避免關鍵字兩區、可行性排序、評估 rubric UI。
 - 沿用鎖定技術棧：Next.js + Cloudflare（D1 / Vectorize / Workers AI）、Anthropic 做摘要與推理。
 - 沿用 `CLAUDE.md` 鐵則：scraper 核心不重寫、金鑰放 GitHub Secrets、報表發佈 idempotent。
-- 隱私：行為/評價/註記為內部私有，永不進公開 repo。
+- 隱私：行為/評價/註記在白名單合作範圍內共享、對外私有，永不進公開 repo。
 
 ---
 
