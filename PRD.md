@@ -143,7 +143,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 - **Agent tools（先唯讀）**：`search_tenders`、`get_tender_detail`、`get_current_revision`、`search_documents`、`compare_tenders`、`explain_recommendation`、`get_user_saved_tenders`。
 - **回答規則**：日期／預算／分類等精確條件先走 SQL；內容問題走 Hybrid RAG；無 citation 不得斷言資格、金額或期限；更正公告須標示 revision。
 - **權限**：Agent 不得代替使用者承接、投標或修改後台規則；未來 write tool 必須逐次顯示 human-in-the-loop 確認。
-- **驗收**：支援 streaming、停止生成、重試、錯誤狀態、mobile；回答 citation 可開啟對應標案／文件；不得將 Layer B 私有資料傳入未核准的外部服務。
+- **驗收**：支援 streaming、停止生成、重試、錯誤狀態、mobile；回答 citation 可開啟對應標案／文件；不得將 Layer B（合作範圍內）資料傳入未核准的外部服務。
 
 #### 6.7.1 開發難度與交付切片
 
@@ -174,7 +174,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 - **持續更新**：行為學習採增量累積；既有偏好與歷史訊號不因暫時停止操作、重新登入或模型更新而清除，後續資料持續修正權重與推薦結果。
 - **保留原則**：使用者行為與偏好模型預設長期保留並持續優化；系統更新、重嵌與模型換版須保留可追溯的原始事件與 profile version，不以重新訓練為由覆寫歷史。
 - **可解釋推薦**：首頁「每日推薦」先以規則、個人偏好、相似已承接案、截止可執行性與多樣性組合排序；每案顯示推薦理由，並接受「符合／不符合」回饋。
-- **身份與隱私**：事件以內部 `user_id` 關聯；原始行為、偏好 profile 與 recommendation log 均屬 Layer B 私有資料，不進公開 repo，也不寫入公開向量 metadata。
+- **身份與隱私（合作範圍模型）**：事件以內部 `user_id`（對應白名單登入帳號，原則 `@hqdesign.tw`）關聯，並**依登入帳號名稱具名標示貢獻者**；原始行為、偏好 profile 與 recommendation log 屬 Layer B，**在白名單合作範圍內與同事及 AI/agent 共享、互相學習**（需本人同意），但**不進公開 repo**，對外揭露的向量 metadata 須去識別化。未來若開放外界註冊登入，須經邀請／授權納入白名單才算合作範圍內。詳見 `CLAUDE.md`。
 
 ---
 
@@ -183,7 +183,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 三層（詳見 `規劃-後台資料庫與RAG學習迴圈.md`）：
 
 - **Layer A 標案 Corpus**（公開可重生）：`tenders`、`daily_runs`、`daily_tender`、`sources`。
-- **Layer B 行為/回饋**（私有）：`events`、`tender_user_state`、`annotations`、`evaluations`、`shares`、`saved_searches`。
+- **Layer B 行為/回饋**（白名單合作範圍內共享、對外私有）：`events`、`tender_user_state`、`annotations`、`evaluations`、`shares`、`saved_searches`。
 - **Layer C 知識/RAG**：Vectorize/pgvector 的 `tender_vectors`、`decision_vectors`；`keyword_weights`、`doc_summaries`。
 - **回填**：parser 解析 `tender-reports/reports/*.html`（32 份歷史）→ Layer A；之後 scraper 直寫。
 
@@ -193,7 +193,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 - **可用性／a11y**：WCAG AA（對比、鍵盤、focus、觸控 ≥44px、語意 HTML、skip-link）。
 - **效能**：列表互動即時；embeddings 批次離峰跑。
-- **安全／隱私**：Layer B/決策向量/註記為**內部私有**，永不進公開 repo；向量 metadata 不含人名/email；帳密放 secret manager；對外經 tunnel + auth。
+- **安全／隱私**：Layer B/決策向量/註記在**白名單合作範圍內共享、對外私有**，永不進公開 repo；合作範圍內可依登入帳號具名，對外揭露的向量 metadata 須去識別化、不含人名/email；帳密放 secret manager；對外經 tunnel + auth（email 白名單，原則 `@hqdesign.tw`）。
 - **語系／雙語**：繁體中文為預設語系，專業術語保留英文；頂部單一 `EN／中` 按鈕切換，經 localStorage 持久化，文案以 `strings.ts` 的 zh／en 成對 key 管理；切換語系不重設篩選、收藏、評價或 Dialog 狀態。
 - **字體**：繁體中文僅使用 `Noto Sans TC`；英文使用 `Inter`／`SF Pro Text` 等非襯線字；數字與程式碼使用 `JetBrains Mono`／`SF Mono`；不使用任何裝飾性或手寫字體。
 - **視覺風格**：極簡直線、零抖動、零手寫；統一 16px 圓角；以 Bento 卡片、間距、邊框與背景建立資訊層級；卡片可帶些微陰影（`0 1px 2px rgba(0,0,0,.06)`），但禁止濃重投影或假深度。

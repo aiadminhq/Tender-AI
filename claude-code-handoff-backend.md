@@ -11,7 +11,7 @@ author: claude-cowork
 # Claude Code Hand-off｜Tender AI 後端（FastAPI + Postgres + pgvector）
 
 > 用途：直接貼給 **Claude Code** 開始開發後端與背景工作。前端走「靜態 HTML 原型 →（滿意後）Next.js」，**本後端可平行先做**。
-> 鐵則：**不重寫既有爬蟲核心** `tender_daily.py`（`tables[4]`／`SkipSSLAdapter`／PCC 連線為已測邏輯）；只「包裝呼叫」與「新增資料庫 sink」。行為/評價/向量等私有資料**永不寫進公開 repo**。
+> 鐵則：**不重寫既有爬蟲核心** `tender_daily.py`（`tables[4]`／`SkipSSLAdapter`／PCC 連線為已測邏輯）；只「包裝呼叫」與「新增資料庫 sink」。行為/評價/向量等資料在白名單合作範圍內共享、對外不揭露，且**永不寫進公開 repo**（合作範圍模型詳見 `CLAUDE.md`）。
 
 ---
 
@@ -40,7 +40,7 @@ author: claude-cowork
 ## 限制
 - 不要重寫 tender_daily.py 的 scraper 核心；以 import 或 subprocess 包裝，新增一個
   「寫入 Postgres」的 sink，靜態 HTML 輸出保留為降級備援。
-- 私有資料（行為、評價、註記、決策向量）只進本地 DB，不可進任何公開 repo。
+- 行為、評價、註記、決策向量在白名單合作範圍內共享（依登入帳號具名），只進自架 DB、不可進任何公開 repo，對外不揭露。
 - 程式碼註解可用繁體中文；對外字串繁中為主。
 
 ## 任務（依序、每階段可獨立驗收，見附錄 D）
@@ -109,7 +109,7 @@ APP_API_KEY=             # 簡易後端保護（前端/Cloudflare Access 帶入�
 ## 附錄 B：資料模型（摘要，完整見 `規劃-後台資料庫與RAG學習迴圈.md`）
 
 - **Layer A 標案 Corpus**：`sources`、`tenders`（case_pk 去重、name/org/category/budget_wan/deadline_iso/city/link）、`daily_runs`、`daily_tender`。
-- **Layer B 行為（私有）**：`users`、`events`(view/open/click/dwell/filter/search)、`tender_user_state`(saved/status/star)、`annotations`、`evaluations`(feasible + criteria JSON + rationale)、`shares`、`saved_searches`。
+- **Layer B 行為（白名單合作範圍內共享、對外私有）**：`users`、`events`(view/open/click/dwell/filter/search)、`tender_user_state`(saved/status/star)、`annotations`、`evaluations`(feasible + criteria JSON + rationale)、`shares`、`saved_searches`。
 - **Layer C 知識/RAG**：pgvector 欄位——`tenders.embedding vector(1024)`（bge-m3 維度，依模型調整）、`evaluations.embedding`（decision vectors）；`keyword_weights`(term/polarity/weight/support)、`doc_summaries`。
 - 索引：對 embedding 建 HNSW（`vector_cosine_ops`）。
 

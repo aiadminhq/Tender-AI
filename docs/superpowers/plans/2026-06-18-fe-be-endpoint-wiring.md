@@ -14,7 +14,8 @@
 - 後端 base 預設 `http://localhost:8000/api/v1`，由 `API_BASE`（`import.meta.env.VITE_API_BASE` ?? 預設）提供，端點路徑一律相對此 base 串接。
 - `VITE_USE_API === "false"`（純 mock 模式）時**不可對外發任何請求**——所有新增的對外函式都必須在此模式下提前 return。
 - API 金鑰僅由環境注入（`VITE_API_KEY` → `X-API-Key`），**永不寫入版控**；一律透過既有 `authHeaders()` 帶上。
-- Layer B 鐵則：行為／偏好寫入**一律省略 `user_id`**（後端落到預設使用者，不送 PII）；localStorage 是前端真相來源；後端失敗靜默、不阻塞 UI、不回滾。
+- Layer B 寫入（**現行 demo 階段，尚未建登入**）：**暫時省略 `user_id`**（後端落到預設使用者）；localStorage 是前端真相來源；後端失敗靜默、不阻塞 UI、不回滾。
+  - ⚠️ **目標模型（合作範圍）**：上線白名單登入（原則 `@hqdesign.tw`）後，行為寫入須帶 `user_id` 並**依登入帳號名稱具名標示貢獻者**，以進入共享知識庫；屆時移除「省略 `user_id`／預設使用者」的暫行做法。詳見 `CLAUDE.md`。
 - i18n `src/i18n/strings.ts` 的 `zh`／`en` 必須**成對**新增 key，否則 `TextKey` 型別編譯失敗。
 - 不動 tier `priority` 級（後端 4 級 priority/high/mid/low vs 前端 3 級，跨 domain/api/badge 契約變更，已由前一計畫列為後續獨立 ticket）；本計畫不處理 source TPC/NPC 與 user_state.status enum 對映落差（非「未接端點」，超出本次範圍）。
 - `GET /search/semantic` 後端被 Ollama 缺 `bge-m3` 模型阻擋，**本計畫排除**，不新增其前端串接。
@@ -169,7 +170,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - `GET /api/v1/saved-searches?user_id=` → `SavedSearchOut[]`，`SavedSearchOut = { id, user_id, name, query_text, filter_json, created_at }`。`user_id` 省略時讀預設使用者、且唯讀不建立使用者。
 - `POST /api/v1/saved-searches` body `SavedSearchCreate = { user_id?, name (min_length 1), query_text?, filter_json? (dict) }` → 回 `SavedSearchOut`。省略 `user_id` 時後端落到預設使用者。
 
-依 Layer B 鐵則一律省略 `user_id`。
+現行 demo 階段（尚未建登入）暫時省略 `user_id`，落到預設使用者；目標模型為白名單登入後帶 `user_id` 並依登入帳號具名（見上方 Architecture 與 `CLAUDE.md`）。
 
 **Files:**
 

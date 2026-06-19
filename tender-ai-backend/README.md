@@ -9,10 +9,10 @@
 | 層                | 內容                                                                          | 可公開？     |
 | ----------------- | ----------------------------------------------------------------------------- | ------------ |
 | **A 標案 Corpus** | `sources` / `tenders` / `daily_runs` / `daily_tender`，由報表回填，公開可重生 | 是（可重生） |
-| **B 行為/回饋**   | 點擊、評價、註記、決策——**私有，永不進任何公開 repo**                         | **否**       |
+| **B 行為/回饋**   | 點擊、評價、註記、決策——**白名單(@hqdesign.tw)合作範圍內共享＋依登入帳號具名；不進公開 repo、對外不揭露** | 內部共享／對外否 |
 | **C 知識/RAG**    | pgvector 向量（bge-m3＝1024 維，HNSW cosine）                                 | 視內容       |
 
-> **隱私硬規則**：Layer B 私有資料只進本地 DB；向量 metadata 不放人名／email。
+> **隱私硬規則（合作範圍模型）**：Layer B 在白名單合作範圍內共享、依登入帳號具名，供同事與 AI/agent 互相學習（需公司帳號＋本人同意）；但**不進公開版控 repo**，對外揭露的向量 metadata 須去識別化、不放人名／email。詳見根目錄 `CLAUDE.md` 與 `docs/governance/`。
 
 **目前進度＝P1（Layer A：schema + 解析器 + 歷史回填 + 綠燈測試）。** B/C 與 API 查詢於 P2+ 開發。
 
@@ -132,7 +132,7 @@ docker-compose.yml      # 公司伺服器 DB（pgvector/pg16）
 ## 開發約束（務必遵守）
 
 - **不重寫既有爬蟲核心**，只包裝呼叫＋新增 DB sink。
-- **Layer B 私有資料**（行為/評價/註記/決策向量）永不進公開 repo。
+- **Layer B 資料**（行為/評價/註記/決策向量）在白名單合作範圍內共享、依登入帳號具名，但永不進公開 repo、對外不揭露。
 - scraper 在 sandbox 連不到 PCC（proxy 403）；開發/測試一律用回填的 HTML 與 fixtures，**不在 CI 連 PCC**。
 - schema 用 **Alembic**，勿手改 DB；換嵌入模型要出新 migration（維度跟 `EMBED_MODEL` 走）。
-- 密鑰放系統 secret，勿入版控；向量 metadata 不放人名／email。
+- 密鑰放系統 secret，勿入版控；對外揭露的向量 metadata 須去識別化、不放人名／email（合作範圍內可依登入帳號具名）。
