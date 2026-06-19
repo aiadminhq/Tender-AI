@@ -27,22 +27,29 @@ export function KpiCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10">
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-[12px] text-ink-muted">{label}</span>
+    <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-card/95 via-card to-card/80 p-6 shadow-md transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-1">
+      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 transition-all duration-300 group-hover:bg-primary/10" />
+      <div className="relative flex items-center justify-between gap-3">
+        <span className="truncate text-[13px] font-semibold text-ink-muted transition-colors duration-200 group-hover:text-ink">
+          {label}
+        </span>
         <span
           className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center rounded-md",
+            "grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-md transition-all duration-200 group-hover:scale-120 group-hover:shadow-lg",
             accentMap[accent],
           )}
         >
-          <Icon size={15} strokeWidth={2} />
+          <Icon size={18} strokeWidth={2.3} />
         </span>
       </div>
-      <div className="tnum mt-2.5 text-[28px] font-bold leading-tight text-ink">
-        {value}
+      <div className="tnum relative mt-4 text-4xl font-bold leading-tight text-ink transition-colors duration-200 group-hover:text-primary">
+        {value.toLocaleString()}
       </div>
-      {hint && <div className="mt-1.5 text-[11px] text-ink-dim">{hint}</div>}
+      {hint && (
+        <div className="mt-3 text-[12px] font-medium text-ink-dim/70 transition-colors duration-200 group-hover:text-ink-dim">
+          {hint}
+        </div>
+      )}
     </div>
   );
 }

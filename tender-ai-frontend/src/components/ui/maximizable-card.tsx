@@ -34,8 +34,8 @@ export function MaximizableCard({
   }, [maximized]);
 
   const header = (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0 text-[14px] font-semibold tracking-tight text-ink">
+    <div className="flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-surface-1/50 to-transparent">
+      <div className="min-w-0 text-[15px] font-semibold tracking-tight text-ink">
         {title}
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -56,18 +56,25 @@ export function MaximizableCard({
   if (maximized) {
     return (
       <div className="fixed inset-0 z-40 flex flex-col bg-background p-4 sm:p-6">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-          <div className="border-b border-border">{header}</div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-2xl">
+          <div className="border-b border-border/40">{header}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card", className)}>
-      <div className="border-b border-border">{header}</div>
-      <div className="p-4">{children}</div>
+    <div
+      className={cn(
+        "group rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-card/90 shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:border-border/70 hover:-translate-y-0.5",
+        className,
+      )}
+    >
+      <div className="border-b border-border/30 bg-gradient-to-r from-surface-1/40 via-transparent to-surface-1/20">
+        {header}
+      </div>
+      <div className="p-6">{children}</div>
     </div>
   );
 }

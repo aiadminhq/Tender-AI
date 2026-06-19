@@ -12,10 +12,10 @@ export function FeasibilityMeter({
 }) {
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <div className="h-1 w-full min-w-12 overflow-hidden rounded-full bg-surface-2">
+    <div className={cn("flex items-center gap-2.5", className)}>
+      <div className="h-1.5 w-full min-w-12 overflow-hidden rounded-full bg-surface-1 shadow-sm">
         <div
-          className="h-full rounded-full transition-[width] duration-500"
+          className="h-full rounded-full transition-[width] duration-500 shadow-sm"
           style={{
             width: `${pct}%`,
             background:
@@ -24,8 +24,8 @@ export function FeasibilityMeter({
         />
       </div>
       {showLabel && (
-        <span className="tnum w-7 shrink-0 text-right text-[12px] text-ink-muted">
-          {pct}
+        <span className="tnum w-8 shrink-0 text-right text-[12px] font-semibold text-ink">
+          {pct}%
         </span>
       )}
     </div>

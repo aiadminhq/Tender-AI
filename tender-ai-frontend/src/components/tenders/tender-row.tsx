@@ -126,9 +126,9 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "hidden cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:grid",
+          "hidden cursor-pointer items-center gap-3 px-4 py-3 transition-all duration-200 hover:bg-gradient-to-r hover:from-accent/50 hover:via-accent/30 hover:to-transparent focus-visible:bg-accent/40 focus-visible:outline-none lg:grid",
           ROW_GRID,
-          excluded && "opacity-60",
+          excluded && "opacity-50 hover:opacity-60",
         )}
       >
         <div>
@@ -166,8 +166,8 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "cursor-pointer p-3 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:hidden",
-          excluded && "opacity-60",
+          "group cursor-pointer rounded-lg p-4 transition-all duration-200 hover:bg-gradient-to-br hover:from-accent/40 hover:via-transparent hover:to-accent/20 focus-visible:bg-accent/30 focus-visible:outline-none lg:hidden",
+          excluded && "opacity-50 hover:opacity-60",
         )}
       >
         <div className="flex items-start justify-between gap-2">

@@ -12,21 +12,21 @@ export function PageHeader({
 }) {
   const { t } = useApp();
   return (
-    <div className="mb-5 flex items-end justify-between gap-4">
+    <div className="mb-7 flex items-end justify-between gap-4 rounded-xl bg-gradient-to-r from-primary/5 via-transparent to-signal/5 px-5 py-5">
       <div className="min-w-0">
         <nav
-          className="mb-1 flex items-center gap-1.5 text-[11px] text-ink-dim"
+          className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-ink-dim"
           aria-label="breadcrumb"
         >
-          <span className="font-medium">HQdesign</span>
-          <span className="text-border">/</span>
-          <span className="truncate">{t("crumbSection")}</span>
+          <span className="text-ink-muted">HQdesign</span>
+          <span className="text-border/60">/</span>
+          <span className="truncate text-ink-dim">{t("crumbSection")}</span>
         </nav>
-        <h1 className="text-[19px] font-semibold tracking-tight text-ink">
+        <h1 className="text-[21px] font-bold tracking-tight bg-gradient-to-r from-ink via-ink to-ink/80 bg-clip-text text-transparent">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-0.5 truncate text-[13px] text-ink-muted">
+          <p className="mt-1 truncate text-[13px] font-medium text-ink-muted">
             {subtitle}
           </p>
         )}

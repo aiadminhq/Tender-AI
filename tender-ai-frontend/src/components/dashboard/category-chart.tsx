@@ -50,9 +50,12 @@ export function CategoryChart() {
   }, [filteredTenders]);
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-4">
-      <div className="relative h-36 w-36 shrink-0">
-        <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+    <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+      <div className="relative h-40 w-40 shrink-0 rounded-2xl bg-gradient-to-br from-surface-1/60 to-transparent p-3">
+        <svg
+          viewBox="0 0 120 120"
+          className="h-full w-full -rotate-90 drop-shadow-sm"
+        >
           {/* 底環 */}
           <circle
             cx="60"
@@ -75,37 +78,43 @@ export function CategoryChart() {
                 strokeWidth={STROKE}
                 strokeDasharray={`${dash} ${C - dash}`}
                 strokeDashoffset={-a.start}
+                opacity={0.95}
               />
             );
           })}
         </svg>
         {/* 中央總數（疊在 SVG 上、不受旋轉影響） */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="tnum text-2xl font-semibold leading-none text-ink">
+          <span className="tnum text-3xl font-bold leading-none text-ink">
             {total}
           </span>
-          <span className="mt-1 text-[10px] uppercase tracking-wide text-ink-dim">
+          <span className="mt-2 text-[11px] font-medium uppercase tracking-wider text-ink-muted">
             {t("catTotal")}
           </span>
         </div>
       </div>
 
       {/* 圖例：色點 · 類型 · 件數 · 佔比 */}
-      <ul className="min-w-[160px] space-y-2.5">
+      <ul className="min-w-[180px] space-y-3">
         {segments.map((s) => {
           const pct = total ? Math.round(s.frac * 100) : 0;
           return (
-            <li key={s.key} className="flex items-center gap-2.5 text-sm">
+            <li
+              key={s.key}
+              className="group flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-surface-1/30"
+            >
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                className="h-3 w-3 shrink-0 rounded-full shadow-sm transition-transform duration-150 group-hover:scale-125"
                 style={{ background: s.color }}
                 aria-hidden
               />
-              <span className="text-ink-muted">{t(s.labelKey)}</span>
-              <span className="tnum ml-auto font-medium text-ink">
+              <span className="text-sm font-medium text-ink-muted group-hover:text-ink transition-colors">
+                {t(s.labelKey)}
+              </span>
+              <span className="tnum ml-auto font-semibold text-ink">
                 {s.count}
               </span>
-              <span className="tnum w-9 text-right text-xs text-ink-dim">
+              <span className="tnum w-10 text-right text-xs font-medium text-ink-muted">
                 {pct}%
               </span>
             </li>
