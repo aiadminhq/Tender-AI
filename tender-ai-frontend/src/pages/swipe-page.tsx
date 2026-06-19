@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Check,
+  ExternalLink,
   Eye,
   KanbanSquare,
   Maximize2,
@@ -54,7 +55,16 @@ function usePrefersReducedMotion(): boolean {
 }
 
 // 卡片正面：沿用列表列（tender-row）的視覺語彙，放大為單張卡片版面。
-function SwipeCardFace({ tender }: { tender: Tender }) {
+// expanded＝就地展開（仍維持直條視窗，只是內容變多、可內部捲動）。
+function SwipeCardFace({
+  tender,
+  expanded = false,
+  onViewFull,
+}: {
+  tender: Tender;
+  expanded?: boolean;
+  onViewFull?: () => void;
+}) {
   const { t, lang } = useApp();
   const { feasOf, keywordHitsOf, isStarred } = useAppData();
   const source = sourceByKey(tender.source).shortName;
@@ -76,7 +86,9 @@ function SwipeCardFace({ tender }: { tender: Tender }) {
           : "text-ink-muted";
 
   return (
-    <div className="flex h-full flex-col p-5">
+    <div
+      className={cn("flex h-full flex-col p-5", expanded && "overflow-y-auto")}
+    >
       <div className="flex items-start justify-between gap-3">
         <TierBadge tier={tender.tier} lang={lang} />
         <div className="flex items-center gap-2">
@@ -122,7 +134,7 @@ function SwipeCardFace({ tender }: { tender: Tender }) {
         </Fact>
       </dl>
 
-      <div className="mt-auto space-y-2.5 pt-5">
+      <div className={cn("space-y-2.5 pt-5", !expanded && "mt-auto")}>
         <FeasibilityMeter value={feasOf(tender).score} showLabel />
         <div className="flex items-center justify-between">
           <span className="tnum text-[12px] text-ink-muted">
@@ -137,6 +149,67 @@ function SwipeCardFace({ tender }: { tender: Tender }) {
           </span>
         </div>
       </div>
+
+      {/* 就地展開：仍維持直條視窗，只是補上更多事實／下一步／完整關鍵字，
+          並提供「查看完整詳情」導往詳情頁。內容區隨卡片內部捲動。 */}
+      {expanded && (
+        <div className="mt-5 space-y-5 border-t border-border pt-5">
+          {(tender.caseNo || tender.tenderMethod || tender.city) && (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5">
+              {tender.caseNo && (
+                <Fact label={t("caseNo")} num>
+                  {tender.caseNo}
+                </Fact>
+              )}
+              {tender.tenderMethod && (
+                <Fact label={t("tenderMethod")}>{tender.tenderMethod}</Fact>
+              )}
+              {tender.city && <Fact label={t("city")}>{tender.city}</Fact>}
+            </dl>
+          )}
+
+          {tender.nextStep && (
+            <div>
+              <div className="mb-1.5 text-[11px] text-ink-dim">
+                {t("colNext")}
+              </div>
+              <p className="text-[13px] leading-relaxed text-ink">
+                {tender.nextStep}
+              </p>
+            </div>
+          )}
+
+          {tender.tags.length > 0 && (
+            <div>
+              <div className="mb-2 text-[11px] text-ink-dim">
+                {t("keywords")}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {tender.tags.map((tag) => (
+                  <Badge key={tag} variant="signal">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {onViewFull && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewFull();
+              }}
+            >
+              <ExternalLink size={15} />
+              <span>{t("viewFullDetail")}</span>
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

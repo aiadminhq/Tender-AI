@@ -1,6 +1,6 @@
-// 標案知識小助手：topbar 觸發鈕 + 右側 Sheet 對話面板。
+// 標案知識小助手：右下浮動入口 + sidebar／可拖曳縮放浮動視窗。
 // 串接後端 POST /assistant/chat（lib/assistant.ts，NDJSON 串流；delta.text 為累積全文 → replace）。
-// 行為埋點（lib/events.ts）：開啟=view、提問=search、點來源=click_link，餵養 Layer C 自我學習訊號。
+// 行為埋點（lib/events.ts）：只記錄開啟、提問、點來源；不在前端分析或回填對話內容。
 import {
   useCallback,
   useEffect,
@@ -8,6 +8,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Bot,
   ExternalLink,
@@ -16,7 +17,6 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/store/app-context";
 import type { TextKey } from "@/i18n/strings";
@@ -27,6 +27,7 @@ import {
   type ChatMessage,
 } from "@/lib/assistant";
 import { RichText } from "./rich-text";
+import { AssistantWindow } from "./assistant-window";
 import { cn } from "@/lib/utils";
 
 interface Turn {
@@ -59,10 +60,9 @@ export function AssistantLauncher() {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
   }, [turns, streaming]);
 
-  // 開啟時聚焦輸入框，並記一筆 view 事件。
+  // 開啟時聚焦輸入框；view 事件由 AssistantWindow 帶顯示模式送出。
   useEffect(() => {
     if (!open) return;
-    trackEvent("view", { payload: { scope: "assistant_open" } });
     const id = window.setTimeout(() => inputRef.current?.focus(), 60);
     return () => window.clearTimeout(id);
   }, [open]);
@@ -161,21 +161,25 @@ export function AssistantLauncher() {
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setOpen(true)}
-        aria-label={t("assistantOpen")}
-        title={t("assistantOpen")}
-        className="relative text-primary"
-      >
-        <Bot size={17} />
-      </Button>
+      {createPortal(
+        <Button
+          size="icon"
+          onClick={() => setOpen(true)}
+          aria-label={t("assistantOpen")}
+          title={t("assistantOpen")}
+          className={cn(
+            "fixed bottom-20 right-4 z-30 h-12 w-12 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,.06)] md:bottom-6 md:right-6",
+            open && "pointer-events-none opacity-0",
+          )}
+        >
+          <Bot size={20} />
+        </Button>,
+        document.body,
+      )}
 
-      <Sheet
+      <AssistantWindow
         open={open}
         onClose={() => setOpen(false)}
-        width="sm:max-w-lg"
         title={
           <span className="flex items-center gap-2">
             <Sparkles size={15} className="text-primary" />
@@ -299,7 +303,7 @@ export function AssistantLauncher() {
             )
           )}
         </div>
-      </Sheet>
+      </AssistantWindow>
     </>
   );
 }
