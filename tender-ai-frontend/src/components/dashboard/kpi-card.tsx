@@ -27,7 +27,7 @@ export function KpiCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10">
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-[12px] text-ink-muted">{label}</span>
         <span
@@ -39,7 +39,7 @@ export function KpiCard({
           <Icon size={15} strokeWidth={2} />
         </span>
       </div>
-      <div className="tnum mt-2.5 text-[24px] font-semibold leading-none text-ink">
+      <div className="tnum mt-2.5 text-[28px] font-bold leading-tight text-ink">
         {value}
       </div>
       {hint && <div className="mt-1.5 text-[11px] text-ink-dim">{hint}</div>}

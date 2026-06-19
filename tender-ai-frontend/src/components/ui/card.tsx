@@ -17,7 +17,7 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 px-4 pt-4 pb-2",
+        "flex items-center justify-between gap-3 px-4 py-4 pb-2",
         className,
       )}
       {...props}
