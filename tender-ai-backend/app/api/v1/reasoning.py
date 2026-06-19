@@ -5,7 +5,7 @@
 - ``GET /tenders/{id}/reasoning``：單一標案的可中標推理（fit + reason codes + 結論）。
 - ``GET /reasoning/profile``：操作者判準輪廓（系統「學到」的承標標準，可被檢視）。
 
-回傳皆為公開欄位與聚合統計；個別評語原文／人名／email 不外洩（Layer B 隔離）。
+回傳皆為公開欄位與聚合統計；個別評語原文／人名／email 不對非合作範圍對象外洩（Layer B 明細限白名單合作範圍）。
 """
 from __future__ import annotations
 

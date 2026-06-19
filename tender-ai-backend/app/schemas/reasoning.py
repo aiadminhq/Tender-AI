@@ -7,8 +7,8 @@
 - CriteriaProfileOut：從評估紀錄＋互動事件＋學習關鍵字推導的「操作者判準輪廓」。
 - TenderReasoningOut：對單一標案的可中標推理（fit 分數＋逐條 reason code＋結論）。
 
-隱私：reason code 的證據文字只引用 Layer A 公開欄位與聚合統計，不外洩任何
-個別評語原文或人名／email（Layer B 私有資料只在本機推導，不對外回傳明細）。
+隱私：reason code 的證據文字只引用 Layer A 公開欄位與聚合統計，對非合作範圍對象
+不外洩個別評語原文或人名／email（Layer B 明細在白名單合作範圍內共享，但此端點只回聚合、不回逐筆明細）。
 """
 from __future__ import annotations
 

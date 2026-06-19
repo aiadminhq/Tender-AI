@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Layer B 行為/回饋 models（**私有資料**：永不進任何公開 repo）。
+"""Layer B 行為/回饋 models（白名單(@hqdesign.tw)合作範圍內共享、依登入帳號具名；對外不揭露、永不進任何公開 repo）。
 
 對應 `規劃-後台資料庫與RAG學習迴圈.md` §1.2 的七張表，落為 Postgres：
-- users：使用者（單一團隊，預設使用者見 services.behavior）。
+- users：白名單帳號；現行 demo 尚未建登入，暫用預設使用者（見 services.behavior）。
 - events：互動埋點（view/open_detail/click_link/dwell/apply_filter/search/sort…）。
 - tender_user_state：每人每案的狀態（收藏/狀態/星等），複合主鍵。
 - annotations：人工註記。

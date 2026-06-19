@@ -5,7 +5,7 @@
 - daily_runs：每日每來源一筆的執行統計。
 - daily_tender：某日某標案的當日快照（tier / 剩餘天數）。
 
-私有的行為/評價/向量（Layer B / C）不在此檔，後續階段另建且不入公開 repo。
+行為/評價/向量（Layer B / C）不在此檔，後續階段另建；Layer B 在白名單合作範圍內共享、對外不揭露且不入公開 repo。
 """
 from datetime import date, datetime
 

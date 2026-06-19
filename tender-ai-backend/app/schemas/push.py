@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""SL5 主動推播 schema（Layer B，但對外只回傳 Layer A 安全欄位）。
+"""SL5 主動推播 schema（Layer B；對非合作範圍對象只回傳 Layer A 安全欄位）。
 
 - 推播理由（reason）取自 reasoning.explain_tender 的 headline；分數（score）為
   criteria_fit（0–100）。皆為可解釋的聚合結果，**不含人名／email 或個別評語原文**。
