@@ -49,6 +49,34 @@
 
 ---
 
+## 前端設計／品味技能（UI/UX，自動組合使用）
+
+> 本專案已在 `.claude/skills/` 安裝一組設計/品味技能，雲端與本地 session 都會自動載入。
+> **凡涉及前端介面（頁面、元件、版面、樣式、動效、可及性、文案）的工作，務必主動組合調用以下技能**，不要憑直覺手刻出 slop。
+
+| 技能 | 角色 | 何時用 |
+| --- | --- | --- |
+| `impeccable` | 反 slop 主審＋優化（product / brand 雙模式、44+ 確定性檢測） | 任何 UI 產出後把關打磨；本專案以 **product 模式**為主（儀表板/App UI），行銷/落地頁才用 brand |
+| `ui-ux-pro-max` | 設計資料庫（風格/色盤/字體配對/版型）＋ shadcn/ui 整合 | 開新頁/新元件前選風格、色票、版型（本專案已用 shadcn） |
+| `design-taste-frontend` | 注入設計品味（layout/typography/motion/spacing/density、變化性） | 需提升品味、消除模板感時 |
+| `redesign-existing-projects` | 既有專案重設計流程 | 優化現有頁面（本專案多數情境） |
+| `minimalist-ui` | 極簡編輯風（暖色單色、字級對比、扁平 Bento、無重陰影） | 與本專案設計語言一致的預設方向 |
+
+**建議組合（依情境自動串）**
+- **優化既有頁面**：`redesign-existing-projects` 盤點 → `ui-ux-pro-max` 取參考/tokens → `minimalist-ui`／`design-taste-frontend` 定品味 → 實作 → `impeccable` 稽核打磨。
+- **全新頁面/元件**：`ui-ux-pro-max` 選型 → 品味技能定調 → 實作 → `impeccable` 稽核。
+- **只做檢查/驗收**：`impeccable` 跑反模式偵測。
+
+**House style（技能不得覆蓋本專案既有規範）**
+- 繁中字體僅 `Noto Sans TC`；英文 `Inter`／`SF Pro Text`；數字/程式碼 `JetBrains Mono`／`SF Mono`。
+- 極簡直線、零手寫/抖動；統一 16px 圓角；Bento 卡片分區；僅允許些微陰影（`0 1px 2px rgba(0,0,0,.06)`），禁濃重投影。
+- i18n：新增文案 zh／en 成對，繁中為預設。
+- 改前端先參考 `plans/tender-ai-integrated-roadmap/plan.mdx` 與 `docs/superpowers/`。
+
+> 安裝來源記錄於 `skills-lock.json`；`.agents/` 為 CLI 暫存（不入版控），可用 `npx skills experimental_install` 還原。
+
+---
+
 ## 文件導覽
 
 | 想知道 | 看哪裡 |
