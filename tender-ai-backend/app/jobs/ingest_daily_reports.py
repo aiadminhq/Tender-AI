@@ -22,7 +22,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy import select
 
 from app.db.session import AsyncSessionLocal
-from app.models.tender import Tender
+from app.models.tender import Source, Tender
 
 
 def parse_roc_date(roc_str: str) -> str:
@@ -182,6 +182,17 @@ async def ingest_daily_reports(
     html_files = sorted(report_dir_path.glob("tender-*.html"))
 
     async with session_factory() as session:
+        # 確保 PCC Source 存在
+        pcc_source = await session.execute(
+            select(Source).where(Source.name == "PCC")
+        )
+        pcc_source_obj = pcc_source.scalar()
+        if not pcc_source_obj:
+            pcc_source_obj = Source(name="PCC", base_url="https://web.pcc.gov.tw")
+            session.add(pcc_source_obj)
+            await session.flush()
+        source_id = pcc_source_obj.id
+
         for html_path in html_files:
             stats['reports_processed'] += 1
 
@@ -214,7 +225,7 @@ async def ingest_daily_reports(
                 else:
                     # 建立新標案（回填）
                     tender_obj = Tender(
-                        source_id=1,  # PCC 預設 source_id（需確認 backfill 中的值）
+                        source_id=source_id,
                         case_pk=parsed['case_pk'],
                         name=parsed['tender_name'],
                         org=parsed['agency'],
