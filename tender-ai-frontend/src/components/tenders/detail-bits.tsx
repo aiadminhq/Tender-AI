@@ -55,7 +55,7 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 
 // —— 下方為 Task 6 新增的展示元件 ——
 
-const CAT_KEY: Record<Category, TextKey> = {
+export const CAT_KEY: Record<Category, TextKey> = {
   works: "catWorks",
   goods: "catGoods",
   services: "catServices",

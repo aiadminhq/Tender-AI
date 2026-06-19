@@ -45,6 +45,8 @@ export const STRINGS = {
     swipeNoData: "目前沒有可配對的標案",
     swipeReviewBoard: "查看看板",
     swipeRestart: "重新整理牌組",
+    swipeFullscreen: "全螢幕",
+    swipeExitFullscreen: "離開全螢幕",
     swipeProgress: (i: number, n: number) => `第 ${i}/${n} 張`,
     // list/detail（誠實標示與狀態）
     loading: "載入中…",
@@ -293,7 +295,8 @@ export const STRINGS = {
     assistantPageSub: "Chat with the tender knowledge base",
     // swipe
     swipeTitle: "Swipe to triage",
-    swipeSub: "Right = interested, left = pass (signal only, not deleted), up = save",
+    swipeSub:
+      "Right = interested, left = pass (signal only, not deleted), up = save",
     swipeInterested: "Interested",
     swipePass: "Pass",
     swipeSave: "Save",
@@ -304,6 +307,8 @@ export const STRINGS = {
     swipeNoData: "No tenders to swipe right now",
     swipeReviewBoard: "Review board",
     swipeRestart: "Refresh deck",
+    swipeFullscreen: "Fullscreen",
+    swipeExitFullscreen: "Exit fullscreen",
     swipeProgress: (i: number, n: number) => `Card ${i} of ${n}`,
     // list/detail
     loading: "Loading…",
