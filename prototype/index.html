@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tender AI — 今日標案（原型）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS (from tender-ai-design-system.md) ============ */
+:root,[data-theme="dark"]{
+  --canvas:#090909;--surface-1:#141414;--surface-2:#1c1c1c;--hairline:#262626;--hairline-soft:#1a1a1a;
+  --ink:#fff;--ink-muted:#9b9b9b;--ink-dim:#6b6b6b;
+  --accent:#0099ff;--accent-ring:rgba(0,153,255,.30);
+  --tier-high:#22c55e;--tier-mid:#f5a623;--tier-low:#ff5577;--priority:#7c6bff;--danger:#ff5577;
+  --feasibility:linear-gradient(90deg,#22c55e,#0099ff);--on-primary:#000;
+  --shadow-2:0 10px 30px rgba(0,0,0,.45);
+}
+[data-theme="light"]{
+  --canvas:#f7f8fa;--surface-1:#fff;--surface-2:#eef1f5;--hairline:#e2e6ec;--hairline-soft:#eef1f5;
+  --ink:#161b22;--ink-muted:#5b6573;--ink-dim:#8a93a3;
+  --accent:#0a6cff;--accent-ring:rgba(10,108,255,.25);
+  --tier-high:#16a34a;--tier-mid:#c77700;--tier-low:#dc2626;--priority:#5b46e0;--danger:#dc2626;
+  --feasibility:linear-gradient(90deg,#16a34a,#0a6cff);--on-primary:#fff;
+  --shadow-2:0 10px 30px rgba(20,30,50,.12);
+}
+:root{
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:20px;--r-pill:999px;
+  --font-sans:"Inter","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--canvas);color:var(--ink);font-family:var(--font-sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums;font-weight:600}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:none;box-shadow:0 0 0 2px var(--accent-ring)}
+
+/* ============ NAV ============ */
+.nav{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;height:56px;padding:0 24px;
+  background:color-mix(in srgb,var(--canvas) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--hairline)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:-.3px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.nav-links{display:flex;gap:4px;margin-left:8px}
+.nav-links a{color:var(--ink-muted);font-size:14px;padding:7px 12px;border-radius:var(--r-md)}
+.nav-links a.active{color:var(--ink);background:var(--surface-1)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.icon-btn{width:36px;height:36px;border-radius:var(--r-pill);background:var(--surface-1);display:grid;place-items:center;font-size:15px}
+.avatar{width:32px;height:32px;border-radius:var(--r-pill);background:var(--surface-2);display:grid;place-items:center;font-size:13px;color:var(--ink-muted)}
+
+/* ============ LAYOUT ============ */
+.wrap{max-width:1200px;margin:0 auto;padding:24px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.page-head h1{font-size:24px;font-weight:600;letter-spacing:-.4px}
+.page-head .sub{color:var(--ink-muted);font-size:13px;margin-top:4px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+.stat{background:var(--surface-1);border:1px solid var(--hairline-soft);border-radius:var(--r-lg);padding:14px 16px}
+.stat .v{font-size:22px}
+.stat .l{font-size:12px;color:var(--ink-muted);margin-top:3px}
+
+/* ============ FILTER BAR ============ */
+.filters{background:var(--surface-1);border:1px solid var(--hairline-soft);border-radius:var(--r-lg);padding:14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px}
+.frow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.flabel{font-size:12px;color:var(--ink-dim);min-width:64px}
+.chip{font-size:13px;color:var(--ink-muted);background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-pill);padding:6px 12px;display:inline-flex;align-items:center;gap:6px;transition:.12s}
+.chip:hover{color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--surface-2);color:var(--ink);border-color:var(--hairline)}
+.chip .pin{width:6px;height:6px;border-radius:50%}
+.pin.high{background:var(--tier-high)}.pin.mid{background:var(--tier-mid)}.pin.low{background:var(--tier-low)}.pin.priority{background:var(--priority)}
+.src{font-size:12px;color:var(--ink-muted);border:1px solid var(--hairline);border-radius:var(--r-pill);padding:5px 11px}
+.src[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.field{background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-md);padding:8px 12px;color:var(--ink);font-size:14px}
+.field::placeholder{color:var(--ink-dim)}
+.field:focus{box-shadow:0 0 0 1px var(--accent-ring);border-color:var(--accent)}
+select.field{appearance:none;padding-right:28px;background-image:linear-gradient(45deg,transparent 50%,var(--ink-muted) 50%),linear-gradient(135deg,var(--ink-muted) 50%,transparent 50%);background-position:calc(100% - 14px) 17px,calc(100% - 9px) 17px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.search{flex:1;min-width:200px}
+.kw-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-md);padding:5px 8px;flex:1;min-width:200px}
+.kw-wrap.avoid{border-color:color-mix(in srgb,var(--danger) 40%,var(--hairline))}
+.kw-wrap input{flex:1;min-width:80px;background:none;border:none;color:var(--ink);font-size:13px}
+.kw-wrap input:focus{outline:none}
+.tag{font-size:12px;display:inline-flex;align-items:center;gap:5px;border-radius:var(--r-pill);padding:3px 9px}
+.tag.focus{color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+.tag.avoid{color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)}
+.tag b{cursor:pointer;opacity:.7}.tag b:hover{opacity:1}
+.fbar-foot{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}
+.count{font-size:13px;color:var(--ink-muted)}.count b{color:var(--ink)}
+.linkbtn{font-size:13px;color:var(--ink-muted)}.linkbtn:hover{color:var(--ink)}
+
+/* ============ TENDER LIST ============ */
+.list{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:64px 1fr 92px 76px 120px 84px;gap:14px;align-items:center;
+  background:var(--surface-1);border:1px solid var(--hairline-soft);border-left:3px solid transparent;border-radius:var(--r-lg);padding:14px 16px;transition:.12s;cursor:pointer}
+.row:hover{background:var(--surface-2);transform:translateY(-1px)}
+.row.priority{border-left-color:var(--priority)}
+.col-src{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.badge-src{font-size:11px;font-weight:600;border-radius:var(--r-pill);padding:3px 9px;border:1px solid var(--hairline)}
+.badge-src.TMU{color:#7dd3fc;border-color:#2d5a8a}.badge-src.PCC{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.tier{font-size:11px;font-weight:600;border-radius:var(--r-sm);padding:2px 7px}
+.tier.high{color:var(--tier-high);background:color-mix(in srgb,var(--tier-high) 12%,transparent)}
+.tier.mid{color:var(--tier-mid);background:color-mix(in srgb,var(--tier-mid) 12%,transparent)}
+.tier.low{color:var(--tier-low);background:color-mix(in srgb,var(--tier-low) 12%,transparent)}
+.tier.priority{color:var(--priority);background:color-mix(in srgb,var(--priority) 14%,transparent)}
+.t-name{font-size:15px;font-weight:500;line-height:1.35}
+.t-meta{font-size:13px;color:var(--ink-muted);margin-top:3px}
+.t-tags{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.t-tag{font-size:11px;color:var(--ink-dim);background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--r-sm);padding:1px 7px}
+.budget{font-size:15px}.budget small{color:var(--ink-muted);font-weight:400;font-size:12px}
+.days{font-size:14px}.days small{display:block;color:var(--ink-muted);font-size:11px;font-weight:400}
+.days.urgent{color:var(--tier-low)}
+.feas{display:flex;flex-direction:column;gap:5px}
+.feas .pct{font-size:14px}
+.feas .bar{height:4px;border-radius:var(--r-pill);background:var(--hairline)}
+.feas .fill{height:100%;border-radius:var(--r-pill);background:var(--feasibility)}
+.col-act{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.star{font-size:15px;color:var(--ink-dim)}.star.on{color:var(--tier-mid)}
+.accept{font-size:13px;font-weight:600;color:var(--on-primary);background:var(--ink);border-radius:var(--r-pill);padding:7px 12px;white-space:nowrap}
+.accept:hover{opacity:.9}.accept.done{background:var(--tier-high);color:#fff}
+
+.empty{display:none;text-align:center;padding:48px 20px;color:var(--ink-muted)}
+.empty .big{font-size:32px;margin-bottom:8px}
+
+.note{margin-top:18px;font-size:12px;color:var(--ink-dim);text-align:center}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:810px){.stats{grid-template-columns:repeat(2,1fr)}.nav-links{display:none}}
+@media(max-width:640px){
+  .row{grid-template-columns:1fr;gap:8px}
+  .col-src{flex-direction:row}
+  .col-num{display:flex;justify-content:space-between;gap:12px}
+  .col-act{justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand"><span class="dot"></span> Tender AI</div>
+  <div class="nav-links">
+    <a href="#" class="active">今日清單</a>
+    <a href="#">語意搜尋</a>
+    <a href="#">已承接</a>
+    <a href="#">後台</a>
+  </div>
+  <div class="nav-right">
+    <button class="icon-btn" id="themeBtn" title="切換主題">◐</button>
+    <div class="avatar">U</div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="page-head">
+    <div>
+      <h1>今日標案</h1>
+      <div class="sub">2026-06-17 ｜ 北部・工程優先 ｜ 排除 7 天內截止（最優先除外）</div>
+    </div>
+    <button class="accept" style="background:var(--surface-1);color:var(--ink)">＋ 手動重跑</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v num" style="color:var(--accent)">12</div><div class="l">今日命中</div></div>
+    <div class="stat"><div class="v num" style="color:var(--priority)">1</div><div class="l">⭐ 期間最優先</div></div>
+    <div class="stat"><div class="v num" style="color:var(--tier-high)">5</div><div class="l">🟢 高潛力 ≤14</div></div>
+    <div class="stat"><div class="v num" style="color:var(--tier-mid)">5</div><div class="l">🟡 中潛力 15–30</div></div>
+    <div class="stat"><div class="v num">58<span style="font-size:14px;color:var(--ink-muted)">%</span></div><div class="l">平均可行性</div></div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filters">
+    <div class="frow">
+      <span class="flabel">潛力</span>
+      <button class="chip" data-grp="tier" data-val="priority" aria-pressed="false"><span class="pin priority"></span>⭐ 最優先</button>
+      <button class="chip" data-grp="tier" data-val="high" aria-pressed="false"><span class="pin high"></span>🟢 高</button>
+      <button class="chip" data-grp="tier" data-val="mid" aria-pressed="false"><span class="pin mid"></span>🟡 中</button>
+      <button class="chip" data-grp="tier" data-val="low" aria-pressed="false"><span class="pin low"></span>🔴 低</button>
+      <span style="width:14px"></span>
+      <span class="flabel">類別</span>
+      <button class="chip" data-grp="cat" data-val="工程" aria-pressed="false">工程</button>
+      <button class="chip" data-grp="cat" data-val="財物" aria-pressed="false">財物</button>
+      <button class="chip" data-grp="cat" data-val="勞務" aria-pressed="false">勞務</button>
+    </div>
+    <div class="frow">
+      <span class="flabel">城市</span>
+      <button class="chip" data-grp="city" data-val="台北" aria-pressed="false">台北</button>
+      <button class="chip" data-grp="city" data-val="新北" aria-pressed="false">新北</button>
+      <span style="width:14px"></span>
+      <span class="flabel">資料源</span>
+      <button class="src" data-grp="src" data-val="PCC" aria-pressed="false">PCC</button>
+      <button class="src" data-grp="src" data-val="TMU" aria-pressed="false">TMU</button>
+      <span style="width:14px"></span>
+      <span class="flabel">截止</span>
+      <select class="field" id="deadlineSel">
+        <option value="0">不限</option>
+        <option value="14">14 天內</option>
+        <option value="30">30 天內</option>
+      </select>
+      <span class="flabel">排序</span>
+      <select class="field" id="sortSel">
+        <option value="feas">可行性分數</option>
+        <option value="days">截止日（近→遠）</option>
+        <option value="budget">預算（高→低）</option>
+        <option value="tier">潛力</option>
+      </select>
+    </div>
+    <div class="frow">
+      <span class="flabel">重點關鍵字</span>
+      <div class="kw-wrap" id="focusWrap"><input id="focusInput" placeholder="輸入後 Enter（納入/加權）"></div>
+      <span class="flabel">避免關鍵字</span>
+      <div class="kw-wrap avoid" id="avoidWrap"><input id="avoidInput" placeholder="輸入後 Enter（命中即排除）"></div>
+    </div>
+    <div class="frow">
+      <input class="field search" id="searchInput" placeholder="🔍 用一句話搜尋：台北、室內裝修、600 萬上下、還有兩週以上…">
+    </div>
+    <div class="fbar-foot">
+      <div class="count">共 <b id="count">0</b> 筆符合</div>
+      <button class="linkbtn" id="clearBtn">清除全部條件</button>
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty"><div class="big">∅</div>沒有符合條件的標案。<br><button class="linkbtn" onclick="clearAll()" style="margin-top:8px;color:var(--accent)">放寬條件</button></div>
+
+  <div class="note">＊ 本頁為靜態原型，資料為範例（依真實標案命名風格仿造）。可行性分數為示意。</div>
+</div>
+
+<script>
+/* ============ SAMPLE DATA（仿真實命名風格） ============ */
+const DATA=[
+ {id:1,name:"某機關辦公廳舍裝潢工程",org:"臺北市政府",city:"台北",cat:"工程",src:"PCC",budget:600,days:6,tier:"priority",feas:88,tags:["裝潢","室內"]},
+ {id:2,name:"久康區民活動中心空間改善室內裝修工程",org:"臺北市文山區公所",city:"台北",cat:"工程",src:"PCC",budget:177,days:8,tier:"high",feas:82,tags:["室內","活動中心"]},
+ {id:3,name:"北門智慧圖書館空間裝修工程",org:"臺北市立圖書館",city:"台北",cat:"工程",src:"PCC",budget:1500,days:13,tier:"high",feas:76,tags:["裝修","室內","圖書館"]},
+ {id:4,name:"二大樓26病房廁所整修工程",org:"北醫聯合採購",city:"台北",cat:"工程",src:"TMU",budget:320,days:9,tier:"high",feas:71,tags:["醫院","衛浴","室內"]},
+ {id:5,name:"校園廁所改善工程",org:"臺北市某國民中學",city:"台北",cat:"工程",src:"PCC",budget:420,days:14,tier:"high",feas:67,tags:["廁所","改善","學校","室內"]},
+ {id:6,name:"115年度拱月樓電梯整修工程",org:"臺北市內湖區南湖國民小學",city:"台北",cat:"工程",src:"PCC",budget:95,days:11,tier:"high",feas:64,tags:["整修","學校"]},
+ {id:7,name:"三多國小活動中心空調老舊汰換更新工程",org:"新北市樹林區三多國民小學",city:"新北",cat:"工程",src:"PCC",budget:880,days:22,tier:"mid",feas:58,tags:["空調","汰換","學校"]},
+ {id:8,name:"內湖區某活動中心室內裝修工程",org:"臺北市內湖區公所",city:"台北",cat:"工程",src:"PCC",budget:540,days:24,tier:"mid",feas:55,tags:["室內","裝修","活動中心"]},
+ {id:9,name:"孝棟大樹生態探索戶外教室整修工程",org:"臺北市北投區大屯國民小學",city:"台北",cat:"工程",src:"PCC",budget:260,days:28,tier:"mid",feas:49,tags:["整修","學校","戶外"]},
+ {id:10,name:"115-116年火化爐設備汰換統包工程",org:"臺北市政府工務局",city:"台北",cat:"工程",src:"PCC",budget:4200,days:19,tier:"mid",feas:41,tags:["汰換","統包","設備"]},
+ {id:11,name:"廳舍冷氣設備財物採購",org:"新北市某區公所",city:"新北",cat:"財物",src:"PCC",budget:150,days:16,tier:"mid",feas:38,tags:["冷氣","設備"]},
+ {id:12,name:"三峽區人行道改善工程",org:"新北市三峽區公所",city:"新北",cat:"工程",src:"PCC",budget:2100,days:31,tier:"low",feas:22,tags:["改善","道路"]},
+];
+const TIER_LABEL={priority:"⭐ 最優先",high:"🟢 高潛力",mid:"🟡 中潛力",low:"🔴 低潛力"};
+const TIER_RANK={priority:0,high:1,mid:2,low:3};
+const state={tier:new Set(),cat:new Set(),city:new Set(),src:new Set(),focus:[],avoid:[],deadline:0,sort:"feas",q:"",saved:new Set(),accepted:new Set()};
+
+/* ============ RENDER ============ */
+function passes(t){
+  if(state.tier.size&&!state.tier.has(t.tier))return false;
+  if(state.cat.size&&!state.cat.has(t.cat))return false;
+  if(state.city.size&&!state.city.has(t.city))return false;
+  if(state.src.size&&!state.src.has(t.src))return false;
+  if(state.deadline&&t.days>state.deadline)return false;
+  const hay=(t.name+t.org+t.tags.join("")).toLowerCase();
+  if(state.avoid.some(k=>hay.includes(k.toLowerCase())))return false;
+  if(state.focus.length&&!state.focus.some(k=>hay.includes(k.toLowerCase())))return false;
+  if(state.q){
+    const toks=state.q.toLowerCase().split(/[\s,，、]+/).filter(Boolean);
+    if(!toks.every(tok=>hay.includes(tok)))return false;
+  }
+  return true;
+}
+function sortFn(a,b){
+  if(state.sort==="feas")return b.feas-a.feas;
+  if(state.sort==="days")return a.days-b.days;
+  if(state.sort==="budget")return b.budget-a.budget;
+  if(state.sort==="tier")return TIER_RANK[a.tier]-TIER_RANK[b.tier]||a.days-b.days;
+  return 0;
+}
+function render(){
+  let rows=DATA.filter(passes).sort(sortFn);
+  // 重點關鍵字加權：命中者可行性視覺 +，置前（示意）
+  document.getElementById("count").textContent=rows.length;
+  const list=document.getElementById("list");
+  document.getElementById("empty").style.display=rows.length?"none":"block";
+  list.innerHTML=rows.map(t=>{
+    const urgent=t.days<=7;
+    return `<div class="row ${t.tier==='priority'?'priority':''}" onclick="">
+      <div class="col-src">
+        <span class="badge-src ${t.src}">${t.src}</span>
+        <span class="tier ${t.tier}">${TIER_LABEL[t.tier]}</span>
+      </div>
+      <div>
+        <div class="t-name">${t.name}</div>
+        <div class="t-meta">${t.org} · ${t.city} · ${t.cat}</div>
+        <div class="t-tags">${t.tags.map(x=>`<span class="t-tag">${x}</span>`).join("")}</div>
+      </div>
+      <div class="col-num budget num">${t.budget.toLocaleString()}<small> 萬</small></div>
+      <div class="col-num days num ${urgent?'urgent':''}">${t.days} 天<small>截止</small></div>
+      <div class="feas">
+        <div class="pct num">${t.feas}<span style="font-size:11px;color:var(--ink-muted)">%</span> 可行</div>
+        <div class="bar"><div class="fill" style="width:${t.feas}%"></div></div>
+      </div>
+      <div class="col-act">
+        <button class="star ${state.saved.has(t.id)?'on':''}" onclick="event.stopPropagation();toggleSave(${t.id})" title="儲存">${state.saved.has(t.id)?'★':'☆'}</button>
+        <button class="accept ${state.accepted.has(t.id)?'done':''}" onclick="event.stopPropagation();toggleAccept(${t.id})">${state.accepted.has(t.id)?'已承接':'承接 →'}</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function toggleSave(id){state.saved.has(id)?state.saved.delete(id):state.saved.add(id);render()}
+function toggleAccept(id){state.accepted.has(id)?state.accepted.delete(id):state.accepted.add(id);render()}
+
+/* ============ EVENTS ============ */
+document.querySelectorAll('.chip,.src').forEach(b=>b.addEventListener('click',()=>{
+  const g=b.dataset.grp,v=b.dataset.val,on=b.getAttribute('aria-pressed')==='true';
+  b.setAttribute('aria-pressed',String(!on));
+  on?state[g].delete(v):state[g].add(v);render();
+}));
+document.getElementById('deadlineSel').onchange=e=>{state.deadline=+e.target.value;render()};
+document.getElementById('sortSel').onchange=e=>{state.sort=e.target.value;render()};
+document.getElementById('searchInput').oninput=e=>{state.q=e.target.value;render()};
+function kw(inputId,wrapId,arr,cls){
+  const inp=document.getElementById(inputId),wrap=document.getElementById(wrapId);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&inp.value.trim()){arr.push(inp.value.trim());inp.value='';paint()}
+    if(e.key==='Backspace'&&!inp.value&&arr.length){arr.pop();paint()}
+  });
+  function paint(){
+    wrap.querySelectorAll('.tag').forEach(n=>n.remove());
+    arr.forEach((k,i)=>{const s=document.createElement('span');s.className='tag '+cls;
+      s.innerHTML=k+' <b>×</b>';s.querySelector('b').onclick=()=>{arr.splice(i,1);paint()};
+      wrap.insertBefore(s,inp)});
+    render();
+  }
+}
+kw('focusInput','focusWrap',state.focus,'focus');
+kw('avoidInput','avoidWrap',state.avoid,'avoid');
+document.getElementById('clearBtn').onclick=clearAll;
+function clearAll(){
+  ['tier','cat','city','src'].forEach(g=>state[g].clear());
+  state.focus.length=0;state.avoid.length=0;state.deadline=0;state.q='';
+  document.querySelectorAll('.chip,.src').forEach(b=>b.setAttribute('aria-pressed','false'));
+  document.getElementById('searchInput').value='';document.getElementById('deadlineSel').value='0';
+  document.querySelectorAll('#focusWrap .tag,#avoidWrap .tag').forEach(n=>n.remove());
+  render();
+}
+document.getElementById('themeBtn').onclick=()=>{
+  const h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark';
+};
+render();
+</script>
+</body>
+</html>

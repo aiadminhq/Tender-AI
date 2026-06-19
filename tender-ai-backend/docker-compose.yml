@@ -1,0 +1,38 @@
+# Tender AI 後端資料庫（公司伺服器用）。
+#
+# 本機開發採 brew 原生安裝（postgresql@16 + pgvector），不需此檔；
+# 此 compose 供「公司伺服器」一鍵起一個帶 pgvector 的 Postgres 16，
+# 認證／資料庫名與 app/core/config.py 的預設 DATABASE_URL 一致：
+#   postgresql+psycopg://tender:tender@localhost:5432/tenderai
+#
+# 用法：
+#   docker compose up -d           # 起 DB（背景）
+#   docker compose ps              # 看狀態（healthy 後再 migrate）
+#   docker compose down            # 停（保留資料卷）
+#   docker compose down -v         # 停並清空資料（謹慎）
+#
+# 正式部署請覆寫密碼：於同層放 .env（已 gitignore）設 POSTGRES_PASSWORD，
+# 並讓後端 DATABASE_URL 帶相同密碼。預設值僅供內網/開發，勿用於公開暴露。
+
+services:
+  db:
+    image: pgvector/pgvector:pg16 # 內建 pgvector，免自行編譯 extension
+    container_name: tenderai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tender}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tender}
+      POSTGRES_DB: ${POSTGRES_DB:-tenderai}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - tenderai_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # healthy 後才適合跑 alembic upgrade；CREATE EXTENSION vector 由 migration 處理。
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tender} -d ${POSTGRES_DB:-tenderai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  tenderai_pgdata: # 具名卷：down 不清、down -v 才清

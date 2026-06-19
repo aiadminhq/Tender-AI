@@ -1,0 +1,62 @@
+"""ORM models 匯總（供 Alembic autogenerate 掃描 Base.metadata）。
+
+- Layer A 標案 Corpus：公開可重生。
+- Layer B 行為/回饋：私有 schema（資料永不進公開 repo，但 schema/code 需入版控）。
+- Layer C 知識/RAG：tender_vectors（P3，公開衍生向量）。
+"""
+from app.models.behavior import (
+    Annotation,
+    Evaluation,
+    Event,
+    SavedSearch,
+    Share,
+    TenderUserState,
+    User,
+)
+from app.models.knowledge import (
+    DecisionVector,
+    DocSummary,
+    EvolutionLog,
+    KeywordWeight,
+    KeywordWeightRevision,
+    KnowledgeChunk,
+    TenderVector,
+)
+from app.models.push import PushLog
+from app.models.revision import (
+    CrawlFailure,
+    CrawlRun,
+    TenderRevision,
+    TenderSnapshot,
+)
+from app.models.tender import DailyRun, DailyTender, Source, Tender
+
+__all__ = [
+    # Layer A
+    "Source",
+    "Tender",
+    "DailyRun",
+    "DailyTender",
+    # Layer A 詳情 enrich(revision-first)
+    "TenderSnapshot",
+    "TenderRevision",
+    "CrawlRun",
+    "CrawlFailure",
+    # Layer B
+    "User",
+    "Event",
+    "TenderUserState",
+    "Annotation",
+    "Evaluation",
+    "Share",
+    "SavedSearch",
+    "PushLog",
+    # Layer C
+    "TenderVector",
+    "KnowledgeChunk",
+    "KeywordWeight",
+    "KeywordWeightRevision",
+    "EvolutionLog",
+    "DocSummary",
+    "DecisionVector",
+]

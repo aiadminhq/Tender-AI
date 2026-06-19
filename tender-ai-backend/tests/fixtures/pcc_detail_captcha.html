@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head><meta charset="utf-8"><title>驗證碼檢核</title></head>
+<body>
+  <!-- 縮樣本:PCC 為預防惡意程式針對本系統進行大量查詢,於詳情端點掛圖形驗證碼。
+       真實頁約 43KB,含撲克牌圖卡;測試只需保留判定用的標記文字。 -->
+  <form action="/tps/validate/check" method="post">
+    <h2>驗證碼檢核</h2>
+    <p>請於B區挑選與A區相同之撲克牌後送出</p>
+    <div id="zoneA"><!-- A 區牌面 --></div>
+    <div id="zoneB"><!-- B 區候選牌 --></div>
+    <button type="submit">送出</button>
+  </form>
+  <!-- 注意:全頁無任何 headers="tb_02" 的 td → 一般解析器會判為無效頁(查無資料),
+       但本頁實為「被攔截」而非「查無資料」,須由 is_captcha_page 區分。 -->
+</body>
+</html>

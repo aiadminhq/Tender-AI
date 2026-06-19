@@ -1,0 +1,77 @@
+// 投標看板卡片（mock）。四欄：待辦／進行中／審核中／已完成；
+// 多人分派、可標記卡關。多數連結回標案 id。
+import type { KanbanCard } from "@/types/domain";
+
+export const KANBAN_CARDS: KanbanCard[] = [
+  {
+    id: "k-003",
+    tenderId: "t-011",
+    title: "衛生研究院衛浴改善 — 估價",
+    status: "todo",
+    assignee: "u-aaron",
+    tier: "high",
+    deadline: "2026-07-01",
+  },
+  {
+    id: "k-005",
+    tenderId: "t-006",
+    title: "北醫病房室內裝修 — 現勘",
+    status: "todo",
+    assignee: "u-aaron",
+    tier: "mid",
+    deadline: "2026-07-10",
+  },
+  {
+    id: "k-007",
+    title: "Q3 衛浴材料庫存盤點",
+    status: "todo",
+    assignee: "u-yvonne",
+  },
+  {
+    id: "k-001",
+    tenderId: "t-001",
+    title: "臺大醫院公廁整修 — 備標",
+    status: "doing",
+    assignee: "u-christian",
+    tier: "high",
+    deadline: "2026-06-24",
+  },
+  {
+    id: "k-002",
+    tenderId: "t-012",
+    title: "醫療大樓廁所改善 — 踏勘",
+    status: "doing",
+    assignee: "u-david",
+    tier: "high",
+    deadline: "2026-07-05",
+  },
+  {
+    id: "k-006",
+    tenderId: "t-004",
+    title: "健保署機房空調 — 可行性評估",
+    status: "doing",
+    assignee: "u-jamie",
+    tier: "mid",
+    deadline: "2026-07-03",
+  },
+  {
+    id: "k-004",
+    tenderId: "t-002",
+    title: "仁愛院區衛浴汰換 — 投標文件",
+    status: "review",
+    assignee: "u-jamie",
+    tier: "high",
+    deadline: "2026-06-20",
+    blocked: true,
+    blockReason: "等廠商報價",
+  },
+  {
+    id: "k-008",
+    tenderId: "t-003",
+    title: "校園廁所改善 — 已投標",
+    status: "done",
+    assignee: "u-christian",
+    tier: "high",
+    deadline: "2026-06-30",
+  },
+];

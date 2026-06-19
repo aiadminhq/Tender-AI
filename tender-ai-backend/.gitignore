@@ -1,0 +1,23 @@
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 環境與密鑰：永不入版控
+.env
+.env.*
+!.env.example
+
+# 私有資料（Layer B 行為/評價/註記/決策向量）與 DB 匯出：永不入公開 repo
+*.dump
+*.sql.gz
+data/private/
+data/downloads/
+backfill_report.json
+
+# OS
+.DS_Store

@@ -1,0 +1,58 @@
+{/* Canvas source. */}
+
+<DesignBoard title="Tender AI 詳情改版與雙語狀態" version={2}>
+<Section id="detail-language-states" title="標案詳情主要狀態">
+<Artboard id="detail-zh" label="繁體中文（預設）" surface="desktop">
+  <Screen
+    surface="desktop"
+    renderMode="design"
+    css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+    html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:12px">
+      <div style="display:flex;align-items:center;width:100%;gap:10px;border-bottom:1.4px solid var(--wf-line);padding-bottom:10px;white-space:nowrap">
+        <strong>投標作戰台</strong><span class="wf-muted">標案情報</span><div style="flex:1"></div><button><span data-icon="search" aria-label="搜尋"></span></button><button>EN</button><button><span data-icon="user" aria-label="使用者"></span></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px"><button><span data-icon="arrowLeft"></span> 返回清單</button><span class="wf-pill accent">PCC</span><span class="wf-pill">工程</span><span class="wf-pill">台北市</span><div style="flex:1"></div><button>☆ 儲存</button></div>
+      <div class="wf-card" style="display:flex;flex-direction:column;gap:6px"><small>案號 115-0621-01</small><h1 style="margin:0">市立醫院門診空間整修工程</h1><p class="wf-muted" style="margin:0">臺北市立聯合醫院 · 截止 2026/06/28</p></div>
+      <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:12px;flex:1;min-height:0">
+        <main style="display:flex;flex-direction:column;gap:10px;min-width:0;overflow:auto">
+          <div class="wf-box" style="display:flex;align-items:center;gap:10px;border-color:var(--wf-warn)"><strong>剩餘 10 天</strong><span class="wf-muted">備標時程可執行</span></div>
+          <div class="wf-card" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center"><strong>可行性估算 76</strong><div style="flex:1"></div><span class="wf-pill accent">查看拆解</span></div><div style="height:10px;background:var(--wf-line);border-radius:var(--wf-radius)"><div style="width:76%;height:100%;background:var(--wf-accent);border-radius:var(--wf-radius)"></div></div><small>室內裝修 +16 · 工程 +20 · 預算適配 +15 · 截止 +10</small></div>
+          <div class="wf-card" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"><div><small>招標機關</small><br><strong>臺北市立聯合醫院</strong></div><div><small>預算</small><br><strong>NT$ 18,600,000</strong></div><div><small>招標方式</small><br><strong>公開招標</strong></div><div><small>案號</small><br><strong>115-0621-01</strong></div><div><small>採購性質</small><br><strong>工程</strong></div><div><small>公告日</small><br><strong>2026/06/18</strong></div></div>
+          <div class="wf-card" style="display:flex;flex-direction:column;gap:8px"><strong>關鍵匹配 · 命中 4 個</strong><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="wf-chip accent">整修</span><span class="wf-chip">醫院</span><span class="wf-chip">室內</span><span class="wf-chip">空間改善</span></div></div>
+          <div class="wf-box" style="display:flex;gap:10px"><span class="wf-muted">待補</span><span>履約地點、資格摘要、附件與 RAG 相似案將由後端 ticket 提供。</span></div>
+        </main>
+        <aside class="wf-card" style="display:flex;flex-direction:column;gap:10px;min-width:0;overflow:auto"><strong>決策與協作</strong><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="primary">承接</button><button>略過</button></div><button><span data-icon="send"></span> 轉發連結</button><label style="display:flex;align-items:center;gap:8px"><input type="checkbox"> 大家可見</label><hr><strong>評價</strong><div style="display:flex;gap:6px"><button>★</button><button>★</button><button>★</button><button>★</button><button>★</button></div><label>判斷理由<input value="醫療空間經驗可複用"></label><hr><strong>註記</strong><textarea rows="3">需確認夜間施工限制</textarea><button>送出註記</button><div style="flex:1"></div><a href="#">開啟 PCC 原文</a></aside>
+      </div>
+    </div>`}
+  />
+</Artboard>
+
+<Artboard id="detail-en" label="English" surface="desktop">
+  <Screen
+    surface="desktop"
+    renderMode="design"
+    css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="en"], .tender-ui[lang="en"] * { font-family:"Inter","SF Pro Text",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+    html={`<div class="tender-ui" lang="en" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:12px">
+      <div style="display:flex;align-items:center;width:100%;gap:10px;border-bottom:1.4px solid var(--wf-line);padding-bottom:10px;white-space:nowrap"><strong>Bid Ops</strong><span class="wf-muted">Tender Intel</span><div style="flex:1"></div><button><span data-icon="search" aria-label="Search"></span></button><button>中</button><button><span data-icon="user" aria-label="User"></span></button></div>
+      <div style="display:flex;align-items:center;gap:8px"><button><span data-icon="arrowLeft"></span> Back to tenders</button><span class="wf-pill accent">PCC</span><span class="wf-pill">Works</span><span class="wf-pill">Taipei</span><div style="flex:1"></div><button>Save</button></div>
+      <div class="wf-card" style="display:flex;flex-direction:column;gap:6px"><small>Case no. 115-0621-01</small><h1 style="margin:0">Municipal Hospital Outpatient Interior Renovation</h1><p class="wf-muted" style="margin:0">Taipei City Hospital · Due Jun 28, 2026</p></div>
+      <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:12px;flex:1;min-height:0"><main style="display:flex;flex-direction:column;gap:10px;min-width:0;overflow:auto"><div class="wf-box" style="display:flex;align-items:center;gap:10px"><strong>10 days left</strong><span class="wf-muted">Bid timeline is workable</span></div><div class="wf-card" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex"><strong>Feasibility estimate 76</strong><div style="flex:1"></div><span class="wf-pill accent">Breakdown</span></div><div style="height:10px;background:var(--wf-line);border-radius:var(--wf-radius)"><div style="width:76%;height:100%;background:var(--wf-accent);border-radius:var(--wf-radius)"></div></div><small>Interior +16 · Works +20 · Budget +15 · Deadline +10</small></div><div class="wf-card" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px"><div><small>Agency</small><br><strong>Taipei City Hospital</strong></div><div><small>Budget</small><br><strong>NT$ 18.6M</strong></div><div><small>Method</small><br><strong>Open tender</strong></div><div><small>Case no.</small><br><strong>115-0621-01</strong></div><div><small>Category</small><br><strong>Works</strong></div><div><small>Published</small><br><strong>Jun 18, 2026</strong></div></div><div class="wf-card"><strong>Keyword matches · 4</strong><div style="display:flex;gap:6px;margin-top:8px"><span class="wf-chip accent">renovation</span><span class="wf-chip">hospital</span><span class="wf-chip">interior</span></div></div></main><aside class="wf-card" style="display:flex;flex-direction:column;gap:10px"><strong>Decision & collaboration</strong><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="primary">Accept</button><button>Skip</button></div><button>Forward link</button><label style="display:flex;gap:8px"><input type="checkbox"> Visible to team</label><hr><strong>Rating</strong><div style="display:flex;gap:6px"><button>★</button><button>★</button><button>★</button><button>★</button><button>★</button></div><label>Reason<input value="Relevant healthcare experience"></label><hr><strong>Notes</strong><textarea rows="3">Confirm night-work limits</textarea><button>Save note</button><div style="flex:1"></div><a href="#">Open PCC source</a></aside></div>
+    </div>`}
+  />
+</Artboard>
+</Section>
+
+<Annotation id="zh-default-note" title="繁中是預設狀態" targetId="detail-zh" placement="bottom">
+
+重用 `AppProvider` 的 `loadLang()`／`saveLang()`。新文案必須在 `strings.ts` 的 zh 與 en 成對增加。
+
+</Annotation>
+
+<Annotation id="language-toggle-note" title="固定語系入口" targetId="detail-en" placement="bottom">
+
+Topbar 維持單一 `EN／中` 按鈕；切換只改顯示語系，不重設篩選、收藏、評價或 Dialog 狀態。
+
+</Annotation>
+
+<Connector from="detail-zh" to="detail-en" label="點擊 EN" />
+</DesignBoard>

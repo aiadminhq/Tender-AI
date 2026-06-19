@@ -1,0 +1,42 @@
+# ── OS ──────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+
+# ── 本機 agent / 工具狀態（不入版控）──────────────────
+.agents/
+.ccw/
+.claude/
+.codegraph/
+.workflow/
+
+# ── 本機 plan bridge token（含一次性 127.0.0.1 token）──
+**/.plan-url
+
+# ── 其他專案產出（報表站台屬 tender-bot 產物，非本 repo 源碼）──
+tender-reports/
+
+# ── 前端（保險：巢狀 .gitignore 已涵蓋，這裡再兜一層）──
+tender-ai-frontend/node_modules/
+tender-ai-frontend/dist/
+**/*.local
+
+# ── 後端（保險：巢狀 .gitignore 已涵蓋）─────────────────
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+
+# 環境與密鑰：永不入版控
+**/.env
+**/.env.*
+!**/env.example
+!**/.env.example
+
+# 私有資料（Layer B 行為/評價/註記/決策向量）與 DB 匯出：永不入 repo
+*.dump
+*.sql.gz
+**/data/private/
+**/data/downloads/
+**/backfill_report.json

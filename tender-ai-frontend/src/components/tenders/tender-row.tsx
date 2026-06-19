@@ -1,0 +1,209 @@
+import { Check, Star, X } from "lucide-react";
+import type { Tender } from "@/types/domain";
+import { useApp } from "@/store/app-context";
+import { useAppData } from "@/store/app-data";
+import { sourceByKey } from "@/data/sources";
+import { userById } from "@/data/users";
+import { formatBudget, formatDate, daysLeft } from "@/lib/format";
+import { TierBadge } from "@/components/ui/tier-badge";
+import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+// 桌機表格欄寬（與 TenderTable 表頭共用，務必同步）。
+export const ROW_GRID =
+  "lg:grid-cols-[76px_minmax(0,1fr)_92px_104px_110px_44px_112px]";
+
+function DeadlineCell({ iso, className }: { iso: string; className?: string }) {
+  const { t, lang } = useApp();
+  // 後端可能無截止日（deadline_iso=null → adapt 給空字串）。無效日期會讓
+  // Intl.DateTimeFormat.format(Invalid Date) 拋 RangeError 進而整列崩潰，
+  // 故先驗證；無效則以佔位「—」呈現，不參與天數警示。
+  const valid = Boolean(iso) && !Number.isNaN(new Date(iso).getTime());
+  if (!valid) {
+    return (
+      <div className={cn("flex flex-col gap-0.5", className)}>
+        <span className="tnum text-[12px] text-ink-dim">—</span>
+      </div>
+    );
+  }
+  const d = daysLeft(iso);
+  const tone =
+    d < 0
+      ? "text-ink-dim"
+      : d <= 3
+        ? "text-tier-low"
+        : d <= 7
+          ? "text-tier-mid"
+          : "text-ink-muted";
+  return (
+    <div className={cn("flex flex-col gap-0.5", className)}>
+      <span className="tnum text-[12px] text-ink">{formatDate(iso, lang)}</span>
+      <span className={cn("tnum text-[11px]", tone)}>
+        {d < 0 ? t("deadlinePassed") : `${d} ${t("daysLeft")}`}
+      </span>
+    </div>
+  );
+}
+
+function RowActions({ tender }: { tender: Tender }) {
+  const { t } = useApp();
+  const { accept, skip, isStarred, toggleStar } = useAppData();
+  const starred = isStarred(tender.id);
+  return (
+    <div
+      className="flex items-center justify-end gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={starred ? t("unstar") : t("star")}
+        title={starred ? t("unstar") : t("star")}
+        onClick={() => toggleStar(tender.id)}
+      >
+        <Star
+          size={15}
+          className={cn(
+            starred ? "fill-tier-mid text-tier-mid" : "text-ink-dim",
+          )}
+        />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={t("skip")}
+        title={t("skip")}
+        onClick={() => skip(tender.id)}
+      >
+        <X size={15} className="text-ink-muted" />
+      </Button>
+      <Button
+        variant="primary"
+        size="icon-sm"
+        aria-label={t("accept")}
+        title={t("accept")}
+        onClick={() => accept(tender.id)}
+      >
+        <Check size={15} />
+      </Button>
+    </div>
+  );
+}
+
+function OwnerCell({ ownerId }: { ownerId?: string }) {
+  const u = userById(ownerId);
+  if (!u) return <span className="text-[12px] text-ink-dim">—</span>;
+  return <Avatar user={u} size="sm" />;
+}
+
+export function TenderRow({
+  tender,
+  onOpen,
+}: {
+  tender: Tender;
+  onOpen: (id: string) => void;
+}) {
+  const { t, lang } = useApp();
+  const { isExcluded, excludeReasonOf } = useAppData();
+  const excluded = isExcluded(tender);
+  const reason = excluded ? excludeReasonOf(tender) : undefined;
+  const source = sourceByKey(tender.source).shortName;
+
+  return (
+    <>
+      {/* 桌機：表格列 */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(tender.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen(tender.id);
+          }
+        }}
+        className={cn(
+          "hidden cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:grid",
+          ROW_GRID,
+          excluded && "opacity-60",
+        )}
+      >
+        <div>
+          <TierBadge tier={tender.tier} lang={lang} />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-medium text-ink">
+            {tender.title}
+          </div>
+          <div className="truncate text-[11px] text-ink-dim">
+            {tender.org} · {source}
+            {reason ? ` · ${reason}` : ""}
+          </div>
+        </div>
+        <div className="tnum text-right text-[12px] text-ink">
+          {formatBudget(tender.budget, lang)}
+        </div>
+        <DeadlineCell iso={tender.deadline} className="items-end" />
+        <FeasibilityMeter value={tender.feasibility} showLabel />
+        <div className="flex justify-center">
+          <OwnerCell ownerId={tender.owner} />
+        </div>
+        <RowActions tender={tender} />
+      </div>
+
+      {/* 行動裝置：卡片列 */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(tender.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen(tender.id);
+          }
+        }}
+        className={cn(
+          "cursor-pointer p-3 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:hidden",
+          excluded && "opacity-60",
+        )}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <TierBadge tier={tender.tier} lang={lang} />
+          <span className="tnum shrink-0 text-[12px] text-ink-muted">
+            {formatBudget(tender.budget, lang)}
+          </span>
+        </div>
+        <div className="mt-1.5 line-clamp-2 text-[13px] font-medium text-ink">
+          {tender.title}
+        </div>
+        <div className="mt-0.5 truncate text-[11px] text-ink-dim">
+          {tender.org} · {source}
+        </div>
+        {excluded ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge variant="danger">{t("excluded")}</Badge>
+            {reason && (
+              <span className="text-[11px] text-ink-dim">{reason}</span>
+            )}
+          </div>
+        ) : (
+          <div className="mt-2 flex items-center gap-3">
+            <DeadlineCell iso={tender.deadline} />
+            <FeasibilityMeter
+              value={tender.feasibility}
+              showLabel
+              className="max-w-[140px]"
+            />
+          </div>
+        )}
+        <div className="mt-3 flex items-center justify-between">
+          <OwnerCell ownerId={tender.owner} />
+          <RowActions tender={tender} />
+        </div>
+      </div>
+    </>
+  );
+}

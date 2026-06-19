@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tender AI · 自我進化路線圖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --canvas:#0a0d14; --card:#121723; --card2:#0f1420; --border:#232b3d;
+    --ink:#e7ebf3; --muted:#9aa5bd; --dim:#69728a;
+    --primary:#818cf8; --primary-d:#6366f1;
+    --c1:#818cf8; --c2:#38bdf8; --c3:#c084fc; --c4:#34d399; --c5:#fbbf24; --c6:#fb7185;
+    --green:#34d399; --amber:#fbbf24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--canvas);color:var(--ink);
+    font-family:"Noto Sans TC","Inter",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-feature-settings:"tnum"}
+  .en{font-family:"Inter",sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:40px 36px 64px}
+
+  /* banner */
+  .banner{border:1px solid var(--border);border-radius:20px;padding:32px 34px;
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(99,102,241,.18), transparent 55%),
+      radial-gradient(120% 140% at 100% 0%, rgba(56,189,248,.12), transparent 55%),
+      linear-gradient(180deg,#141a28,#0f1420);
+    position:relative;overflow:hidden}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--primary);font-weight:600;margin-bottom:14px}
+  .kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);
+    box-shadow:0 0 12px var(--primary)}
+  h1{font-size:38px;font-weight:900;letter-spacing:-.01em;line-height:1.12}
+  h1 .grad{background:linear-gradient(92deg,#a5b4fc,#7dd3fc 60%,#c4b5fd);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .vision{margin-top:16px;max-width:880px;font-size:15.5px;color:#c7cedd;line-height:1.7}
+  .vision b{color:#fff;font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
+  .chip{font-size:12.5px;padding:6px 13px;border-radius:999px;border:1px solid var(--border);
+    background:rgba(255,255,255,.03);color:var(--muted);display:inline-flex;align-items:center;gap:7px}
+  .chip b{color:var(--ink);font-weight:600}
+
+  /* section heading */
+  .sec{margin-top:46px}
+  .sec-h{display:flex;align-items:baseline;gap:14px;margin-bottom:20px}
+  .sec-h .no{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--dim)}
+  .sec-h h2{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .sec-h .sub{font-size:13px;color:var(--dim);margin-left:auto}
+
+  /* phase timeline */
+  .phases{display:grid;gap:14px}
+  .pcard{display:grid;grid-template-columns:108px 1fr;border:1px solid var(--border);
+    border-radius:16px;overflow:hidden;background:var(--card)}
+  .prail{padding:20px 16px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;
+    background:linear-gradient(180deg,rgba(255,255,255,.025),transparent);border-right:1px solid var(--border)}
+  .sl{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:20px;letter-spacing:.02em}
+  .effort{font-size:11px;padding:3px 9px;border-radius:6px;font-weight:600;letter-spacing:.04em}
+  .ef-M{background:rgba(52,211,153,.14);color:#6ee7b7;border:1px solid rgba(52,211,153,.3)}
+  .ef-L{background:rgba(251,191,36,.13);color:#fcd34d;border:1px solid rgba(251,191,36,.28)}
+  .vmap{font-size:10.5px;color:var(--dim);line-height:1.4}
+  .pbody{padding:20px 22px}
+  .ptitle{font-size:16.5px;font-weight:700;margin-bottom:7px}
+  .pgoal{font-size:13.5px;color:#c2cadb;line-height:1.65;margin-bottom:13px}
+  .plabel{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
+    font-weight:600;margin:12px 0 6px}
+  .deliv{font-size:12.5px;color:var(--muted);line-height:1.7}
+  .deliv .mono{color:#aeb8d0}
+  .osschips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .oss{font-size:11px;padding:3px 9px;border-radius:6px;background:rgba(129,140,248,.1);
+    color:#b4bcf5;border:1px solid rgba(129,140,248,.22);font-family:"Inter",sans-serif}
+  .acc{margin-top:11px;font-size:11.5px;color:var(--dim);display:flex;gap:7px;line-height:1.6}
+  .acc .ic{color:var(--green);flex-shrink:0}
+
+  /* oss table */
+  .oss-grid{display:grid;grid-template-columns:1fr;gap:10px}
+  .ossrow{display:grid;grid-template-columns:230px 1fr;gap:18px;align-items:center;
+    border:1px solid var(--border);border-radius:13px;padding:15px 18px;background:var(--card)}
+  .ossrow .dom{font-size:13.5px;font-weight:600;color:#cdd5e6}
+  .ossrow .pick{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .pickname{font-family:"Inter",sans-serif;font-weight:700;font-size:14.5px;color:#fff}
+  .lic{font-size:10.5px;font-family:"JetBrains Mono",monospace;color:#6ee7b7;
+    background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);padding:2px 8px;border-radius:5px}
+  .why{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.6}
+  .star{color:var(--amber);font-size:13px}
+
+  /* experts */
+  .exp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}
+  .exp{border:1px solid var(--border);border-radius:14px;padding:17px 19px;background:var(--card2)}
+  .exp h3{font-size:13.5px;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:9px}
+  .exp h3 .n{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;
+    font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:600;flex-shrink:0}
+  .exp ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+  .exp li{font-size:12px;color:var(--muted);line-height:1.55;padding-left:14px;position:relative}
+  .exp li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;
+    background:var(--dim)}
+  .exp li b{color:#d6dcea;font-weight:600}
+
+  .foot{margin-top:40px;padding-top:20px;border-top:1px solid var(--border);
+    font-size:11.5px;color:var(--dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- BANNER -->
+  <div class="banner">
+    <div class="kicker"><span class="dot"></span>多 Agent 諮詢成果 · 自主研擬</div>
+    <h1>Tender AI <span class="grad">自我進化路線圖</span></h1>
+    <p class="vision">
+      把 Tender AI 從「會抓標案」推進成 <b>會解釋、會推理、能自學、主動推播、全庫 agentic RAG、能自我演化</b> 的承標決策助手。
+      技術棧已落地不打掉重練；鐵則：<b>dev → staging → prod</b>、Schema 一律 Alembic、<b>Layer B 行為資料永不公開</b>。
+    </p>
+    <div class="chips">
+      <span class="chip"><b>12</b> agents · <b>604k</b> tokens 諮詢</span>
+      <span class="chip"><b>6</b> 開發階段 SL1–SL6</span>
+      <span class="chip"><b>6</b> 大領域開源選型</span>
+      <span class="chip"><b>5</b> 位專家共識</span>
+      <span class="chip">本地優先 · 零雲費 · 單機</span>
+    </div>
+  </div>
+
+  <!-- PHASES -->
+  <div class="sec">
+    <div class="sec-h">
+      <span class="no">01</span><h2>六大開發階段</h2>
+      <span class="sub">每階段完成即 dev→staging→prod 並截圖驗收</span>
+    </div>
+    <div class="phases">
+
+      <div class="pcard">
+        <div class="prail" style="border-right-color:var(--c1)">
+          <span class="sl" style="color:var(--c1)">SL1</span>
+          <span class="effort ef-M">effort M</span>
+          <span class="vmap">願景 ⑤<br>小助手回應</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">小助手 UI shell ＋ 接本機 Ollama 生成</div>
+          <div class="pgoal">小助手從模板回答升級為<b>本機 Ollama 即時生成</b>，且嚴格 grounded 在 <span class="mono">_collect_candidates</span> 的證據上，禁止幻覺生成 sources 以外的標案。</div>
+          <div class="plabel">交付</div>
+          <div class="deliv">FE <span class="mono">assistant-panel</span> 串流 ｜ BE <span class="mono">app/services/llm.py</span> 串 Ollama <span class="mono">/api/chat</span> ｜ <span class="mono">config.py</span> 加 chat_model ｜ Semaphore + MAX_TOOL_ROUNDS + timeout fallback</div>
+          <div class="osschips"><span class="oss">LlamaIndex</span><span class="oss">Ragas</span></div>
+          <div class="acc"><span class="ic">✓</span><span>驗收：串流可見 · sources≥1 · 所有標案 ID 都在 sources 內 · Ollama 掛掉走 fallback 仍 HTTP 200 · pytest 全綠</span></div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="prail" style="border-right-color:var(--c2)">
+          <span class="sl" style="color:var(--c2)">SL2</span>
+          <span class="effort ef-M">effort M</span>
+          <span class="vmap">願景 ③<br>閉合迴圈</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">閉合學習迴圈：可行度排序讀 KeywordWeight ＋ jieba</div>
+          <div class="pgoal">排序真的<b>讀進 P4 已學到的 <span class="mono">KeywordWeight</span></b>，補上學習迴路的最後一哩；中文斷詞改用 jieba 提升詞頻品質。</div>
+          <div class="plabel">交付</div>
+          <div class="deliv"><span class="mono">query.py / tender.py</span> 加 <span class="mono">sort=feasibility_score</span> ｜ <span class="mono">learn_keywords</span> 改 jieba ｜ Alembic <span class="mono">keyword_weight_revisions</span> 快照表 ｜ FE <span class="mono">api.ts</span> 拿掉 placeholder synthScore</div>
+          <div class="osschips"><span class="oss">jieba</span><span class="oss">scikit-learn</span></div>
+          <div class="acc"><span class="ic">✓</span><span>驗收：排序受 KeywordWeight 影響 · 權重版本可回溯快照 · 前端顯示真實可行度分數</span></div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="prail" style="border-right-color:var(--c3)">
+          <span class="sl" style="color:var(--c3)">SL3</span>
+          <span class="effort ef-L">effort L</span>
+          <span class="vmap">願景 ①②<br>意圖+推理</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">行為意圖訊號 ＋ Learning-to-Rank 排序模型（可解釋）</div>
+          <div class="pgoal">從點擊／評分／停留等<b>行為學出排序模型</b>，並能<b>解釋「為何推這個案」</b>——直接命中「懂操作者為何點擊、用什麼標準衡量可中標」。</div>
+          <div class="plabel">交付</div>
+          <div class="deliv"><span class="mono">feature_extractor.py</span> ｜ <span class="mono">train_ranker.py</span> LightGBM/XGBoost + Optuna ｜ SHAP 解釋 Top-N（7 criteria 當特徵）</div>
+          <div class="osschips"><span class="oss">LightGBM</span><span class="oss">XGBoost</span><span class="oss">Optuna</span><span class="oss">SHAP</span></div>
+          <div class="acc"><span class="ic">✓</span><span>驗收：NDCG@10 勝 SL2 baseline · Top-10 每案≥3 SHAP 因子 · 向量無 PII · 隨機種子可重現</span></div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="prail" style="border-right-color:var(--c4)">
+          <span class="sl" style="color:var(--c4)">SL4</span>
+          <span class="effort ef-L">effort L</span>
+          <span class="vmap">願景 ⑤<br>全庫 RAG</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">Agentic RAG 全庫 ＋ 文件知識庫（多工具 ReAct）</div>
+          <div class="pgoal">小助手能查<b>整個資料庫 ＋ 外部文件知識庫</b>，以多工具 ReAct 推理回答使用者本身的提問。</div>
+          <div class="plabel">交付</div>
+          <div class="deliv">Alembic <span class="mono">knowledge_chunks</span>（Vector1024+HNSW、trafilatura＋text-splitters）｜ <span class="mono">document_knowledge_base</span> 由保留轉啟用，BM25+向量 hybrid＋bge-reranker ｜ assistant → LangGraph 多工具 ｜ FE 文件引用</div>
+          <div class="osschips"><span class="oss">LangGraph</span><span class="oss">Haystack</span><span class="oss">trafilatura</span><span class="oss">rank_bm25</span><span class="oss">bge-reranker-v2-m3</span></div>
+          <div class="acc"><span class="ic">✓</span><span>驗收：多工具呼叫鏈可見 · 回答含文件引用 · hybrid 召回優於純向量</span></div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="prail" style="border-right-color:var(--c5)">
+          <span class="sl" style="color:var(--c5)">SL5</span>
+          <span class="effort ef-M">effort M</span>
+          <span class="vmap">願景 ④<br>主動推播</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">高價值標案主動推播管線</div>
+          <div class="pgoal">高分新案<b>主動推播</b>給業務（願景核心「重自動推播」）；只在爬蟲後加 DB sink，<b>不重寫 scraper core</b>。</div>
+          <div class="plabel">交付</div>
+          <div class="deliv">Alembic <span class="mono">push_log</span>（idempotent dedup）｜ <span class="mono">notifier.py</span> + <span class="mono">push_candidates.py</span> 用 Apprise（ntfy/Telegram/email）｜ <span class="mono">GET /notifications</span> + FE NotificationBell</div>
+          <div class="osschips"><span class="oss">Apprise</span><span class="oss">ntfy</span><span class="oss">python-telegram-bot</span><span class="oss">aiosmtplib</span><span class="oss">Jinja2</span></div>
+          <div class="acc"><span class="ic">✓</span><span>驗收：同案只推一次 · 疲勞控制（72h cooldown + ≤5/day）· in-app badge 即時</span></div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="prail" style="border-right-color:var(--c6)">
+          <span class="sl" style="color:var(--c6)">SL6</span>
+          <span class="effort ef-L">effort L</span>
+          <span class="vmap">願景 ⑥<br>自我演化</span>
+        </div>
+        <div class="pbody">
+          <div class="ptitle">自我演化：決策向量 ＋ 排程再訓練 ＋ 漂移偵測 ＋ 評估把關</div>
+          <div class="pgoal">系統能<b>持續再訓練、偵測資料漂移、用評估指標 gating</b> 才上線 → 真正的自我演化飛輪。</div>
+          <div class="plabel">交付</div>
+          <div class="deliv">Alembic <span class="mono">decision_vectors</span>（Layer B private、Vector1024+HNSW、無 PII）｜ APScheduler 週期再訓 ｜ Evidently 漂移偵測 ｜ MLflow 追蹤 + 離線回測 + Ragas/DeepEval gating</div>
+          <div class="osschips"><span class="oss">APScheduler</span><span class="oss">MLflow</span><span class="oss">Evidently</span><span class="oss">Ragas</span><span class="oss">DeepEval</span><span class="oss">River</span></div>
+          <div class="acc"><span class="ic">✓</span><span>驗收：自動再訓有評估 gating · 漂移觸發告警 · 每次實驗可回溯</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- OSS SELECTION -->
+  <div class="sec">
+    <div class="sec-h">
+      <span class="no">02</span><h2>開源選型 · 各領域首選</h2>
+      <span class="sub">硬約束：本地優先 · 單機 · 零雲費 · 可被 FastAPI inline 整合</span>
+    </div>
+    <div class="oss-grid">
+      <div class="ossrow">
+        <div class="dom">Learning-to-Rank / 偏好學習</div>
+        <div><div class="pick"><span class="star">★</span><span class="pickname en">LightGBM</span><span class="lic">MIT</span></div>
+        <div class="why">原生 LGBMRanker + lambdarank position-bias 正則化，純 Python inline 推論可在 FastAPI 同進程 &lt;10 行載入，與 pgvector 召回直接串聯——隱式回饋首選。</div></div>
+      </div>
+      <div class="ossrow">
+        <div class="dom">Agentic RAG / Agent 框架</div>
+        <div><div class="pick"><span class="star">★</span><span class="pickname en">LlamaIndex</span><span class="lic">MIT</span></div>
+        <div class="why">原生為 RAG 而設計，一行切換本機 Ollama（bge-m3 / qwen3.5），PGVectorStore 直讀現有 pgvector，AgentWorkflow 可嵌入既有 NDJSON 串流後方——整合成本最低。</div></div>
+      </div>
+      <div class="ossrow">
+        <div class="dom">向量檢索 / Reranking</div>
+        <div><div class="pick"><span class="star">★</span><span class="pickname en">bge-reranker-v2-m3</span><span class="lic">MIT</span></div>
+        <div class="why">與已落地的 bge-m3 embeddings 同源（BAAI），支援繁中，pip 一行嵌入 FastAPI，亦有 Ollama 社群映像可走現有 :11434。</div></div>
+      </div>
+      <div class="ossrow">
+        <div class="dom">行為 / 事件分析</div>
+        <div><div class="pick"><span class="star">★</span><span class="pickname en">Umami v3</span><span class="lic">MIT</span></div>
+        <div class="why">PostgreSQL-only，直接共用現有 pg16+pgvector，零 ClickHouse/Kafka；REST API 讓 FastAPI 零依賴推送自訂事件，Cohort/Segment 對應「推理使用者衡量標準」。</div></div>
+      </div>
+      <div class="ossrow">
+        <div class="dom">通知 / 主動推播</div>
+        <div><div class="pick"><span class="star">★</span><span class="pickname en">Apprise ＋ ntfy</span><span class="lic">MIT / Apache-2.0</span></div>
+        <div class="why">Apprise pip 直接嵌入 FastAPI BackgroundTask，十行內整合 100+ 通道；ntfy 補上手機端 push，兩者合計 &lt;100MB、全本地零雲費。</div></div>
+      </div>
+      <div class="ossrow">
+        <div class="dom">ML 追蹤 / 評估 / 排程</div>
+        <div><div class="pick"><span class="star">★</span><span class="pickname en">MLflow ＋ Ragas/DeepEval</span><span class="lic">Apache-2.0</span></div>
+        <div class="why">backend store 直接指向現有 pg16，Ollama 可當 judge LLM，內建 RAG 評估指標；搭 Ragas/DeepEval 做 faithfulness/relevancy 把關，單機零額外 infra。</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPERTS -->
+  <div class="sec">
+    <div class="sec-h">
+      <span class="no">03</span><h2>五位專家共識</h2>
+      <span class="sub">獨立視角 · 第二意見 · 落地約束</span>
+    </div>
+    <div class="exp-grid">
+      <div class="exp">
+        <h3><span class="n" style="background:rgba(129,140,248,.16);color:var(--c1)">1</span>行為學習 / LTR 架構師</h3>
+        <ul>
+          <li>用 <b>intent-strength 分數</b>，7 個 criteria 直接當排序特徵</li>
+          <li>cold-start 先 LogReg+L2，<b>200+ 樣本</b>後換 XGBoost</li>
+          <li>可解釋用 <b>SHAP</b>（非 LIME）</li>
+          <li>行為強度標籤權重：feasible 1.0 &gt; star≥4 0.6 &gt; saved 0.3 &gt; dwell&gt;30s 0.15 &gt; open 0.05</li>
+        </ul>
+      </div>
+      <div class="exp">
+        <h3><span class="n" style="background:rgba(56,189,248,.16);color:var(--c2)">2</span>Agentic RAG 架構師（本地優先 · 防幻覺）</h3>
+        <ul>
+          <li><span class="mono">_format_answer</span> 換成 <b>Ollama /api/chat 串流</b></li>
+          <li><b>5 工具 ReAct</b>：tender_search / similar / document / feasibility_hint / keyword_weights</li>
+          <li><b>MAX_TOOL_ROUNDS=3</b>，逾時走 fallback</li>
+          <li><b>[src:ID] 引用驗證</b>：生成的標案 ID 必須在證據內</li>
+        </ul>
+      </div>
+      <div class="exp">
+        <h3><span class="n" style="background:rgba(52,211,153,.16);color:var(--c4)">3</span>自動推播工程師</h3>
+        <ul>
+          <li>cold start <b>規則先於 ML</b></li>
+          <li><b>疲勞控制</b>：72h cooldown ＋ ≤5/day ＋ 可 dismiss</li>
+          <li>通道：in-app → Email digest → Telegram（<b>LINE Notify 2025 已停</b>）</li>
+          <li><span class="mono">push_log</span> UNIQUE 約束保證冪等</li>
+        </ul>
+      </div>
+      <div class="exp">
+        <h3><span class="n" style="background:rgba(251,191,36,.16);color:var(--c5)">4</span>資料 / MLOps 工程師</h3>
+        <ul>
+          <li>特徵用 <b>JSONB 快照</b>（非 Feast）</li>
+          <li>用 <b>SQL 時間切分回測</b>，初期不上 MLflow</li>
+          <li><span class="mono">keyword_weight_revisions</span> 供回滾</li>
+          <li>排程用 <b>APScheduler</b>（非 Celery）；混 10% exploration 避免回饋迴路偏差</li>
+        </ul>
+      </div>
+      <div class="exp">
+        <h3><span class="n" style="background:rgba(192,132,252,.16);color:var(--c3)">5</span>產品互動 / 意圖捕捉架構師</h3>
+        <ul>
+          <li>accept/skip <b>軟提示原因標籤</b>（高分案略過才升級為 modal）</li>
+          <li>新增 <b>score-correction 事件</b>讓使用者親手塑造評分</li>
+          <li>assistant 回應加 <b>intent_hint</b>（history_match / agency_relation…）</li>
+          <li>補強訊號密度：<span class="mono">tag_click</span> / <span class="mono">scroll_depth</span>，Zod 驗證 payload</li>
+        </ul>
+      </div>
+      <div class="exp" style="background:linear-gradient(180deg,rgba(99,102,241,.08),transparent);border-color:rgba(129,140,248,.3)">
+        <h3><span class="n" style="background:rgba(129,140,248,.2);color:var(--c1)">▶</span>立即執行：SL1</h3>
+        <ul>
+          <li>前端小助手面板已就緒並串接後端 <b>NDJSON 串流</b>（已驗證 live）</li>
+          <li>下一步：後端把模板回答換成<b>本機 Ollama 生成</b>，grounded on 證據</li>
+          <li>加 Semaphore ＋ 逾時 fallback，<b>無 Alembic schema 變更</b></li>
+          <li>流程：<b>dev → staging → prod</b>，每階段完成截圖驗收</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Tender AI · 自我進化路線圖 ｜ 多 agent 諮詢綜整（Grok-style 獨立專家第二意見）</span>
+    <span class="mono">SL1–SL6 · 6 OSS domains · 5 expert lenses</span>
+  </div>
+
+</div>
+</body>
+</html>
