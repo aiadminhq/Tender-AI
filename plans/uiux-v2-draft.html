@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tender AI — UI/UX v2 設計草稿</title>
+<style>
+  /* ============================================================
+     設計 token —— 直接對齊 tender-ai-frontend/src/index.css（暗色為主）
+     ============================================================ */
+  :root, [data-theme="dark"]{
+    --canvas:#090909; --surface-1:#141414; --surface-2:#1c1c1c;
+    --hairline:#262626; --hairline-soft:#1a1a1a;
+    --ink:#ffffff; --ink-muted:#9b9b9b; --ink-dim:#6b6b6b;
+    --signal:#0099ff; --signal-ring:rgba(0,153,255,.30);
+    --tier-high:#22c55e; --tier-mid:#f5a623; --tier-low:#ff5577;
+    --priority:#7c6bff; --success:#22c55e; --danger:#ff5577;
+    --feas-from:#22c55e; --feas-to:#0099ff; --on-primary:#000;
+    --primary:var(--ink); --shadow:0 1px 2px rgba(0,0,0,.06);
+  }
+  [data-theme="light"]{
+    --canvas:#f7f8fa; --surface-1:#ffffff; --surface-2:#eef1f5;
+    --hairline:#e2e6ec; --hairline-soft:#eef1f5;
+    --ink:#161b22; --ink-muted:#5b6573; --ink-dim:#8a93a3;
+    --signal:#0a6cff; --signal-ring:rgba(10,108,255,.25);
+    --tier-high:#16a34a; --tier-mid:#c77700; --tier-low:#dc2626;
+    --priority:#5b46e0; --success:#16a34a; --danger:#dc2626;
+    --feas-from:#16a34a; --feas-to:#0a6cff; --on-primary:#fff;
+    --primary:var(--ink); --shadow:0 1px 2px rgba(0,0,0,.06);
+  }
+
+  /* 字體（房規：繁中 Noto Sans TC／英文 Inter／數字程式碼 JetBrains Mono）
+     CSP 擋外部字型 CDN，這裡用系統 fallback 表達字族意圖。 */
+  :root{
+    --font-zh:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --font-en:"Inter","SF Pro Text",-apple-system,system-ui,sans-serif;
+    --font-num:"JetBrains Mono","SF Mono","SFMono-Regular",ui-monospace,monospace;
+    /* ---- v2 字級系統（維持三字族，調整大小與字重/變體）---- */
+    --t-display:34px; --t-h1:23px; --t-h2:17px; --t-h3:14px;
+    --t-body:13.5px; --t-label:12px; --t-meta:11px; --t-micro:10px;
+  }
+
+  *{box-sizing:border-box}
+  html{color-scheme:dark}
+  html[data-theme="light"]{color-scheme:light}
+  body{
+    margin:0; background:var(--canvas); color:var(--ink);
+    font-family:var(--font-zh); font-size:var(--t-body); line-height:1.6;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    text-rendering:optimizeLegibility;
+  }
+  .num{font-family:var(--font-num); font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+  .en{font-family:var(--font-en)}
+  a{color:var(--signal); text-decoration:none}
+  h1,h2,h3,h4{margin:0; font-weight:600; letter-spacing:-.01em}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--hairline);border-radius:999px;border:2px solid var(--canvas)}
+
+  /* ---- layout scaffold ---- */
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px}
+  .doc-head{position:sticky; top:0; z-index:50; backdrop-filter:blur(10px);
+    background:color-mix(in srgb, var(--canvas) 86%, transparent);
+    border-bottom:1px solid var(--hairline)}
+  .doc-head .wrap{display:flex; align-items:center; gap:18px; height:56px}
+  .brand{display:flex; align-items:center; gap:9px; font-weight:700; font-size:14px; letter-spacing:-.02em}
+  .brand .dot{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--feas-from),var(--feas-to));display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800}
+  .navlinks{display:flex; gap:4px; margin-left:auto; overflow-x:auto; max-width:62%}
+  .navlinks a{color:var(--ink-muted); font-size:12px; font-weight:500; padding:6px 9px; border-radius:8px; white-space:nowrap}
+  .navlinks a:hover{color:var(--ink); background:var(--surface-2)}
+  .theme-btn{flex-shrink:0; border:1px solid var(--hairline); background:var(--surface-1); color:var(--ink-muted);
+    border-radius:8px; padding:6px 10px; font-size:11px; cursor:pointer; font-family:inherit}
+  .theme-btn:hover{color:var(--ink)}
+
+  section{padding:46px 0; border-bottom:1px solid var(--hairline-soft)}
+  .eyebrow{font-size:var(--t-micro); font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-dim); font-family:var(--font-en)}
+  .sec-title{font-size:var(--t-h1); font-weight:700; margin:8px 0 6px; letter-spacing:-.02em}
+  .sec-sub{color:var(--ink-muted); font-size:var(--t-body); max-width:64ch; margin:0 0 26px}
+
+  .grid{display:grid; gap:14px}
+  .card{background:var(--surface-1); border:1px solid var(--hairline); border-radius:14px; box-shadow:var(--shadow)}
+  .pad{padding:16px}
+  .muted{color:var(--ink-muted)}
+  .dim{color:var(--ink-dim)}
+
+  /* hero */
+  .hero{padding:64px 0 40px}
+  .hero h1{font-size:clamp(30px,5vw,46px); font-weight:800; letter-spacing:-.03em; line-height:1.08}
+  .hero h1 .grad{background:linear-gradient(120deg,var(--feas-from),var(--feas-to));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--ink-muted); font-size:16px; max-width:60ch; margin:18px 0 0}
+  .pill-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:24px}
+  .meta-pill{display:inline-flex; align-items:center; gap:7px; border:1px solid var(--hairline); background:var(--surface-1);
+    border-radius:999px; padding:6px 12px; font-size:12px; color:var(--ink-muted)}
+  .meta-pill b{color:var(--ink); font-weight:600}
+
+  /* principle cards */
+  .princ{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px}
+  .princ .card{padding:18px}
+  .princ .n{font-family:var(--font-num); font-size:12px; color:var(--ink-dim)}
+  .princ h3{font-size:15px; margin:8px 0 6px}
+  .princ p{margin:0; color:var(--ink-muted); font-size:12.5px; line-height:1.6}
+
+  /* color swatches */
+  .swatches{display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:10px}
+  .sw{border:1px solid var(--hairline); border-radius:11px; overflow:hidden; background:var(--surface-1)}
+  .sw .chip{height:54px}
+  .sw .lab{padding:8px 10px; font-size:11px}
+  .sw .lab b{display:block; color:var(--ink); font-weight:600}
+  .sw .lab span{color:var(--ink-dim); font-family:var(--font-num); font-size:10px}
+
+  /* type specimen */
+  .type-table{display:grid; gap:0; border:1px solid var(--hairline); border-radius:14px; overflow:hidden; background:var(--surface-1)}
+  .type-row{display:grid; grid-template-columns:148px 1fr; gap:16px; padding:14px 16px; border-top:1px solid var(--hairline-soft); align-items:baseline}
+  .type-row:first-child{border-top:none}
+  .type-row .meta{font-size:11px; color:var(--ink-dim); line-height:1.5}
+  .type-row .meta b{display:block; color:var(--ink-muted); font-weight:600; font-size:11px}
+  .specimen-display{font-family:var(--font-num); font-size:34px; font-weight:600; letter-spacing:-.02em}
+  .specimen-h1{font-size:23px; font-weight:700; letter-spacing:-.02em}
+  .specimen-h2{font-size:17px; font-weight:600}
+  .specimen-h3{font-size:14px; font-weight:600}
+  .specimen-body{font-size:13.5px; font-weight:400; color:var(--ink)}
+  .specimen-label{font-size:12px; font-weight:500; color:var(--ink-muted)}
+  .specimen-meta{font-size:11px; font-weight:500; color:var(--ink-dim)}
+
+  /* component bits */
+  .demo-row{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+  .btn-white{background:var(--ink); color:var(--on-primary); border:none; border-radius:9px; padding:8px 14px;
+    font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; display:inline-flex; gap:6px; align-items:center}
+  .btn-ghost{background:transparent; color:var(--ink-muted); border:1px solid var(--hairline); border-radius:9px;
+    padding:8px 14px; font-size:12.5px; font-weight:500; font-family:inherit; cursor:pointer; display:inline-flex; gap:6px; align-items:center}
+  .btn-ghost:hover{color:var(--ink); background:var(--surface-2)}
+  .badge{display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px; font-size:11px; font-weight:600}
+  .badge.high{color:var(--tier-high); background:color-mix(in srgb,var(--tier-high) 14%,transparent)}
+  .badge.mid{color:var(--tier-mid); background:color-mix(in srgb,var(--tier-mid) 14%,transparent)}
+  .badge.low{color:var(--tier-low); background:color-mix(in srgb,var(--tier-low) 14%,transparent)}
+  .badge.sig{color:var(--signal); background:color-mix(in srgb,var(--signal) 13%,transparent)}
+  .badge.pri{color:var(--priority); background:color-mix(in srgb,var(--priority) 14%,transparent)}
+  .seg{display:inline-flex; background:var(--surface-2); border:1px solid var(--hairline); border-radius:9px; padding:2px}
+  .seg button{border:none; background:transparent; color:var(--ink-muted); font-family:inherit; font-size:12px; font-weight:500;
+    padding:5px 11px; border-radius:7px; cursor:pointer}
+  .seg button.on{background:var(--surface-1); color:var(--ink); box-shadow:var(--shadow)}
+  .switch{width:38px; height:22px; border-radius:999px; background:var(--surface-2); border:1px solid var(--hairline);
+    position:relative; cursor:pointer; flex-shrink:0}
+  .switch.on{background:var(--tier-high); border-color:transparent}
+  .switch::after{content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:.18s}
+  .switch.on::after{left:18px}
+  .selectbox{display:inline-flex; align-items:center; gap:8px; border:1px solid var(--hairline); background:var(--surface-1);
+    border-radius:9px; padding:7px 11px; font-size:12px; color:var(--ink); cursor:pointer}
+  .selectbox .car{color:var(--ink-dim)}
+  .chip{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--hairline); background:var(--surface-1);
+    border-radius:999px; padding:5px 11px; font-size:12px; color:var(--ink-muted); cursor:pointer}
+  .chip.on{color:var(--ink); border-color:var(--ink); background:var(--surface-2)}
+  .kbd{font-family:var(--font-num); font-size:10px; border:1px solid var(--hairline); border-radius:5px; padding:1px 5px; color:var(--ink-dim)}
+
+  /* mockup browser frame */
+  .frame{border:1px solid var(--hairline); border-radius:16px; overflow:hidden; background:var(--canvas); box-shadow:0 12px 40px rgba(0,0,0,.30)}
+  .frame .bar{display:flex; align-items:center; gap:7px; padding:9px 13px; background:var(--surface-1); border-bottom:1px solid var(--hairline)}
+  .frame .bar i{width:10px;height:10px;border-radius:50%; background:var(--hairline)}
+  .frame .bar .url{margin-left:10px; font-size:11px; color:var(--ink-dim); font-family:var(--font-num)}
+  .frame .canvas{display:grid; grid-template-columns:188px 1fr; min-height:420px}
+  @media(max-width:720px){ .frame .canvas{grid-template-columns:1fr} .frame .side{display:none} }
+
+  /* app sidebar inside mockups */
+  .side{background:var(--surface-1); border-right:1px solid var(--hairline); padding:12px 10px; display:flex; flex-direction:column; gap:3px}
+  .side .acct{display:flex; gap:8px; align-items:center; padding:8px; border:1px solid var(--hairline); border-radius:10px; margin-bottom:10px}
+  .side .acct .av{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--feas-from),var(--feas-to));display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
+  .side .acct .who{font-size:11px;line-height:1.3}
+  .side .acct .who b{font-size:12px;font-weight:600}
+  .side .grp{font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.1em; padding:10px 8px 4px; font-family:var(--font-en)}
+  .nav-i{display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:8px; font-size:12.5px; color:var(--ink-muted); cursor:pointer}
+  .nav-i:hover{background:var(--surface-2); color:var(--ink)}
+  .nav-i.on{background:var(--surface-2); color:var(--ink); font-weight:600}
+  .nav-i .ic{width:15px; text-align:center}
+  .nav-i .ic svg{display:block}
+
+  .main{padding:18px; overflow:hidden}
+  .topbar{display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap}
+  .topbar .crumb{font-size:11px; color:var(--ink-dim)}
+  .topbar h2{font-size:var(--t-h1); font-weight:700}
+  .topbar .sub{font-size:12px; color:var(--ink-muted)}
+  .topbar .right{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .live{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--hairline); border-radius:999px; padding:4px 10px; font-size:11px; color:var(--ink-muted)}
+  .live i{width:6px;height:6px;border-radius:50%; background:var(--tier-high)}
+
+  /* KPI bento */
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:12px}
+  @media(max-width:640px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+  .kpi{background:var(--surface-1); border:1px solid var(--hairline); border-radius:13px; padding:14px; box-shadow:var(--shadow)}
+  .kpi .ic{width:30px;height:30px;border-radius:9px; background:var(--surface-2); display:grid; place-items:center; color:var(--ink-muted); margin-bottom:10px}
+  .kpi .v{font-family:var(--font-num); font-size:26px; font-weight:600; letter-spacing:-.02em; line-height:1}
+  .kpi .l{font-size:11.5px; color:var(--ink-muted); margin-top:6px}
+  .kpi .trend{font-family:var(--font-num); font-size:11px; font-weight:600; margin-top:8px; display:inline-flex; gap:4px; align-items:center}
+  .kpi .trend.up{color:var(--tier-high)} .kpi .trend.down{color:var(--tier-low)}
+
+  .bento{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:14px; margin-top:14px}
+  @media(max-width:860px){ .bento{grid-template-columns:1fr} }
+  .panel{background:var(--surface-1); border:1px solid var(--hairline); border-radius:14px; box-shadow:var(--shadow)}
+  .panel .ph{display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--hairline-soft)}
+  .panel .ph h3{font-size:13px; font-weight:600}
+  .panel .ph .tools{margin-left:auto; display:flex; gap:6px; color:var(--ink-dim)}
+  .panel .ph .tools .ib{width:24px;height:24px;border-radius:7px; display:grid; place-items:center; cursor:pointer}
+  .panel .ph .tools .ib:hover{background:var(--surface-2); color:var(--ink)}
+  .pb{padding:12px 14px}
+
+  /* focus rows (L1 → L2) */
+  .frow{border:1px solid var(--hairline); border-radius:12px; overflow:hidden; margin-bottom:8px; background:var(--surface-1)}
+  .frow .head{display:flex; align-items:center; gap:10px; padding:9px 12px; cursor:pointer}
+  .frow .head:hover{background:var(--surface-2)}
+  .frow .head .car{color:var(--ink-dim)}
+  .frow .head .ti{flex:1; min-width:0; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .frow .head .sc{font-family:var(--font-num); font-size:11px; font-weight:600; color:var(--signal); background:color-mix(in srgb,var(--signal) 12%,transparent); border-radius:999px; padding:2px 8px}
+  .frow .head .dl{font-family:var(--font-num); font-size:11px; color:var(--tier-mid)}
+  .frow .body{border-top:1px solid var(--hairline-soft); padding:12px; display:none}
+  .frow.open .body{display:block}
+  .facts{display:grid; grid-template-columns:repeat(3,1fr); gap:10px 16px; margin-bottom:12px}
+  @media(max-width:560px){ .facts{grid-template-columns:repeat(2,1fr)} }
+  .fact .k{font-size:10.5px; color:var(--ink-dim); margin-bottom:2px}
+  .fact .vv{font-size:12.5px; color:var(--ink)}
+  .fact .vv.num{font-family:var(--font-num); font-variant-numeric:tabular-nums}
+  .frow .acts{display:flex; gap:8px; border-top:1px solid var(--hairline-soft); padding-top:12px}
+  .frow .acts .btn-white{flex:1; justify-content:center}
+
+  .tags{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px}
+
+  /* donut + legend */
+  .donut-wrap{display:flex; gap:16px; align-items:center; flex-wrap:wrap}
+  .legend{display:flex; flex-direction:column; gap:7px; font-size:11.5px}
+  .legend .li{display:flex; align-items:center; gap:8px; color:var(--ink-muted)}
+  .legend .li .d{width:9px;height:9px;border-radius:3px}
+  .legend .li b{margin-left:auto; color:var(--ink); font-family:var(--font-num); font-weight:600}
+
+  /* activity */
+  .act{display:flex; gap:9px; padding:8px 0; border-top:1px solid var(--hairline-soft); font-size:12px}
+  .act:first-child{border-top:none}
+  .act .av{width:22px;height:22px;border-radius:7px; flex-shrink:0; display:grid; place-items:center; font-size:10px; font-weight:700; color:#fff}
+  .act .tx{color:var(--ink-muted); line-height:1.45}
+  .act .tx b{color:var(--ink); font-weight:600}
+  .act .tx .tm{color:var(--ink-dim); font-family:var(--font-num); font-size:10px}
+
+  /* L3 lightbox preview (static) */
+  .lb{position:relative; border:1px solid var(--hairline); border-radius:14px; background:var(--surface-2); overflow:hidden}
+  .lb .scrim{background:repeating-linear-gradient(45deg,transparent,transparent 8px,color-mix(in srgb,var(--ink) 3%,transparent) 8px,color-mix(in srgb,var(--ink) 3%,transparent) 16px); padding:14px}
+  .dialog{background:var(--surface-1); border:1px solid var(--hairline); border-radius:14px; box-shadow:0 24px 60px rgba(0,0,0,.5); overflow:hidden}
+  .dialog .dh{display:flex; gap:10px; align-items:flex-start; padding:14px 16px; border-bottom:1px solid var(--hairline-soft)}
+  .dialog .dh h3{font-size:15px; font-weight:600; flex:1}
+  .dialog .dh .x{color:var(--ink-dim); cursor:pointer}
+  .dialog .dcols{display:grid; grid-template-columns:1.4fr 1fr; gap:0}
+  @media(max-width:620px){ .dialog .dcols{grid-template-columns:1fr} }
+  .dialog .dl{padding:14px 16px} .dialog .dr{padding:14px 16px; border-left:1px solid var(--hairline-soft); background:var(--surface-2)}
+  @media(max-width:620px){ .dialog .dr{border-left:none; border-top:1px solid var(--hairline-soft)} }
+  .meter{height:7px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin:6px 0}
+  .meter i{display:block; height:100%; background:linear-gradient(90deg,var(--feas-from),var(--feas-to))}
+  .section-label{font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--ink-dim); font-family:var(--font-en); margin:14px 0 6px}
+  .stars{color:var(--tier-mid); font-size:14px; letter-spacing:2px}
+
+  /* kanban */
+  .kbcols{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+  @media(max-width:760px){ .kbcols{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:460px){ .kbcols{grid-template-columns:1fr} }
+  .kbcol{background:var(--surface-1); border:1px solid var(--hairline); border-radius:12px; padding:9px}
+  .kbcol .ch{display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:var(--ink-muted); margin-bottom:9px; padding:0 3px}
+  .kbcol .ch .ct{font-family:var(--font-num); font-size:10px; color:var(--ink-dim); margin-left:auto; background:var(--surface-2); border-radius:999px; padding:1px 7px}
+  .kcard{background:var(--surface-2); border:1px solid var(--hairline); border-radius:10px; padding:10px; margin-bottom:8px}
+  .kcard .kt{font-size:12px; line-height:1.4; margin:6px 0 9px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .kcard .kf{display:flex; align-items:center; gap:8px; color:var(--ink-dim); font-size:10.5px}
+  .kcard .kf .av{width:18px;height:18px;border-radius:6px; display:grid; place-items:center; font-size:9px; font-weight:700; color:#fff; margin-left:auto}
+  .kcard .kf .ico{display:inline-flex; align-items:center; gap:3px; font-family:var(--font-num)}
+  .kcard .dl{font-family:var(--font-num)}
+
+  /* horizontal bars (insights) */
+  .hbar{display:grid; grid-template-columns:96px 1fr 58px; gap:10px; align-items:center; margin-bottom:9px; font-size:11.5px}
+  .hbar .lab{color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .hbar .track{height:9px; border-radius:999px; background:var(--surface-2); overflow:hidden}
+  .hbar .track i{display:block; height:100%; border-radius:999px}
+  .hbar .val{font-family:var(--font-num); font-size:11px; color:var(--ink); text-align:right}
+  .beforeafter{display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:center; text-align:center}
+  .beforeafter .big{font-family:var(--font-num); font-size:24px; font-weight:600}
+  .beforeafter .lab{font-size:11px; color:var(--ink-dim)}
+  .beforeafter .arrow{color:var(--ink-dim); font-size:20px}
+
+  /* settings */
+  .setcard{background:var(--surface-1); border:1px solid var(--hairline); border-radius:13px; box-shadow:var(--shadow)}
+  .setrow{display:flex; align-items:center; gap:12px; padding:12px 14px; border-top:1px solid var(--hairline-soft)}
+  .setrow:first-child{border-top:none}
+  .setrow .tx{flex:1}
+  .setrow .tx b{font-size:12.5px; font-weight:600; display:block}
+  .setrow .tx span{font-size:11px; color:var(--ink-muted)}
+
+  /* flow diagram */
+  .flow{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; position:relative}
+  @media(max-width:820px){ .flow{grid-template-columns:repeat(2,1fr)} }
+  .step{background:var(--surface-1); border:1px solid var(--hairline); border-radius:12px; padding:13px; box-shadow:var(--shadow)}
+  .step .n{font-family:var(--font-num); font-size:10px; color:var(--ink-dim)}
+  .step h4{font-size:13px; font-weight:600; margin:5px 0 6px}
+  .step p{margin:0; font-size:11.5px; color:var(--ink-muted); line-height:1.5}
+  .step .tag{display:inline-block; margin-top:8px; font-size:10px; color:var(--signal); font-family:var(--font-num)}
+
+  /* mapping table */
+  .maptbl{width:100%; border-collapse:collapse; font-size:12.5px}
+  .maptbl th,.maptbl td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--hairline-soft); vertical-align:top}
+  .maptbl th{font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.08em; font-family:var(--font-en); font-weight:600}
+  .maptbl td b{color:var(--ink); font-weight:600}
+  .maptbl td .muted{font-size:11.5px}
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--hairline); border-radius:14px; background:var(--surface-1)}
+
+  .note{display:flex; gap:10px; background:color-mix(in srgb,var(--priority) 8%,var(--surface-1)); border:1px solid color-mix(in srgb,var(--priority) 26%,var(--hairline));
+    border-radius:12px; padding:13px 15px; font-size:12px; color:var(--ink-muted); margin-top:18px}
+  .note b{color:var(--ink)}
+  .foot{padding:40px 0 70px; color:var(--ink-dim); font-size:11.5px; text-align:center}
+
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media(max-width:760px){ .two{grid-template-columns:1fr} }
+  .lead{font-size:13px; color:var(--ink-muted); margin:-14px 0 18px}
+</style>
+</head>
+<body>
+
+<!-- ============ doc header ============ -->
+<header class="doc-head">
+  <div class="wrap">
+    <div class="brand"><span class="dot">T</span> Tender AI <span class="dim" style="font-weight:500">v2 設計草稿</span></div>
+    <nav class="navlinks">
+      <a href="#principles">設計原則</a>
+      <a href="#color">色彩</a>
+      <a href="#type">字體系統</a>
+      <a href="#components">元件</a>
+      <a href="#drill">三層下鑽</a>
+      <a href="#dashboard">戰情總覽</a>
+      <a href="#tenders">標案清單</a>
+      <a href="#kanban">招標看板</a>
+      <a href="#insights">洞察分析</a>
+      <a href="#settings">設定</a>
+      <a href="#flow">流程</a>
+      <a href="#mapping">落地對照</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn">◐ 切換亮/暗</button>
+  </div>
+</header>
+
+<!-- ============ hero ============ -->
+<div class="wrap hero">
+  <div class="eyebrow">UI / UX V2 — ROUGH DRAFT</div>
+  <h1>把每日標案，變成<br><span class="grad">看一眼就能決策</span>的戰情台。</h1>
+  <p>這份草稿把另一 agent 的 <b style="color:var(--ink)">uiux-v2-plan（N1–N4）</b>、現有前端的設計 token，與儀表板參考視覺整合成一套「整體介面＋使用流程」的大概版。暗色為主、可切亮色；字體維持 Noto Sans TC／Inter／JetBrains Mono 三族，只調整字級與字重。</p>
+  <div class="pill-row">
+    <span class="meta-pill">範圍 <b>5 個主畫面 ＋ 三層下鑽 ＋ 流程</b></span>
+    <span class="meta-pill">字族 <b>不變</b>，字級字重<b>重訂</b></span>
+    <span class="meta-pill">技術 <b>React · Tailwind v4 · 自寫 primitive（無 Radix）</b></span>
+    <span class="meta-pill">圖表 <b>自寫 inline SVG</b></span>
+  </div>
+</div>
+
+<!-- ============ principles ============ -->
+<section id="principles"><div class="wrap">
+  <div class="eyebrow">FOUNDATION</div>
+  <h2 class="sec-title">五條設計原則</h2>
+  <p class="sec-sub">v2 不是換皮，是把「資訊密度」與「決策路徑」重排。所有畫面都服從這五條。</p>
+  <div class="princ">
+    <div class="card"><div class="n">01</div><h3>決策優先，不是資料優先</h3><p>每個畫面先回答「我現在該看哪幾案、為什麼」，圖表與細節是支撐，不是主角。今日焦點＝主欄，概覽輔助＝側欄。</p></div>
+    <div class="card"><div class="n">02</div><h3>一眼摘要，逐層深入</h3><p>L1 卡片掃描 → L2 就地展開比對 → L3 彈窗看全貌。深入是「想知道更多」時才發生，不強迫一次給滿。</p></div>
+    <div class="card"><div class="n">03</div><h3>克制的色彩語意</h3><p>白 pill＝主行動；signal 藍只給連結/聚焦；綠/琥珀/紅只表潛力分級與狀態。色彩永遠搭文字或圖示，不單靠顏色傳意。</p></div>
+    <div class="card"><div class="n">04</div><h3>數字是一等公民</h3><p>預算、天數、分數、佔比一律 JetBrains Mono ＋ tabular-nums，欄位對齊、不跳動。大數字用 Display 級當錨點。</p></div>
+    <div class="card"><div class="n">05</div><h3>Bento 可組裝</h3><p>面板＝可放大（L3 lightbox）、未來可依個人習慣用 grid 重排的積木。統一 16px 圓角、些微陰影、零濃重投影。</p></div>
+  </div>
+</div></section>
+
+<!-- ============ color ============ -->
+<section id="color"><div class="wrap">
+  <div class="eyebrow">TOKENS</div>
+  <h2 class="sec-title">色彩 token</h2>
+  <p class="sec-sub">直接沿用 <span class="num">src/index.css</span> 既有 token（暗色為主、亮色覆寫）。v2 不新增主色，只是更有紀律地使用。點右上角可切換亮/暗即時預覽。</p>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:var(--canvas)"></div><div class="lab"><b>canvas</b><span>底層畫布</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--surface-1)"></div><div class="lab"><b>surface-1</b><span>卡片面</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--surface-2)"></div><div class="lab"><b>surface-2</b><span>抬升/hover</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--hairline)"></div><div class="lab"><b>hairline</b><span>分隔線</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink)"></div><div class="lab"><b>ink / primary</b><span>主文字·白pill</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--ink-muted)"></div><div class="lab"><b>ink-muted</b><span>次要文字</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--signal)"></div><div class="lab"><b>signal</b><span>連結/聚焦</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--tier-high)"></div><div class="lab"><b>tier-high</b><span>高潛力</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--tier-mid)"></div><div class="lab"><b>tier-mid</b><span>中潛力</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--tier-low)"></div><div class="lab"><b>tier-low</b><span>低潛力/危險</span></div></div>
+    <div class="sw"><div class="chip" style="background:var(--priority)"></div><div class="lab"><b>priority</b><span>優先標記</span></div></div>
+    <div class="sw"><div class="chip" style="background:linear-gradient(90deg,var(--feas-from),var(--feas-to))"></div><div class="lab"><b>feasibility</b><span>唯一允許漸層</span></div></div>
+  </div>
+</div></section>
+
+<!-- ============ typography ============ -->
+<section id="type"><div class="wrap">
+  <div class="eyebrow">TYPOGRAPHY</div>
+  <h2 class="sec-title">字體系統（v2 調整）</h2>
+  <p class="sec-sub">字族維持三套：繁中 <b>Noto Sans TC</b>、英文 <b>Inter</b>、數字/程式碼 <b>JetBrains Mono</b>。v2 把 body 從 15px 收到 13.5px 提高密度、拉開階層對比，並把大數字升為 Display 級當視覺錨點。字重收斂為 400/500/600/700 四級。</p>
+  <div class="type-table">
+    <div class="type-row"><div class="meta"><b>Display</b>Mono · 34 / 600<br>tabular · -0.02em</div><div class="specimen-display num">NT$ 12,480,000</div></div>
+    <div class="type-row"><div class="meta"><b>H1 頁標題</b>Noto/Inter · 23 / 700</div><div class="specimen-h1">今日戰情總覽</div></div>
+    <div class="type-row"><div class="meta"><b>H2 區塊</b>Noto/Inter · 17 / 600</div><div class="specimen-h2">今日焦點 · 8 件可投標</div></div>
+    <div class="type-row"><div class="meta"><b>H3 卡片標題</b>Noto/Inter · 14 / 600</div><div class="specimen-h3">臺北市政府資訊系統維護案</div></div>
+    <div class="type-row"><div class="meta"><b>Body</b>Noto/Inter · 13.5 / 400<br>line-height 1.6</div><div class="specimen-body">本案屬資訊服務類，符合貴公司過往承接紀錄；建議優先評估技術規格與履約期程。</div></div>
+    <div class="type-row"><div class="meta"><b>Label</b>Noto/Inter · 12 / 500<br>ink-muted</div><div class="specimen-label">機關名稱 · 公告日期 · 截止日</div></div>
+    <div class="type-row"><div class="meta"><b>Eyebrow/區塊籤</b>Inter · 10 / 600<br>+0.14em · UPPERCASE（僅英數）</div><div class="specimen-meta" style="text-transform:uppercase;letter-spacing:.14em">CATEGORY DISTRIBUTION</div></div>
+    <div class="type-row"><div class="meta"><b>Meta/Micro</b>Noto/Inter · 11 / 500<br>ink-dim</div><div class="specimen-meta">由 Christian Wu 於 2 小時前標註</div></div>
+  </div>
+  <div class="note"><span>※</span><div><b>繁中不做 uppercase。</b>區塊小標的 UPPERCASE ＋ 字距只用於英文/數字 eyebrow（如 <span class="num">TOTAL BUDGET</span>）；繁中區塊標題改用 ink-dim ＋ 較小字級 ＋ 適度字距達成同樣的「安靜階層」。</div></div>
+</div></section>
+
+<!-- ============ components ============ -->
+<section id="components"><div class="wrap">
+  <div class="eyebrow">PRIMITIVES</div>
+  <h2 class="sec-title">元件庫</h2>
+  <p class="sec-sub">沿用既有 primitive，並補上 N4 需要的 Switch / Select / Tabs / Chips（全自寫、無 Radix、鍵盤可及）。下方為實際樣式預覽。</p>
+  <div class="two">
+    <div class="card pad">
+      <div class="section-label">按鈕 · 行動</div>
+      <div class="demo-row" style="margin-bottom:16px">
+        <button class="btn-white">＋ 承接此案</button>
+        <button class="btn-ghost">略過</button>
+        <button class="btn-ghost">查看完整詳情 →</button>
+      </div>
+      <div class="section-label">潛力分級 · 狀態徽章</div>
+      <div class="demo-row" style="margin-bottom:16px">
+        <span class="badge high">● 高潛力 92</span>
+        <span class="badge mid">● 中 71</span>
+        <span class="badge low">● 低 38</span>
+        <span class="badge sig">資訊服務</span>
+        <span class="badge pri">已標記優先</span>
+      </div>
+      <div class="section-label">分段控制 · Tabs（自寫）</div>
+      <div class="demo-row">
+        <div class="seg"><button class="on">可行性</button><button>金額</button><button>截止日</button></div>
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="section-label">開關 Switch（自寫）</div>
+      <div class="demo-row" style="margin-bottom:16px">
+        <span class="muted" style="font-size:12px">每日推播</span><div class="switch on"></div>
+        <span class="muted" style="font-size:12px; margin-left:14px">僅高潛力</span><div class="switch"></div>
+      </div>
+      <div class="section-label">下拉 Select（自寫）</div>
+      <div class="demo-row" style="margin-bottom:16px">
+        <span class="selectbox">每日 08:00 <span class="car">▾</span></span>
+        <span class="selectbox">全部地區 <span class="car">▾</span></span>
+      </div>
+      <div class="section-label">篩選 Chips</div>
+      <div class="demo-row" style="margin-bottom:16px">
+        <span class="chip on">全部</span><span class="chip">資訊服務</span><span class="chip">工程</span><span class="chip">財物</span>
+      </div>
+      <div class="section-label">鍵盤可及</div>
+      <div class="demo-row"><span class="muted" style="font-size:12px">看板移動</span> <span class="kbd">←</span> <span class="kbd">→</span> <span class="muted" style="font-size:12px;margin-left:8px">關閉彈窗</span> <span class="kbd">Esc</span></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ drill-down ============ -->
+<section id="drill"><div class="wrap">
+  <div class="eyebrow">INTERACTION MODEL</div>
+  <h2 class="sec-title">三層下鑽模型</h2>
+  <p class="sec-sub">統一全站的「看更多」邏輯：掃描 → 比對 → 全貌。N1 已確認採兩段式但讓「快速預覽」更顯眼。</p>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="card pad">
+      <span class="badge sig" style="margin-bottom:8px">L1 · 卡片掃描</span>
+      <h3 style="font-size:14px;margin:6px 0">一行一案</h3>
+      <p class="muted" style="font-size:12px;margin:0">標題＋可行性分數＋截止倒數。密度高，整列可點。目的：快速略讀今天有什麼。</p>
+    </div>
+    <div class="card pad">
+      <span class="badge mid" style="margin-bottom:8px">L2 · 就地展開</span>
+      <h3 style="font-size:14px;margin:6px 0">同卡手風琴</h3>
+      <p class="muted" style="font-size:12px;margin:0">點列在原位展開事實格＋標籤＋兩顆入口。不跳頁、不蓋畫面，方便上下多列並排比對。</p>
+    </div>
+    <div class="card pad">
+      <span class="badge pri" style="margin-bottom:8px">L3 · 彈窗全貌</span>
+      <h3 style="font-size:14px;margin:6px 0">置中 lightbox</h3>
+      <p class="muted" style="font-size:12px;margin:0">點「快速預覽」開完整彈窗：可行性 meter、下一步、關鍵字命中、評價、轉傳、筆記。Esc／點背景關閉。</p>
+    </div>
+  </div>
+  <div style="text-align:center;color:var(--ink-dim);font-size:18px;margin:14px 0;font-family:var(--font-num)">L1 列 &nbsp;→&nbsp; L2 展開 &nbsp;→&nbsp; L3 彈窗 &nbsp;·&nbsp; 「查看完整詳情」→ 獨立頁 /tenders/:id</div>
+</div></section>
+
+<!-- ============ DASHBOARD ============ -->
+<section id="dashboard"><div class="wrap">
+  <div class="eyebrow">SCREEN 01</div>
+  <h2 class="sec-title">戰情總覽 · Dashboard</h2>
+  <p class="lead">進站首頁。KPI 帶狀 ＋ Bento：主欄今日焦點清單（含 L2 展開），側欄類型分佈與動態。每個面板可放大成 L3。</p>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><span class="url">tender-ai.app / overview</span></div>
+    <div class="canvas">
+      <!-- sidebar -->
+      <aside class="side">
+        <div class="acct"><span class="av">HQ</span><div class="who"><b>惠強設計</b><br><span class="dim">Christian Wu</span></div></div>
+        <div class="grp">主要</div>
+        <div class="nav-i on"><span class="ic">◧</span> 戰情總覽</div>
+        <div class="nav-i"><span class="ic">☰</span> 標案清單</div>
+        <div class="nav-i"><span class="ic">▦</span> 招標看板</div>
+        <div class="nav-i"><span class="ic">◔</span> 洞察分析</div>
+        <div class="grp">智慧</div>
+        <div class="nav-i"><span class="ic">✦</span> 速配配對</div>
+        <div class="nav-i"><span class="ic">◇</span> 小助手</div>
+        <div class="grp">設定</div>
+        <div class="nav-i"><span class="ic">⚑</span> 規則</div>
+        <div class="nav-i"><span class="ic">⤴</span> 主動推播</div>
+      </aside>
+      <!-- main -->
+      <main class="main">
+        <div class="topbar">
+          <div><div class="crumb">儀表板 / 總覽</div><h2>今日戰情總覽</h2></div>
+          <div class="right">
+            <span class="live"><i></i> 即時資料</span>
+            <span class="selectbox" style="font-size:11px;padding:5px 9px">今日 ▾</span>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="ic">◎</div><div class="v">37</div><div class="l">今日新案</div><div class="trend up">▲ 12% 較昨日</div></div>
+          <div class="kpi"><div class="ic">★</div><div class="v">8</div><div class="l">高潛力可投</div><div class="trend up">▲ 3 件</div></div>
+          <div class="kpi"><div class="ic">$</div><div class="v">2.4<span style="font-size:14px">億</span></div><div class="l">符合條件總額</div><div class="trend up">▲ 8%</div></div>
+          <div class="kpi"><div class="ic">⏱</div><div class="v">3</div><div class="l">3 日內截止</div><div class="trend down">▼ 需盡快</div></div>
+        </div>
+        <div class="bento">
+          <!-- focus list -->
+          <div class="panel">
+            <div class="ph"><h3>今日焦點</h3>
+              <div class="seg" style="margin-left:auto;transform:scale(.9)"><button class="on">可行性</button><button>金額</button><button>截止</button></div>
+              <div class="tools"><span class="ib" title="放大">⤢</span></div>
+            </div>
+            <div class="pb">
+              <div class="frow open">
+                <div class="head"><span class="car">▾</span><span class="ti">臺北市政府 資訊系統維護及加值服務案</span><span class="sc num">92</span><span class="dl num">5 天</span></div>
+                <div class="body">
+                  <div class="tags"><span class="badge high">● 高潛力</span><span class="badge sig">資訊服務</span><span class="chip" style="padding:3px 9px">臺北市</span></div>
+                  <div class="facts">
+                    <div class="fact"><div class="k">機關</div><div class="vv">臺北市政府資訊局</div></div>
+                    <div class="fact"><div class="k">公告日</div><div class="vv num">2026-06-17</div></div>
+                    <div class="fact"><div class="k">預算金額</div><div class="vv num">NT$ 8,600,000</div></div>
+                    <div class="fact"><div class="k">截止日</div><div class="vv num">2026-06-24</div></div>
+                    <div class="fact"><div class="k">地區</div><div class="vv">臺北市</div></div>
+                  </div>
+                  <div class="acts"><button class="btn-white">◉ 快速預覽</button><button class="btn-ghost">查看完整詳情 →</button></div>
+                </div>
+              </div>
+              <div class="frow"><div class="head"><span class="car">▸</span><span class="ti">新北市立醫院 醫療資訊整合平台建置</span><span class="sc num">86</span><span class="dl num">9 天</span></div></div>
+              <div class="frow"><div class="head"><span class="car">▸</span><span class="ti">交通部 智慧號誌系統汰換工程</span><span class="sc num">74</span><span class="dl num">14 天</span></div></div>
+              <div class="frow"><div class="head"><span class="car">▸</span><span class="ti">桃園市政府 市民服務 App 維運案</span><span class="sc num">69</span><span class="dl num">18 天</span></div></div>
+            </div>
+          </div>
+          <!-- side -->
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="panel">
+              <div class="ph"><h3>類型分佈</h3><div class="tools"><span class="ib">⤢</span></div></div>
+              <div class="pb">
+                <div class="donut-wrap">
+                  <svg width="104" height="104" viewBox="0 0 42 42">
+                    <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
+                    <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--tier-high)" stroke-width="6" stroke-dasharray="46 54" stroke-dashoffset="25" stroke-linecap="round"/>
+                    <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--signal)" stroke-width="6" stroke-dasharray="28 72" stroke-dashoffset="79" stroke-linecap="round"/>
+                    <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--tier-mid)" stroke-width="6" stroke-dasharray="18 82" stroke-dashoffset="51" stroke-linecap="round"/>
+                    <text x="21" y="20" text-anchor="middle" font-size="7" font-family="var(--font-num)" fill="var(--ink)" font-weight="700">37</text>
+                    <text x="21" y="26" text-anchor="middle" font-size="3.4" fill="var(--ink-dim)">今日</text>
+                  </svg>
+                  <div class="legend" style="flex:1">
+                    <div class="li"><span class="d" style="background:var(--tier-high)"></span> 資訊服務 <b>46%</b></div>
+                    <div class="li"><span class="d" style="background:var(--signal)"></span> 工程 <b>28%</b></div>
+                    <div class="li"><span class="d" style="background:var(--tier-mid)"></span> 財物 <b>18%</b></div>
+                    <div class="li"><span class="d" style="background:var(--surface-2)"></span> 其他 <b>8%</b></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="ph"><h3>團隊動態</h3><div class="tools"><span class="ib">⤢</span></div></div>
+              <div class="pb">
+                <div class="act"><span class="av" style="background:var(--priority)">CW</span><div class="tx"><b>Christian</b> 承接了「資訊系統維護案」<br><span class="tm">2 小時前</span></div></div>
+                <div class="act"><span class="av" style="background:var(--signal)">AL</span><div class="tx"><b>Aaron</b> 在看板標註「需確認履約期程」<br><span class="tm">3 小時前</span></div></div>
+                <div class="act"><span class="av" style="background:var(--tier-high)">JL</span><div class="tx"><b>Jenny</b> 評價了 2 件標案<br><span class="tm">昨天</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div class="note"><span>◆</span><div><b>放大（⤢）＝ L3。</b>任一面板按放大鍵以 lightbox 全屏顯示該面板，背景變暗、Esc 關閉。這是未來「面板可依個人習慣 grid 重排」的第一步：先有放大，再有拖拉排版。</div></div>
+</div></section>
+
+<!-- ============ TENDERS + dialog ============ -->
+<section id="tenders"><div class="wrap">
+  <div class="eyebrow">SCREEN 02</div>
+  <h2 class="sec-title">標案清單 · 完整資訊彈窗</h2>
+  <p class="lead">/tenders 點任一列即開 L3 彈窗（左欄事實＋可行性，右欄行動：承接/略過/評價/轉傳/可見性/筆記）。下方為彈窗開啟時的狀態。</p>
+  <div class="lb">
+    <div class="scrim">
+      <div class="dialog">
+        <div class="dh">
+          <span class="badge high">92</span>
+          <h3>臺北市政府 資訊系統維護及加值服務案</h3>
+          <span class="badge sig">★ 收藏</span>
+          <span class="x">✕</span>
+        </div>
+        <div class="dcols">
+          <div class="dl">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+              <span class="badge high">● 高潛力</span><span class="badge sig">資訊服務</span><span class="chip" style="padding:3px 9px">臺北市</span>
+            </div>
+            <div style="background:color-mix(in srgb,var(--tier-mid) 12%,transparent);border:1px solid color-mix(in srgb,var(--tier-mid) 30%,transparent);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--tier-mid);margin-bottom:14px">⏱ 距截止剩 <b class="num">5</b> 天 · 2026-06-24 17:00</div>
+            <div class="section-label">可行性</div>
+            <div class="meter"><i style="width:92%"></i></div>
+            <div class="muted" style="font-size:11.5px">技術契合度高、預算量級符合過往承接紀錄。</div>
+            <div class="section-label">下一步建議</div>
+            <p class="muted" style="font-size:12.5px;margin:0">優先確認履約期程與技術規格附件，評估人力檔期後決定是否投標。</p>
+            <div class="section-label">事實</div>
+            <div class="facts">
+              <div class="fact"><div class="k">機關</div><div class="vv">臺北市政府資訊局</div></div>
+              <div class="fact"><div class="k">公告日</div><div class="vv num">2026-06-17</div></div>
+              <div class="fact"><div class="k">預算</div><div class="vv num">NT$ 8,600,000</div></div>
+            </div>
+            <div class="section-label">關鍵字命中</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge sig">系統維護</span><span class="badge sig">加值服務</span><span class="badge pri">資訊局</span></div>
+            <div style="margin-top:14px;font-size:12px"><a href="#tenders">↗ 開啟原始公告</a> &nbsp;·&nbsp; <a href="#tenders">查看完整詳情頁 →</a></div>
+          </div>
+          <div class="dr">
+            <div class="demo-row" style="margin-bottom:14px"><button class="btn-white" style="flex:1;justify-content:center">＋ 承接</button><button class="btn-ghost">略過</button></div>
+            <div class="section-label">我的評價</div>
+            <div class="stars">★★★★☆</div>
+            <div class="section-label">轉傳給同事</div>
+            <span class="selectbox" style="width:100%;justify-content:space-between">選擇白名單同事 <span class="car">▾</span></span>
+            <div class="demo-row" style="margin-top:8px"><a href="#tenders" style="font-size:11.5px">複製連結</a> · <a href="#tenders" style="font-size:11.5px">以 Email 寄送</a></div>
+            <div class="section-label">可見性</div>
+            <div class="demo-row"><span class="muted" style="font-size:12px">在白名單內共享</span><div class="switch on" style="margin-left:auto"></div></div>
+            <div class="section-label">筆記（具名）</div>
+            <div style="background:var(--surface-1);border:1px solid var(--hairline);border-radius:9px;padding:9px;font-size:11.5px;color:var(--ink-muted)">「客戶端窗口較配合，建議投。」<br><span class="dim num" style="font-size:10px">— Christian · 2h</span></div>
+            <input style="margin-top:8px;width:100%;background:var(--surface-1);border:1px solid var(--hairline);border-radius:9px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:12px" placeholder="新增筆記…" disabled />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><span>🔒</span><div><b>Layer B 治理。</b>評價、筆記、轉傳對象、可見性＝具名行為資料，<b>白名單（@hqdesign.tw）內共享、對外永不揭露</b>；本輪只走前端 state ＋ 既有 trackEvent，不進向量/公開版控。</div></div>
+</div></section>
+
+<!-- ============ KANBAN ============ -->
+<section id="kanban"><div class="wrap">
+  <div class="eyebrow">SCREEN 03 · 優先（N2）</div>
+  <h2 class="sec-title">招標看板 · 標註 ＋ 轉傳</h2>
+  <p class="lead">四欄拖拉（待辦/進行/審核/完成），鍵盤 ← → 移動。v2 新增：卡面標註計數（具名）與「轉傳給同事」。</p>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><span class="url">tender-ai.app / kanban</span></div>
+    <div class="main" style="padding:18px">
+      <div class="topbar"><div><div class="crumb">招標看板</div><h2>承接進度看板</h2></div>
+        <div class="right"><span class="chip on">全部負責人</span><button class="btn-ghost">＋ 從焦點加入</button></div>
+      </div>
+      <div class="kbcols">
+        <div class="kbcol">
+          <div class="ch">待辦 <span class="ct num">3</span></div>
+          <div class="kcard">
+            <span class="badge high" style="font-size:10px">92</span>
+            <div class="kt">臺北市政府 資訊系統維護及加值服務案</div>
+            <div class="kf"><span class="dl">6/24</span><span class="ico" title="標註">🗨 2</span><span class="av" style="background:var(--priority)">CW</span></div>
+          </div>
+          <div class="kcard">
+            <span class="badge mid" style="font-size:10px">74</span>
+            <div class="kt">交通部 智慧號誌系統汰換工程</div>
+            <div class="kf"><span class="dl">7/03</span><span class="ico">🗨 0</span><span class="av" style="background:var(--signal)">AL</span></div>
+          </div>
+        </div>
+        <div class="kbcol">
+          <div class="ch">進行中 <span class="ct num">2</span></div>
+          <div class="kcard">
+            <span class="badge high" style="font-size:10px">86</span>
+            <div class="kt">新北市立醫院 醫療資訊整合平台建置</div>
+            <div class="kf"><span class="dl">6/28</span><span class="ico">🗨 4</span><span class="av" style="background:var(--tier-high)">JL</span></div>
+          </div>
+        </div>
+        <div class="kbcol">
+          <div class="ch">審核 <span class="ct num">1</span></div>
+          <div class="kcard" style="border-color:color-mix(in srgb,var(--priority) 40%,var(--hairline))">
+            <div style="display:flex;gap:6px;align-items:center"><span class="badge pri" style="font-size:10px">轉傳中</span></div>
+            <div class="kt">桃園市政府 市民服務 App 維運案</div>
+            <div class="kf"><span class="dl">7/07</span><span class="ico">🗨 1</span><span class="av" style="background:var(--tier-mid)">Aa</span></div>
+          </div>
+        </div>
+        <div class="kbcol">
+          <div class="ch">完成 <span class="ct num">1</span></div>
+          <div class="kcard" style="opacity:.7">
+            <div class="kt">高雄市政府 開放資料平台維護案</div>
+            <div class="kf"><span class="dl">已投</span><span class="ico">🗨 3</span><span class="av" style="background:var(--ink-dim)">CW</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- popover sketch -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
+        <div class="card pad">
+          <div class="section-label">卡片標註 popover（自寫·fixed/portal 不被裁切）</div>
+          <div class="act"><span class="av" style="background:var(--priority)">CW</span><div class="tx"><b>Christian</b> 需確認履約期程 <span class="tm">2h</span></div></div>
+          <div class="act"><span class="av" style="background:var(--signal)">AL</span><div class="tx"><b>Aaron</b> 客戶窗口已對接 <span class="tm">1h</span></div></div>
+          <input style="margin-top:10px;width:100%;background:var(--surface-2);border:1px solid var(--hairline);border-radius:9px;padding:8px 10px;color:var(--ink);font-family:inherit;font-size:12px" placeholder="新增標註…（具名）" disabled />
+        </div>
+        <div class="card pad">
+          <div class="section-label">轉傳選單（白名單同事）</div>
+          <div class="nav-i"><span class="av" style="background:var(--tier-high);width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff">JL</span> Jenny Lin · 設計</div>
+          <div class="nav-i"><span class="av" style="background:var(--signal);width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff">AL</span> Aaron · 業務</div>
+          <div class="nav-i"><span class="av" style="background:var(--tier-mid);width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff">Aa</span> Amy · PM</div>
+          <div class="muted" style="font-size:11px;margin-top:8px">轉傳＝指派負責人＋通知；亦可沿用 tender 層 Email/連結分享。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ INSIGHTS ============ -->
+<section id="insights"><div class="wrap">
+  <div class="eyebrow">SCREEN 04</div>
+  <h2 class="sec-title">洞察分析 · 自寫 SVG</h2>
+  <p class="lead">先做前端彙總（不等後端）：類型/地區佔比、篩選前後總額對比、類別×金額橫條（標權重來源解釋「為何工程類偏高」）、趨勢。</p>
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><span class="url">tender-ai.app / insights</span></div>
+    <div class="main" style="padding:18px">
+      <div class="topbar"><div><div class="crumb">洞察分析</div><h2>篩選洞察</h2></div>
+        <div class="right"><span class="chip on">本週</span><span class="chip">本月</span><span class="selectbox" style="font-size:11px;padding:5px 9px">全部地區 ▾</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="panel">
+          <div class="ph"><h3>篩選前後 · 符合條件總額</h3></div>
+          <div class="pb">
+            <div class="beforeafter">
+              <div><div class="big" style="color:var(--ink-dim)">12.4億</div><div class="lab">全部新案</div></div>
+              <div class="arrow">→</div>
+              <div><div class="big" style="color:var(--tier-high)">2.4億</div><div class="lab">符合你的規則</div></div>
+            </div>
+            <div class="muted" style="font-size:11.5px;text-align:center;margin-top:10px">規則過濾掉 <b class="num" style="color:var(--ink)">80.6%</b> 的雜訊</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>地區佔比</h3></div>
+          <div class="pb">
+            <div class="hbar"><span class="lab">臺北市</span><span class="track"><i style="width:64%;background:var(--signal)"></i></span><span class="val">38%</span></div>
+            <div class="hbar"><span class="lab">新北市</span><span class="track"><i style="width:44%;background:var(--signal)"></i></span><span class="val">26%</span></div>
+            <div class="hbar"><span class="lab">桃園市</span><span class="track"><i style="width:28%;background:var(--signal)"></i></span><span class="val">17%</span></div>
+            <div class="hbar"><span class="lab">其他</span><span class="track"><i style="width:20%;background:var(--surface-2)"></i></span><span class="val">19%</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>類別 × 金額（標權重來源）</h3></div>
+          <div class="pb">
+            <div class="hbar"><span class="lab">工程 <span class="badge pri" style="font-size:9px;padding:1px 5px">權重↑</span></span><span class="track"><i style="width:88%;background:linear-gradient(90deg,var(--feas-from),var(--feas-to))"></i></span><span class="val">9.2億</span></div>
+            <div class="hbar"><span class="lab">資訊服務</span><span class="track"><i style="width:52%;background:var(--tier-high)"></i></span><span class="val">5.4億</span></div>
+            <div class="hbar"><span class="lab">財物</span><span class="track"><i style="width:34%;background:var(--tier-mid)"></i></span><span class="val">3.6億</span></div>
+            <div class="muted" style="font-size:10.5px;margin-top:8px">＊「權重↑」來自 /reasoning/profile：你過往多次承接工程類，故其金額分佈被加權。</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>7 日新案趨勢</h3></div>
+          <div class="pb">
+            <svg width="100%" height="92" viewBox="0 0 280 92" preserveAspectRatio="none">
+              <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--signal)" stop-opacity=".28"/><stop offset="1" stop-color="var(--signal)" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0,70 L46,52 L93,58 L140,34 L186,40 L233,22 L280,30 L280,92 L0,92 Z" fill="url(#ag)"/>
+              <path d="M0,70 L46,52 L93,58 L140,34 L186,40 L233,22 L280,30" fill="none" stroke="var(--signal)" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="233" cy="22" r="3" fill="var(--signal)"/>
+            </svg>
+            <div class="muted num" style="font-size:10px;display:flex;justify-content:space-between;margin-top:4px"><span>6/13</span><span>6/19</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ SETTINGS ============ -->
+<section id="settings"><div class="wrap">
+  <div class="eyebrow">SCREEN 05 · N4</div>
+  <h2 class="sec-title">設定 · 推播 / 小助手 / 規則</h2>
+  <p class="lead">三頁統一視覺語言（抄 rules 三卡），後端已就緒只需接線。新 primitive（Switch/Select/Tabs）在此首次落地。</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div>
+      <div class="section-label" style="margin-top:0">主動推播</div>
+      <div class="setcard">
+        <div class="setrow"><div class="tx"><b>每日推播</b><span>每天彙整新案 digest</span></div><div class="switch on"></div></div>
+        <div class="setrow"><div class="tx"><b>推播時段</b><span>送達時間</span></div><span class="selectbox">每日 08:00 ▾</span></div>
+        <div class="setrow"><div class="tx"><b>可行性門檻</b><span>僅推 ≥ 此分數</span></div><span class="selectbox">70 ▾</span></div>
+        <div class="setrow"><div class="tx"><b>僅高潛力</b><span>過濾中低潛力</span></div><div class="switch"></div></div>
+      </div>
+      <div class="setcard" style="margin-top:14px">
+        <div class="setrow"><div class="tx"><b>Digest 預覽</b><span>接 /push/digest</span></div><button class="btn-ghost">預覽</button></div>
+      </div>
+    </div>
+    <div>
+      <div class="section-label" style="margin-top:0">小助手</div>
+      <div class="setcard">
+        <div class="setrow"><div class="tx"><b>可讀資料範圍</b><span>預設最小揭露（Layer B 保守）</span></div><span class="selectbox">僅公開標案 ▾</span></div>
+        <div class="setrow"><div class="tx"><b>語氣</b><span>回答風格</span></div><div class="seg" style="transform:scale(.92)"><button class="on">精簡</button><button>詳細</button></div></div>
+      </div>
+      <div class="setcard" style="margin-top:14px">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--hairline-soft);font-size:11px;color:var(--ink-dim)">接 /assistant/chat</div>
+        <div style="padding:12px 14px">
+          <div class="act" style="border:none"><span class="av" style="background:var(--priority)">◇</span><div class="tx">幫我找這週工程類、預算 5000 萬以上的案</div></div>
+          <div class="demo-row" style="margin-top:8px"><span class="chip">今天有哪些高潛力？</span><span class="chip">截止快到的</span></div>
+          <input style="margin-top:10px;width:100%;background:var(--surface-2);border:1px solid var(--hairline);border-radius:9px;padding:9px 11px;color:var(--ink);font-family:inherit;font-size:12px" placeholder="問小助手…" disabled />
+        </div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ FLOW ============ -->
+<section id="flow"><div class="wrap">
+  <div class="eyebrow">USER FLOW</div>
+  <h2 class="sec-title">每日使用流程</h2>
+  <p class="sec-sub">一條主動線：早上被推播叫醒 → 進站掃焦點 → 深入評估 → 加進看板協作 → 系統越學越準。</p>
+  <div class="flow">
+    <div class="step"><div class="n">01</div><h4>被推播叫醒</h4><p>08:00 收到 digest：今天 8 件高潛力、3 件快截止。點通知直接進站。</p><span class="tag">N4 推播</span></div>
+    <div class="step"><div class="n">02</div><h4>掃今日焦點</h4><p>戰情總覽 L1 略讀 → L2 就地展開比對事實 → 心裡有底。</p><span class="tag">Dashboard · 三層下鑽</span></div>
+    <div class="step"><div class="n">03</div><h4>深入評估</h4><p>L3 彈窗看可行性、下一步、關鍵字命中；不確定問小助手。</p><span class="tag">N1 彈窗 · 小助手</span></div>
+    <div class="step"><div class="n">04</div><h4>協作推進</h4><p>承接 → 進看板；標註待確認事項、轉傳給對應同事。</p><span class="tag">N2 看板</span></div>
+    <div class="step"><div class="n">05</div><h4>回看與學習</h4><p>洞察分析看篩選成效；評價/行為回饋讓系統下次更準。</p><span class="tag">N3 洞察 · Layer B/C</span></div>
+  </div>
+  <div style="text-align:center;color:var(--ink-dim);font-size:13px;margin-top:16px;font-family:var(--font-num)">推播 → 總覽 → 彈窗 → 看板 → 洞察 &nbsp;↺&nbsp; 行為回饋餵回排序與權重</div>
+</div></section>
+
+<!-- ============ MAPPING ============ -->
+<section id="mapping"><div class="wrap">
+  <div class="eyebrow">EXECUTION</div>
+  <h2 class="sec-title">落地對照（對齊 N1–N4）</h2>
+  <p class="sec-sub">這份草稿如何對應 uiux-v2-plan 的工作包與要套用的元件。動工順序：N1 ✓ → N2 → N4 → N3。</p>
+  <div class="tbl-wrap">
+    <table class="maptbl">
+      <thead><tr><th>畫面 / 區塊</th><th>對應工作包</th><th>要套用的元件</th><th>狀態</th></tr></thead>
+      <tbody>
+        <tr><td><b>標案彈窗</b><div class="muted">三層下鑽 L3</div></td><td>N1</td><td>Dialog · FeasibilityMeter · RatingStars · detail-bits · Button(white pill/ghost)</td><td><span class="badge high">已完成</span></td></tr>
+        <tr><td><b>招標看板</b><div class="muted">標註＋轉傳</div></td><td>N2 · 優先</td><td>新：card-note-popover · card-forward-menu（自寫/portal）；擴 KanbanCard.notes</td><td><span class="badge mid">下一步</span></td></tr>
+        <tr><td><b>設定</b><div class="muted">推播/小助手/規則</div></td><td>N4</td><td>新 primitive：Switch · Select · Tabs；接 /push/* · /assistant/chat</td><td><span class="badge sig">待做</span></td></tr>
+        <tr><td><b>洞察分析</b><div class="muted">SVG 視覺化</div></td><td>N3</td><td>自寫 SVG（donut/橫條/before-after/趨勢）；複用 N4 的篩選控制；insights.ts 彙總</td><td><span class="badge sig">待做</span></td></tr>
+        <tr><td><b>戰情總覽</b><div class="muted">Bento＋放大</div></td><td>既有 · 增益</td><td>MaximizableCard · KpiRow · FocusList · CategoryChart；放大→未來 grid 重排</td><td><span class="badge pri">增益</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><span>▲</span><div><b>House style 守則（技能不得覆蓋）：</b>繁中僅 Noto Sans TC、英文 Inter、數字/碼 JetBrains Mono；直線零抖動；統一圓角；僅些微陰影、禁濃重投影；i18n 中英成對、繁中預設；不新增圖表庫、不用 Radix。本草稿全程遵守。</div></div>
+</div></section>
+
+<div class="wrap foot">
+  Tender AI · UI/UX v2 設計草稿（大概版）· 暗色為主 · 此頁為視覺方向稿，非最終實作 ·
+  <span class="num">2026-06-19</span>
+</div>
+
+<script>
+  (function(){
+    var b=document.getElementById('themeBtn'),h=document.documentElement;
+    b&&b.addEventListener('click',function(){
+      h.setAttribute('data-theme', h.getAttribute('data-theme')==='dark'?'light':'dark');
+    });
+    // 點 frame 內 focus 列示範 L2 展開
+    document.querySelectorAll('.frow .head').forEach(function(hd){
+      hd.addEventListener('click',function(){ hd.parentElement.classList.toggle('open');
+        var c=hd.querySelector('.car'); if(c) c.textContent = hd.parentElement.classList.contains('open')?'▾':'▸';
+      });
+    });
+  })();
+</script>
+</body>
+</html>
