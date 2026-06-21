@@ -152,6 +152,20 @@ export interface TenderReasoning {
   profile: CriteriaProfile;
 }
 
+/**
+ * 看板卡片標註（Layer B 行為資料）。具名歸到 authorId（登入帳號），
+ * 僅在白名單 @hqdesign.tw 內共享；對外永不揭露／去識別化。
+ */
+export interface KanbanNote {
+  id: string;
+  cardId: string;
+  /** 作者 userId（具名） */
+  authorId: string;
+  text: string;
+  /** ISO datetime */
+  createdAt: string;
+}
+
 export interface KanbanCard {
   id: string;
   tenderId?: string;
@@ -163,6 +177,8 @@ export interface KanbanCard {
   deadline?: string;
   blocked?: boolean;
   blockReason?: string;
+  /** 卡片標註（行為資料，Layer B） */
+  notes?: KanbanNote[];
 }
 
 export interface User {
@@ -180,7 +196,9 @@ export type ActivityKind =
   | "comment"
   | "move"
   | "import"
-  | "rule";
+  | "rule"
+  | "note"
+  | "forward";
 
 export interface ActivityItem {
   id: string;

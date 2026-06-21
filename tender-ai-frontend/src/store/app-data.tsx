@@ -14,6 +14,7 @@ import type {
   Comment,
   FilterState,
   KanbanCard,
+  KanbanNote,
   SavedSearch,
   SortKey,
   TaskStatus,
@@ -22,6 +23,7 @@ import type {
 import { TENDERS } from "@/data/tenders";
 import { KANBAN_CARDS } from "@/data/kanban";
 import { ACTIVITY } from "@/data/activity";
+import { userById } from "@/data/users";
 import {
   fetchTenders,
   postAccept,
@@ -140,6 +142,11 @@ interface AppDataValue {
   // 看板
   cards: KanbanCard[];
   moveCard: (cardId: string, status: TaskStatus) => void;
+  // 看板標註（Layer B 行為資料，具名歸到登入帳號）
+  addCardNote: (cardId: string, text: string) => void;
+  removeCardNote: (cardId: string, noteId: string) => void;
+  // 轉傳：把卡片改派給白名單內同事（具名）
+  forwardCard: (cardId: string, toUserId: string) => void;
   // 動態
   activity: ActivityItem[];
   // 規則
@@ -621,6 +628,76 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [pushActivity],
   );
 
+  // ── 看板標註（Layer B）──────────────────────────────────────
+  // 標註寫在卡片上（隨 cards 持久化）；具名歸到登入帳號 person.id；
+  // 同步埋點到學習迴圈（白名單內具名共享，對外不揭露）。
+  const addCardNote = useCallback(
+    (cardId: string, text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      let target: KanbanCard | undefined;
+      const note: KanbanNote = {
+        id: `n-${uid()}`,
+        cardId,
+        authorId: person.id,
+        text: trimmed,
+        createdAt: nowISO(),
+      };
+      setCards((prev) =>
+        prev.map((c) => {
+          if (c.id !== cardId) return c;
+          target = c;
+          return { ...c, notes: [...(c.notes ?? []), note] };
+        }),
+      );
+      if (target) {
+        pushActivity("note", target.title);
+        // 行為回寫（Layer B）：標註寫回學習迴圈，fire-and-forget。
+        trackEvent("add_note", {
+          tenderId: target.tenderId,
+          payload: { cardId, len: trimmed.length },
+        });
+      }
+    },
+    [person.id, pushActivity],
+  );
+
+  const removeCardNote = useCallback((cardId: string, noteId: string) => {
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === cardId
+          ? { ...c, notes: (c.notes ?? []).filter((n) => n.id !== noteId) }
+          : c,
+      ),
+    );
+  }, []);
+
+  // 轉傳：改派 assignee 給同事；記入動態並埋點（具名）。
+  const forwardCard = useCallback(
+    (cardId: string, toUserId: string) => {
+      let target: KanbanCard | undefined;
+      let from: string | undefined;
+      setCards((prev) =>
+        prev.map((c) => {
+          if (c.id !== cardId || c.assignee === toUserId) return c;
+          target = c;
+          from = c.assignee;
+          return { ...c, assignee: toUserId };
+        }),
+      );
+      if (target) {
+        const to = userById(toUserId);
+        pushActivity("forward", `${target.title} → ${to?.name ?? toUserId}`);
+        // 行為回寫（Layer B）：轉傳訊號寫回學習迴圈，fire-and-forget。
+        trackEvent("forward_card", {
+          tenderId: target.tenderId,
+          payload: { cardId, from, to: toUserId },
+        });
+      }
+    },
+    [pushActivity],
+  );
+
   const addKeyword = useCallback(
     (list: RuleList, word: string) => {
       const w = word.trim();
@@ -733,6 +810,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addComment,
       cards,
       moveCard,
+      addCardNote,
+      removeCardNote,
+      forwardCard,
       activity,
       focusKeywords,
       avoidKeywords,
@@ -770,6 +850,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addComment,
       cards,
       moveCard,
+      addCardNote,
+      removeCardNote,
+      forwardCard,
       activity,
       focusKeywords,
       avoidKeywords,

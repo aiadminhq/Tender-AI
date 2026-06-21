@@ -3,7 +3,9 @@ import {
   Check,
   Download,
   MessageSquare,
+  Send,
   SlidersHorizontal,
+  StickyNote,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +31,8 @@ const kindMap: Record<
     zh: "更新",
     en: "tuned",
   },
+  note: { icon: StickyNote, cls: "text-signal", zh: "標註", en: "annotated" },
+  forward: { icon: Send, cls: "text-priority", zh: "轉傳", en: "forwarded" },
 };
 
 export function ActivityStream({ limit = 8 }: { limit?: number }) {

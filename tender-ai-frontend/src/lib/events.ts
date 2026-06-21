@@ -8,6 +8,9 @@ const API_BASE =
   "http://localhost:8000/api/v1";
 
 // 對齊後端 EventRequest.type（app/schemas）。
+// 註：add_note / forward_card 為 N2 看板互動（Layer B 行為資料）新增；
+// 後端 EventRequest.type 需同步擴充才能收存，否則此兩型別由後端忽略
+// （trackEvent 為 fire-and-forget、吞錯，故不影響 UI）。
 export type EventType =
   | "view"
   | "open_detail"
@@ -15,7 +18,9 @@ export type EventType =
   | "dwell"
   | "apply_filter"
   | "search"
-  | "sort";
+  | "sort"
+  | "add_note"
+  | "forward_card";
 
 interface TrackOptions {
   tenderId?: string;
