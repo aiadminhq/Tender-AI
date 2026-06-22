@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1 import api_router
 from app.core.config import settings
-from app.core.errors import EntityNotFound
+from app.core.errors import DomainValidationError, EntityNotFound, PermissionDenied
 from app.core.security import require_api_key
 
 app = FastAPI(title="Tender AI API", version="0.1.0")
@@ -30,6 +30,20 @@ async def _entity_not_found_handler(
     request: Request, exc: EntityNotFound
 ) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": exc.detail})
+
+
+@app.exception_handler(PermissionDenied)
+async def _permission_denied_handler(
+    request: Request, exc: PermissionDenied
+) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": exc.detail})
+
+
+@app.exception_handler(DomainValidationError)
+async def _domain_validation_handler(
+    request: Request, exc: DomainValidationError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": exc.detail})
 
 
 @app.get("/health")

@@ -86,7 +86,13 @@ async def test_expand_p4_learning_with_daily_reports(db_session):
     source = Source(name="PCC", base_url="https://web.pcc.gov.tw")
     db_session.add(source)
 
-    user = User(name="scout", email="scout@hq.tw", role="scout")
+    user = User(
+        name="scout",
+        email="scout@hq.tw",
+        role="scout",
+        whitelist_active=True,
+        consent_shared=True,
+    )
     db_session.add(user)
     await db_session.commit()
 

@@ -21,6 +21,14 @@ from app.schemas.tender import (
     TenderQuery,
     UserStateOut,
 )
+from app.schemas.user import (
+    ConsentIn,
+    ConsentOut,
+    MeOut,
+    PreferenceProfileOut,
+    WhitelistIn,
+    WhitelistOut,
+)
 
 __all__ = [
     # tender
@@ -43,4 +51,11 @@ __all__ = [
     "ShareOut",
     "EventOut",
     "SavedSearchOut",
+    # user / consent / whitelist / preference
+    "MeOut",
+    "ConsentIn",
+    "ConsentOut",
+    "WhitelistIn",
+    "WhitelistOut",
+    "PreferenceProfileOut",
 ]

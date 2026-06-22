@@ -45,7 +45,13 @@ async def evo_seed(db_session):
     await db_session.flush()
 
     # 預設使用者（services.behavior 以 name == DEFAULT_USER_NAME 解析）；給 email 以驗無外洩。
-    default_user = User(name=DEFAULT_USER_NAME, email="scout@hq.tw", role="member")
+    default_user = User(
+        name=DEFAULT_USER_NAME,
+        email="scout@hq.tw",
+        role="member",
+        whitelist_active=True,
+        consent_shared=True,
+    )
     rival = User(name="rival", email="rival@hq.tw", role="scout")
     db_session.add_all([default_user, rival])
     await db_session.flush()

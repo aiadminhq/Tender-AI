@@ -9,3 +9,19 @@ class EntityNotFound(Exception):
     def __init__(self, detail: str = "not found") -> None:
         self.detail = detail
         super().__init__(detail)
+
+
+class PermissionDenied(Exception):
+    """權限不足（非管理員／非本人／帳號未在白名單內）；API 層轉 403。"""
+
+    def __init__(self, detail: str = "forbidden") -> None:
+        self.detail = detail
+        super().__init__(detail)
+
+
+class DomainValidationError(Exception):
+    """業務驗證失敗（如信箱非 @hqdesign.tw 網域）；API 層轉 422。"""
+
+    def __init__(self, detail: str = "unprocessable entity") -> None:
+        self.detail = detail
+        super().__init__(detail)

@@ -21,7 +21,9 @@ from app.models.knowledge import (
     KeywordWeightRevision,
     KnowledgeChunk,
     TenderVector,
+    UserKeywordWeight,
 )
+from app.models.preference import PreferenceProfile
 from app.models.push import PushLog
 from app.models.revision import (
     CrawlFailure,
@@ -56,6 +58,8 @@ __all__ = [
     "KnowledgeChunk",
     "KeywordWeight",
     "KeywordWeightRevision",
+    "UserKeywordWeight",
+    "PreferenceProfile",
     "EvolutionLog",
     "DocSummary",
     "DecisionVector",
