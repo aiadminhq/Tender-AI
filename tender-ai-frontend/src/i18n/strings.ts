@@ -76,6 +76,24 @@ export const STRINGS = {
     assistantSuggest2: "幫我找與空調汰換相似的案",
     assistantSuggest3: "最近即將截止的有哪些?",
     assistantSuggest4: "標案分級的標準是什麼?高潛力怎麼判定?",
+    // assistant onboarding（首次聚光導覽）
+    onboardAria: "小助手首次使用導覽",
+    onboardStep1Title: "隨時呼叫小助手",
+    onboardStep1Body:
+      "點右下角這顆鈕,隨時都能開口問——標案、投標資格、相似案、專有名詞都行。",
+    onboardStep2Title: "它讀得到你正在看的標案",
+    onboardStep2Body:
+      "在標案頁開啟時,小助手會自動帶入當前標案情境,直接幫你判斷適不適合投。",
+    onboardStep3Title: "只根據查得到的證據",
+    onboardStep3Body:
+      "回答全部來自公開標案資料與共享知識庫,並附上具名來源,不會憑空亂編。",
+    onboardStep4Title: "三種形態,依需求切換",
+    onboardStep4Body:
+      "浮窗輕量起手、側欄邊看邊問、全屏「指揮中心」左對話右情境工作區。",
+    onboardSkip: "跳過",
+    onboardPrev: "上一步",
+    onboardNext: "下一步",
+    onboardStart: "開始使用",
     // push（主動推播）
     pushOpen: "推播通知",
     pushTitle: "主動推播",
@@ -289,6 +307,22 @@ export const STRINGS = {
     deliveryLocation: "履約地點",
     qualification: "資格要求摘要",
     attachments: "已下載檔案",
+    // 標案詳情版本（revision）：履約/資格/押標金/類別/補助/附件
+    revisionDetail: "標案詳情",
+    revisionEmpty: "詳情待擷取（於可連線 PCC 招標網的環境跑過 enrich 後顯示）",
+    revisionFetchedAt: "擷取於",
+    awardMethod: "決標方式",
+    performancePeriod: "履約期限",
+    deposit: "押標金",
+    depositNone: "免押標金",
+    procurementCategory: "採購類別",
+    subsidySource: "補助來源",
+    qualificationCodes: "廠商資格代碼",
+    extraNote: "其他備註",
+    attachmentsEmpty: "尚無附件索引",
+    attachmentArchived: "已歸檔",
+    attachmentSkipped: "略過下載",
+    attachmentOpen: "開啟",
     // 篩選：北部城市 / 當日新案 / 分享 / 儲存搜尋
     northOnly: "北部限定",
     newToday: "當日新案",
@@ -386,6 +420,24 @@ export const STRINGS = {
     assistantSuggest3: "Which ones are closing soon?",
     assistantSuggest4:
       "What are the tiering criteria? How is high-potential decided?",
+    // assistant onboarding
+    onboardAria: "First-time assistant tour",
+    onboardStep1Title: "Call the assistant anytime",
+    onboardStep1Body:
+      "Tap this button in the bottom-right to ask anything — tenders, eligibility, similar cases, or jargon.",
+    onboardStep2Title: "It sees the tender you're viewing",
+    onboardStep2Body:
+      "Open it on a tender page and the assistant pulls in that tender's context to judge fit for you.",
+    onboardStep3Title: "Grounded in real evidence only",
+    onboardStep3Body:
+      "Every answer comes from public tender data and the shared knowledge base, with named sources — never made up.",
+    onboardStep4Title: "Three modes, switch as you go",
+    onboardStep4Body:
+      "Float for a quick start, sidebar to read and ask side by side, fullscreen “command center” with chat left and context right.",
+    onboardSkip: "Skip",
+    onboardPrev: "Back",
+    onboardNext: "Next",
+    onboardStart: "Get started",
     // push
     pushOpen: "Push notifications",
     pushTitle: "Daily picks",
@@ -591,6 +643,23 @@ export const STRINGS = {
     deliveryLocation: "Delivery location",
     qualification: "Qualification summary",
     attachments: "Downloaded files",
+    // Tender detail revision: performance / qualification / bid bond / category
+    revisionDetail: "Tender detail",
+    revisionEmpty:
+      "Detail not fetched yet (shown after the enrich job runs where PCC is reachable)",
+    revisionFetchedAt: "Fetched",
+    awardMethod: "Award method",
+    performancePeriod: "Performance period",
+    deposit: "Bid bond",
+    depositNone: "No bid bond",
+    procurementCategory: "Procurement category",
+    subsidySource: "Subsidy source",
+    qualificationCodes: "Qualification codes",
+    extraNote: "Other notes",
+    attachmentsEmpty: "No attachments indexed",
+    attachmentArchived: "Archived",
+    attachmentSkipped: "Skipped",
+    attachmentOpen: "Open",
     // filter: north cities / new today / share / saved searches
     northOnly: "North only",
     newToday: "New today",

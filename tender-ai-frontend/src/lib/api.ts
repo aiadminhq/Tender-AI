@@ -9,8 +9,10 @@ import type {
   SavedSearch,
   SourceKey,
   Tender,
+  TenderAttachment,
   TenderDetail,
   TenderReasoning,
+  TenderRevisionDetail,
   Tier,
 } from "@/types/domain";
 
@@ -64,9 +66,36 @@ interface UserStateOut {
   status: string | null;
   star: number | null;
 }
+// 後端 AttachmentItem / RevisionDetail（app/schemas/tender.py）；未 enrich 時 revision 為 null。
+interface AttachmentItemRaw {
+  filename: string | null;
+  url: string | null;
+  archived: boolean;
+  skipped: boolean | null;
+  error: string | null;
+}
+interface RevisionDetailRaw {
+  revision_no: number;
+  fetched_at: string | null;
+  award_method: string | null;
+  deposit_required: boolean | null;
+  deposit_amount_twd: number | null;
+  deposit_raw_text: string | null;
+  qualification_codes: string[];
+  qualification_text: string | null;
+  category_main: string | null;
+  category_name: string | null;
+  category_raw: string | null;
+  performance_period: string | null;
+  performance_location: string | null;
+  subsidy_source: string | null;
+  extra_note: string | null;
+  attachments: AttachmentItemRaw[];
+}
 interface TenderDetailResponse extends TenderListItem {
   snapshots: SnapshotItem[];
   user_state: UserStateOut | null;
+  revision: RevisionDetailRaw | null;
 }
 
 const SOURCE_KEYS: SourceKey[] = ["PCC", "TMU", "TPC", "NPC"];
@@ -139,6 +168,37 @@ function adapt(item: TenderListItem): Tender {
   };
 }
 
+function adaptAttachment(a: AttachmentItemRaw): TenderAttachment {
+  return {
+    filename: a.filename,
+    url: a.url,
+    archived: a.archived,
+    skipped: a.skipped,
+    error: a.error,
+  };
+}
+
+function adaptRevision(r: RevisionDetailRaw): TenderRevisionDetail {
+  return {
+    revisionNo: r.revision_no,
+    fetchedAt: r.fetched_at,
+    awardMethod: r.award_method,
+    depositRequired: r.deposit_required,
+    depositAmountTwd: r.deposit_amount_twd,
+    depositRawText: r.deposit_raw_text,
+    qualificationCodes: r.qualification_codes ?? [],
+    qualificationText: r.qualification_text,
+    categoryMain: r.category_main,
+    categoryName: r.category_name,
+    categoryRaw: r.category_raw,
+    performancePeriod: r.performance_period,
+    performanceLocation: r.performance_location,
+    subsidySource: r.subsidy_source,
+    extraNote: r.extra_note,
+    attachments: (r.attachments ?? []).map(adaptAttachment),
+  };
+}
+
 function adaptDetail(item: TenderDetailResponse): TenderDetail {
   return {
     ...adapt(item),
@@ -154,6 +214,7 @@ function adaptDetail(item: TenderDetailResponse): TenderDetail {
           star: item.user_state.star,
         }
       : null,
+    revision: item.revision ? adaptRevision(item.revision) : null,
   };
 }
 

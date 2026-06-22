@@ -1,12 +1,20 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { Lang, TextKey } from "@/i18n/strings";
-import type { Category, Tender } from "@/types/domain";
+import type {
+  Category,
+  Tender,
+  TenderAttachment,
+  TenderRevisionDetail,
+} from "@/types/domain";
 import type { FeasResult } from "@/lib/feasibility";
+import type { SimilarTender } from "@/lib/api";
 import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
-import { Star, Clock } from "lucide-react";
+import { Star, Clock, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { sourceByKey } from "@/data/sources";
+import { formatBudget, formatDateLong } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // 標案詳情的共用小元件：drawer（peek）與詳情頁共用，避免兩處複製。
@@ -149,6 +157,220 @@ export function PlaceholderBlock({
         {t("pendingDesc")}
       </div>
     </div>
+  );
+}
+
+// —— 標案詳情版本（revision）展示：履約／資格／押標金／附件／相似案 ——
+
+/** 押標金顯示：金額優先 → 原文 → 免押標金；皆無則 null（不顯示該格）。 */
+function depositText(
+  rev: TenderRevisionDetail,
+  lang: Lang,
+  t: (k: TextKey) => string,
+): string | null {
+  if (rev.depositAmountTwd != null)
+    return formatBudget(rev.depositAmountTwd, lang);
+  if (rev.depositRawText) return rev.depositRawText;
+  if (rev.depositRequired === false) return t("depositNone");
+  return null;
+}
+
+/** 附件索引清單：檔名 + 歸檔／略過標記 + 開啟連結；空清單顯示提示。 */
+export function AttachmentList({
+  attachments,
+  t,
+}: {
+  attachments: TenderAttachment[];
+  t: (k: TextKey) => string;
+}) {
+  if (!attachments.length) {
+    return <p className="text-[12px] text-ink-dim">{t("attachmentsEmpty")}</p>;
+  }
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {attachments.map((a, i) => (
+        <li key={i} className="flex items-center gap-2 text-[12px]">
+          <FileText size={13} className="shrink-0 text-ink-dim" />
+          <span className="min-w-0 flex-1 truncate text-ink">
+            {a.filename ?? "—"}
+          </span>
+          {a.archived && (
+            <Badge variant="muted">{t("attachmentArchived")}</Badge>
+          )}
+          {a.skipped && (
+            <Badge variant="outline">{t("attachmentSkipped")}</Badge>
+          )}
+          {a.url && (
+            <a
+              href={a.url}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0 text-signal hover:underline"
+            >
+              {t("attachmentOpen")}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** 標案詳情版本：有 revision 時呈現履約/資格/押標金/類別/附件；
+ * 未 enrich（revision 為 null）時優雅退化為空狀態提示。 */
+export function RevisionDetailBlock({
+  revision,
+  lang,
+  t,
+}: {
+  revision?: TenderRevisionDetail | null;
+  lang: Lang;
+  t: (k: TextKey) => string;
+}) {
+  if (!revision) {
+    return (
+      <div>
+        <SectionLabel>{t("revisionDetail")}</SectionLabel>
+        <div className="rounded-md border border-dashed border-border bg-surface-1 px-3 py-2 text-[12px] text-ink-dim">
+          {t("revisionEmpty")}
+        </div>
+      </div>
+    );
+  }
+
+  const deposit = depositText(revision, lang, t);
+  const category =
+    revision.categoryName ??
+    revision.categoryRaw ??
+    revision.categoryMain ??
+    null;
+  const facts: { label: string; value: string }[] = [];
+  if (revision.performanceLocation)
+    facts.push({
+      label: t("deliveryLocation"),
+      value: revision.performanceLocation,
+    });
+  if (revision.performancePeriod)
+    facts.push({
+      label: t("performancePeriod"),
+      value: revision.performancePeriod,
+    });
+  if (revision.awardMethod)
+    facts.push({ label: t("awardMethod"), value: revision.awardMethod });
+  if (deposit) facts.push({ label: t("deposit"), value: deposit });
+  if (category)
+    facts.push({ label: t("procurementCategory"), value: category });
+  if (revision.subsidySource)
+    facts.push({ label: t("subsidySource"), value: revision.subsidySource });
+
+  const hasQualification =
+    Boolean(revision.qualificationText) ||
+    revision.qualificationCodes.length > 0;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-ink-dim">
+          {t("revisionDetail")}
+        </span>
+        {revision.fetchedAt && (
+          <span className="text-[10px] text-ink-dim">
+            {t("revisionFetchedAt")} {formatDateLong(revision.fetchedAt, lang)}
+          </span>
+        )}
+      </div>
+
+      {facts.length > 0 && (
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+          {facts.map((f) => (
+            <Fact key={f.label} label={f.label}>
+              {f.value}
+            </Fact>
+          ))}
+        </dl>
+      )}
+
+      {hasQualification && (
+        <div className="mt-3">
+          <div className="text-[11px] text-ink-dim">{t("qualification")}</div>
+          {revision.qualificationText && (
+            <p className="mt-0.5 text-[13px] leading-relaxed text-ink">
+              {revision.qualificationText}
+            </p>
+          )}
+          {revision.qualificationCodes.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {revision.qualificationCodes.map((c) => (
+                <Badge key={c} variant="outline">
+                  {c}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3">
+        <div className="text-[11px] text-ink-dim">{t("attachments")}</div>
+        <div className="mt-1">
+          <AttachmentList attachments={revision.attachments} t={t} />
+        </div>
+      </div>
+
+      {revision.extraNote && (
+        <div className="mt-3">
+          <div className="text-[11px] text-ink-dim">{t("extraNote")}</div>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-ink">
+            {revision.extraNote}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 相似案清單（向量檢索）：載入中／空集合各有提示；onSelect 供彈窗點擊後關閉。 */
+export function SimilarCasesList({
+  items,
+  loading,
+  t,
+  onSelect,
+}: {
+  items: SimilarTender[];
+  loading: boolean;
+  t: (k: TextKey) => string;
+  onSelect?: () => void;
+}) {
+  if (loading) {
+    return <p className="text-[12px] text-ink-dim">{t("similarLoading")}</p>;
+  }
+  if (!items.length) {
+    return <p className="text-[12px] text-ink-dim">{t("similarEmpty")}</p>;
+  }
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {items.map(({ tender, score }) => (
+        <li key={tender.id}>
+          <Link
+            to={`/tenders/${tender.id}`}
+            onClick={onSelect}
+            className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-2 transition-colors hover:bg-accent"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[12px] font-medium text-ink">
+                {tender.title}
+              </span>
+              <span className="block truncate text-[11px] text-ink-dim">
+                {tender.org}
+              </span>
+            </span>
+            <span className="tnum shrink-0 text-[11px] text-signal">
+              {Math.round(score * 100)}%
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -10,6 +10,7 @@ import { useApp } from "@/store/app-context";
 import { AssistantWindow } from "./assistant-window";
 import { AssistantThread } from "./assistant-thread";
 import { AssistantComposer } from "./assistant-composer";
+import { AssistantOnboarding } from "./assistant-onboarding";
 import { useAssistantChat } from "./use-assistant-chat";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,8 @@ export function AssistantLauncher() {
 
   return (
     <>
+      <AssistantOnboarding onOpenAssistant={() => setOpen(true)} />
+
       {createPortal(
         <Button
           size="icon"

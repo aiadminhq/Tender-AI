@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -10,7 +10,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import type { Tender } from "@/types/domain";
+import type { Tender, TenderRevisionDetail } from "@/types/domain";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
 import { userById } from "@/data/users";
@@ -21,7 +21,13 @@ import {
   daysLeft,
 } from "@/lib/format";
 import { trackEvent } from "@/lib/events";
-import { postRate, postShare } from "@/lib/api";
+import {
+  postRate,
+  postShare,
+  fetchTenderDetail,
+  fetchSimilarTenders,
+  type SimilarTender,
+} from "@/lib/api";
 import { load, save } from "@/lib/storage";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +41,8 @@ import {
   LabelTags,
   FeasibilityBadge,
   DaysLeftBanner,
-  PlaceholderBlock,
+  RevisionDetailBlock,
+  SimilarCasesList,
   RatingStars,
 } from "@/components/tenders/detail-bits";
 import { cn } from "@/lib/utils";
@@ -64,6 +71,10 @@ export function TenderDrawer({
   const [text, setText] = useState("");
   const [rating, setRating] = useState(0);
   const [isPublic, setIsPublic] = useState(false);
+  // 後端 revision 詳情與相似案（彈窗開啟時按 tenderId 抓取）。
+  const [revision, setRevision] = useState<TenderRevisionDetail | null>(null);
+  const [similar, setSimilar] = useState<SimilarTender[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
 
   // 切換不同標案時清空草稿：用「prop 變更時於 render 期調整 state」取代 effect。
   const [lastTenderId, setLastTenderId] = useState(tender?.id);
@@ -80,6 +91,38 @@ export function TenderDrawer({
       load<string>(`visibility:${tender?.id ?? ""}`, "private") === "public",
     );
   }
+
+  // 抓取後端詳情（revision）與相似案；切換標案時以 AbortController 取消前一次請求。
+  const tenderId = tender?.id;
+  useEffect(() => {
+    if (!tenderId) {
+      setRevision(null);
+      setSimilar([]);
+      setSimilarLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const { signal } = controller;
+    setRevision(null);
+    fetchTenderDetail(tenderId, signal)
+      .then((d) => setRevision(d?.revision ?? null))
+      .catch(() => {
+        if (!signal.aborted) setRevision(null);
+      });
+    setSimilar([]);
+    setSimilarLoading(true);
+    fetchSimilarTenders(tenderId, 4, signal)
+      .then((items) => {
+        if (!signal.aborted) setSimilar(items);
+      })
+      .catch(() => {
+        if (!signal.aborted) setSimilar([]);
+      })
+      .finally(() => {
+        if (!signal.aborted) setSimilarLoading(false);
+      });
+    return () => controller.abort();
+  }, [tenderId]);
 
   const comments = tender ? commentsOf(tender.id) : [];
   const starred = tender ? isStarred(tender.id) : false;
@@ -230,11 +273,19 @@ export function TenderDrawer({
                 ) : null;
               })()}
 
-              {/* 待補欄位 */}
-              <PlaceholderBlock label={t("deliveryLocation")} t={t} />
-              <PlaceholderBlock label={t("qualification")} t={t} />
-              <PlaceholderBlock label={t("attachments")} t={t} />
-              <PlaceholderBlock label={t("similarCases")} t={t} />
+              {/* 後端詳情（履約／資格／押標金／附件）；未 enrich 時優雅退化為空狀態 */}
+              <RevisionDetailBlock revision={revision} lang={lang} t={t} />
+
+              {/* 相似案（向量檢索）；點擊後關閉彈窗並導向該案 */}
+              <div>
+                <SectionLabel>{t("similarCases")}</SectionLabel>
+                <SimilarCasesList
+                  items={similar}
+                  loading={similarLoading}
+                  t={t}
+                  onSelect={onClose}
+                />
+              </div>
 
               {/* 詳情動作：原文連結 + 完整詳情頁 */}
               <div className="flex flex-col gap-2 sm:flex-row">
