@@ -156,6 +156,12 @@ async def db_session():
         yield session
 
 
+@pytest.fixture
+def session_factory():
+    """自管 session 生命週期的服務/種子腳本（如 seed_members）注入測試庫 factory。"""
+    return TestSessionLocal
+
+
 async def seed_basic(session: AsyncSession) -> dict[str, int]:
     """植入一組可涵蓋各篩選/排序情境的合成標案。
 

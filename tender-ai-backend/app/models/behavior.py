@@ -45,6 +45,9 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     email: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True)
     role: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 密碼雜湊（pbkdf2_sha256 字串，見 app/core/security.py）。
+    # nullable：佔位／pre-provision 帳號尚未設密碼；登入須有此值。明文永不落地。
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # 第 1 段同意：管理員開通白名單（界定合作範圍）。預設 false，既有資料回填亦 false。
     whitelist_active: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False

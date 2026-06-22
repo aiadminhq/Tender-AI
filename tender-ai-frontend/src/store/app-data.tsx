@@ -23,7 +23,7 @@ import type {
 import { TENDERS } from "@/data/tenders";
 import { KANBAN_CARDS } from "@/data/kanban";
 import { ACTIVITY } from "@/data/activity";
-import { userById } from "@/data/users";
+import { USERS, userById } from "@/data/users";
 import {
   fetchTenders,
   postAccept,
@@ -42,7 +42,6 @@ import {
   type FeasLabels,
 } from "@/lib/feasibility";
 import { NORTH_CITIES, serializeFilter, parseFilter } from "@/lib/url-filter";
-import { useApp } from "@/store/app-context";
 
 // ── 規則初始值 ────────────────────────────────────────────────
 const DEFAULT_FOCUS = ["廁所", "衛浴", "室內裝修", "醫院", "機房"];
@@ -172,7 +171,9 @@ interface AppDataValue {
 const AppDataContext = createContext<AppDataValue | null>(null);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { person } = useApp();
+  // 本地 mock 行為流／看板筆記的作者身分（沿用切換器移除前的預設身分）。
+  // 具名的 Layer B 行為事件改由 events.ts 帶入登入帳號（setCurrentUserId）。
+  const person = USERS[0];
 
   // 後端對接：初始為 mock，掛載後抓真實標案；失敗則維持 mock，不中斷 UI。
   const [tenders, setTenders] = useState<Tender[]>(TENDERS);

@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import type { KanbanCard, KanbanNote } from "@/types/domain";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
-import { userById } from "@/data/users";
+import { USERS, userById } from "@/data/users";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,9 @@ export function CardNotePopover({
   onClose: () => void;
   position: { top: number; left: number };
 }) {
-  const { t, lang, person } = useApp();
+  const { t, lang } = useApp();
+  // 作者比對沿用本地 mock 預設身分（與 app-data 寫入端一致）。
+  const person = USERS[0];
   const { addCardNote, removeCardNote } = useAppData();
   const [input, setInput] = useState("");
   const [submitting, setSubmitting] = useState(false);

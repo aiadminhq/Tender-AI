@@ -13,7 +13,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.schemas.user import ConsentIn, ConsentOut, MeOut, PreferenceProfileOut
+from app.schemas.user import (
+    ConsentIn,
+    ConsentOut,
+    MeOut,
+    PasswordChangeIn,
+    PreferenceProfileOut,
+)
 from app.services import account as asvc
 
 router = APIRouter(tags=["me"])
@@ -26,7 +32,9 @@ async def get_me(
 ) -> MeOut:
     user = await asvc.get_me(session, user_id)
     await session.commit()  # 佔位帳號可能於此建立
-    return MeOut.model_validate(user)
+    out = MeOut.model_validate(user)
+    out.password_is_default = asvc.is_default_password(user)
+    return out
 
 
 @router.put("/me/consent", response_model=ConsentOut)
@@ -37,6 +45,21 @@ async def put_consent(
     user = await asvc.set_consent(session, body.user_id, body.consent_shared)
     await session.commit()
     return ConsentOut.model_validate(user)
+
+
+@router.put("/me/password", response_model=MeOut)
+async def put_password(
+    body: PasswordChangeIn,
+    session: AsyncSession = Depends(get_session),
+) -> MeOut:
+    """本人修改密碼（設定頁）：須帶舊密碼，驗證後換新。回傳帳戶（不含密碼）。"""
+    user = await asvc.change_password(
+        session, body.user_id, body.old_password, body.new_password
+    )
+    await session.commit()
+    out = MeOut.model_validate(user)
+    out.password_is_default = asvc.is_default_password(user)
+    return out
 
 
 @router.get("/me/preference-profile", response_model=PreferenceProfileOut)

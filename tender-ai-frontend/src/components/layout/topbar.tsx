@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { BrandMark } from "@/components/brand";
 import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 import { PushBell } from "@/components/push/push-bell";
-import { PersonMenu } from "./person-menu";
+import { AccountMenu } from "./account-menu";
 import { cn } from "@/lib/utils";
 
 export function Topbar() {
@@ -102,7 +102,7 @@ export function Topbar() {
         </Button>
         <PushBell />
         <AssistantLauncher />
-        <PersonMenu />
+        <AccountMenu />
       </div>
     </header>
   );

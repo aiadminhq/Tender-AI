@@ -1,5 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useAuth } from "@/store/auth-context";
 import { AppShell } from "@/components/layout/app-shell";
+import { LoginPage } from "@/pages/login-page";
 import { DashboardPage } from "@/pages/dashboard-page";
 import { TendersPage } from "@/pages/tenders-page";
 import { TenderDetailPage } from "@/pages/tender-detail-page";
@@ -12,6 +14,20 @@ import { PushPage } from "@/pages/push-page";
 import { AssistantPage } from "@/pages/assistant-page";
 
 export default function App() {
+  const { status } = useAuth();
+
+  // 登入閘門：未驗證 → 登入頁；驗證中 → 簡單載入態；已登入／示範模式 → 進入應用。
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-signal" />
+      </div>
+    );
+  }
+  if (status === "anonymous") {
+    return <LoginPage />;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
