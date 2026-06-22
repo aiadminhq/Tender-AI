@@ -68,7 +68,10 @@ async def test_ingest_daily_reports_idempotent(db_session):
     )
     tender_obj = tender.scalar()
     assert tender_obj is not None
-    assert tender_obj.annotations.get('daily_report_potency') == '高潛力'
+    # ingest 以「首見即定、不覆寫」標註潛力，且報表按日期升序處理。
+    # 此 case 最早出現於 tender-20260605.html（🟡 中潛力），2026-06-09 起才升為
+    # 🟢 高潛力，故全語料庫導入後的首見值為「中潛力」（非 06-15 當日的高潛力）。
+    assert tender_obj.annotations.get('daily_report_potency') == '中潛力'
     assert stats['tenders_created'] > 0  # 新建其他標案
     assert stats['tenders_annotated'] > 0  # 標註潛力等級
 
