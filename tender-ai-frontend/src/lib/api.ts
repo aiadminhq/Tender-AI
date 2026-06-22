@@ -27,6 +27,24 @@ function authHeaders(): Record<string, string> {
   return key ? { "X-API-Key": key } : {};
 }
 
+// ── 登入身分（Layer B 具名回寫） ─────────────────────────────────────
+// 白名單帳號登入後，由 AuthProvider 呼叫 setCurrentUserId 注入 user_id；
+// 行為回寫（save/rate/note/share）與篩選預設即帶上此 id，依登入帳號「具名」
+// 進入合作範圍內共享的學習迴圈。仍受後端兩段式同意把關：consent_shared=False
+// 時後端不匯入共享庫，故具名回寫不違反對外隔離邊界（見 CLAUDE.md）。
+// 示範模式／後端不可達退化登入時維持 null，後端落到預設使用者（不具名）。
+let currentUserId: number | null = null;
+
+/** 設定（或清除）目前登入帳號的 user_id；null＝未具名（示範／退化）。 */
+export function setCurrentUserId(id: number | null): void {
+  currentUserId = id;
+}
+
+/** 把 user_id（若已登入）併入請求 body。 */
+function withUser<T extends Record<string, unknown>>(body: T): T {
+  return currentUserId == null ? body : { ...body, user_id: currentUserId };
+}
+
 // 後端 TenderListItem（app/schemas/tender.py）對應欄位。
 interface TenderListItem {
   id: number;
@@ -402,16 +420,20 @@ export async function fetchReasoningProfile(
 
 // ── 行為回寫（Layer B 共享學習迴圈，fire-and-forget） ──────────────
 // 後端 app/api/v1/behavior.py。Layer B 在白名單(@hqdesign.tw)合作範圍內共享，
-// 供同事與 AI/agent 互相學習。現行 demo 尚未建登入，故暫時省略 user_id（後端
-// 落到預設使用者）；目標模型為白名單登入後帶 user_id 並依登入帳號具名（見 CLAUDE.md）。
+// 供同事與 AI/agent 互相學習。白名單帳號登入後由 setCurrentUserId 注入 user_id，
+// 行為依登入帳號「具名」回寫（見 CLAUDE.md）；未登入／示範模式則省略，後端落到
+// 預設使用者。仍受後端兩段式同意把關（consent_shared=False 時不匯入共享庫）。
 // localStorage 仍是前端真相來源，後端僅作學習匯入：失敗靜默、不阻塞 UI、不回滾。
-async function postBehavior(path: string, body: unknown): Promise<void> {
+async function postBehavior(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<void> {
   if (import.meta.env.VITE_USE_API === "false") return; // 純 mock 模式不外連
   try {
     await fetch(`${API_BASE}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify(body),
+      body: JSON.stringify(withUser(body)),
     });
   } catch {
     /* 盡力寫入，失敗不影響前端狀態 */
@@ -468,7 +490,8 @@ export async function fetchSavedSearches(
   signal?: AbortSignal,
 ): Promise<SavedSearch[]> {
   if (import.meta.env.VITE_USE_API === "false") return [];
-  const res = await fetch(`${API_BASE}/saved-searches`, {
+  const q = currentUserId == null ? "" : `?user_id=${currentUserId}`;
+  const res = await fetch(`${API_BASE}/saved-searches${q}`, {
     headers: authHeaders(),
     signal,
   });
@@ -486,11 +509,13 @@ export async function postSavedSearch(
   const res = await fetch(`${API_BASE}/saved-searches`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({
-      name,
-      query_text: filter.query || null,
-      filter_json: filter,
-    }),
+    body: JSON.stringify(
+      withUser({
+        name,
+        query_text: filter.query || null,
+        filter_json: filter,
+      }),
+    ),
   });
   if (!res.ok) throw new Error(`saved-searches API ${res.status}`);
   return adaptSavedSearch((await res.json()) as SavedSearchOut);

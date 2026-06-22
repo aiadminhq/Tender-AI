@@ -15,12 +15,18 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import DomainValidationError, EntityNotFound, PermissionDenied
+from app.core.security import hash_password, verify_password
 from app.models.behavior import User
 from app.models.preference import PreferenceProfile
 from app.services.behavior import get_or_create_default_user
 
 # 合作範圍網域：白名單帳號原則上須為此網域（見 CLAUDE.md Layer B 治理）
 ALLOWED_EMAIL_DOMAIN = "@hqdesign.tw"
+
+# 種子帳號預設密碼（見 jobs/seed_members.py）。前端據此提示「建議修改密碼」。
+DEFAULT_SEED_PASSWORD = "admin"
+# 密碼最短長度（內部工具，從寬；預設 "admin" 為 5 字元）
+MIN_PASSWORD_LENGTH = 4
 
 
 async def get_me(session: AsyncSession, user_id: int | None) -> User:
@@ -33,6 +39,80 @@ async def get_me(session: AsyncSession, user_id: int | None) -> User:
     user = await session.get(User, user_id)
     if user is None:
         raise EntityNotFound(f"user {user_id} not found")
+    return user
+
+
+def is_default_password(user: User) -> bool:
+    """帳號是否仍使用預設種子密碼（admin）。
+
+    依**儲存的雜湊**比對（單一事實來源），故任何讀取路徑（含 /me）皆可推導，
+    不需仰賴登入當下帶入的明文。前端據此於設定頁提示「建議修改密碼」（不強制）。
+    尚未設密碼的帳號回 False。
+    """
+    if not user.password_hash:
+        return False
+    return verify_password(DEFAULT_SEED_PASSWORD, user.password_hash)
+
+
+def _validate_new_password(password: str) -> None:
+    """新密碼基本規則：非空且不短於最短長度，否則 422。"""
+    if not password or len(password) < MIN_PASSWORD_LENGTH:
+        raise DomainValidationError(
+            f"password must be at least {MIN_PASSWORD_LENGTH} characters"
+        )
+
+
+async def authenticate(session: AsyncSession, email: str, password: str) -> User:
+    """以信箱＋密碼驗證身分（Phase 2 輕量登入）。
+
+    信箱或密碼錯誤、帳號尚未設密碼一律回同一個 403（不洩漏帳號是否存在）。
+    成功回傳 User；本機制不簽發 token，前端依回傳帳戶自行記住身分。
+    """
+    email_norm = (email or "").strip().lower()
+    user = (
+        await session.execute(select(User).where(User.email == email_norm))
+    ).scalar_one_or_none()
+    if user is None or not verify_password(password, user.password_hash):
+        raise PermissionDenied("invalid email or password")
+    return user
+
+
+async def change_password(
+    session: AsyncSession,
+    user_id: int | None,
+    old_password: str,
+    new_password: str,
+) -> User:
+    """本人修改密碼：須通過舊密碼驗證，新密碼通過基本規則後落地（只存雜湊）。
+
+    舊密碼錯誤／帳號尚未設密碼 → 403；新密碼不合規 → 422。Phase 2 須再加
+    「限本人」的伺服器端驗證（目前 user_id 由 body 帶入、未驗證）。
+    """
+    user = await get_me(session, user_id)
+    if not verify_password(old_password, user.password_hash):
+        raise PermissionDenied("old password does not match")
+    _validate_new_password(new_password)
+    # TODO(Phase 2): 驗證呼叫端確為本人（session 推導）
+    user.password_hash = hash_password(new_password)
+    await session.flush()
+    await session.refresh(user)
+    return user
+
+
+async def admin_set_password(
+    session: AsyncSession, user_id: int, new_password: str
+) -> User:
+    """管理員修改／重置某帳號密碼（不需舊密碼）。
+
+    帳號不存在 → 404；新密碼不合規 → 422。權限把關在 API 層（require_admin）。
+    """
+    user = await session.get(User, user_id)
+    if user is None:
+        raise EntityNotFound(f"user {user_id} not found")
+    _validate_new_password(new_password)
+    user.password_hash = hash_password(new_password)
+    await session.flush()
+    await session.refresh(user)
     return user
 
 

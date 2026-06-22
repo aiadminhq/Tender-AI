@@ -19,7 +19,12 @@ from pydantic import BaseModel, ConfigDict
 
 
 class MeOut(BaseModel):
-    """當前登入者的帳戶、白名單與同意狀態。"""
+    """當前登入者的帳戶、白名單與同意狀態。
+
+    `password_is_default` 為 True 表示仍是預設密碼（admin），前端據此於設定頁
+    提示「建議修改密碼」（不強制）。由伺服器端依儲存雜湊推導，故重整／自動登入
+    後仍能正確顯示（非僅登入當下）。
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -30,6 +35,48 @@ class MeOut(BaseModel):
     whitelist_active: bool
     consent_shared: bool
     consent_at: datetime | None
+    password_is_default: bool = False
+
+
+class LoginIn(BaseModel):
+    """登入（Phase 2）：以信箱＋密碼驗證身分。"""
+
+    email: str
+    password: str
+
+
+class LoginOut(BaseModel):
+    """登入成功後回傳的帳戶資料（輕量機制：前端據此記住身分）。
+
+    `password_is_default` 為 True 表示仍是預設密碼（admin），前端據此於設定頁
+    提示「建議修改密碼」（不強制）。後端不回傳任何 token／密碼。
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    email: str | None
+    role: str | None
+    whitelist_active: bool
+    consent_shared: bool
+    consent_at: datetime | None
+    password_is_default: bool = False
+
+
+class PasswordChangeIn(BaseModel):
+    """本人修改密碼（設定頁）：須帶舊密碼驗證後才換新。"""
+
+    # Phase 1 信任邊界：本人身分由 body 帶入、未驗證；Phase 2 改由 session 推導
+    user_id: int | None = None
+    old_password: str
+    new_password: str
+
+
+class AdminPasswordIn(BaseModel):
+    """管理員修改／重置某帳號密碼（不需舊密碼；user_id 由路徑帶入）。"""
+
+    new_password: str
 
 
 class ConsentIn(BaseModel):

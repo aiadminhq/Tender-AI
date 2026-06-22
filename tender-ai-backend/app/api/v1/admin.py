@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import PermissionDenied
 from app.db.session import get_session
-from app.schemas.user import WhitelistIn, WhitelistOut
+from app.schemas.user import AdminPasswordIn, MeOut, WhitelistIn, WhitelistOut
 from app.services import account as asvc
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -51,3 +51,19 @@ async def set_whitelist(
     user = await asvc.set_whitelist(session, body.email, body.whitelist_active)
     await session.commit()
     return WhitelistOut.model_validate(user)
+
+
+@router.post(
+    "/users/{user_id}/password",
+    response_model=MeOut,
+    dependencies=[Depends(require_admin)],
+)
+async def admin_set_password(
+    user_id: int,
+    body: AdminPasswordIn,
+    session: AsyncSession = Depends(get_session),
+) -> MeOut:
+    """管理員修改／重置某帳號密碼（不需舊密碼）。回傳帳戶（不含密碼）。"""
+    user = await asvc.admin_set_password(session, user_id, body.new_password)
+    await session.commit()
+    return MeOut.model_validate(user)

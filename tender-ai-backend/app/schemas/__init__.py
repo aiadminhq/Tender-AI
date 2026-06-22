@@ -22,9 +22,13 @@ from app.schemas.tender import (
     UserStateOut,
 )
 from app.schemas.user import (
+    AdminPasswordIn,
     ConsentIn,
     ConsentOut,
+    LoginIn,
+    LoginOut,
     MeOut,
+    PasswordChangeIn,
     PreferenceProfileOut,
     WhitelistIn,
     WhitelistOut,
@@ -58,4 +62,9 @@ __all__ = [
     "WhitelistIn",
     "WhitelistOut",
     "PreferenceProfileOut",
+    # auth / password（Phase 2）
+    "LoginIn",
+    "LoginOut",
+    "PasswordChangeIn",
+    "AdminPasswordIn",
 ]
