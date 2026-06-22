@@ -84,10 +84,62 @@ export interface TenderUserState {
   star: number | null;
 }
 
-/** 標案完整詳情（對應後端 TenderDetail）：主檔 + 歷史快照 + 使用者狀態。 */
+/** 附件索引（對應後端 AttachmentItem）：實檔離庫，這裡只帶索引與下載結果註記。 */
+export interface TenderAttachment {
+  filename: string | null;
+  url: string | null;
+  /** 是否已歸檔到本地（後端 storage_uri 有值） */
+  archived: boolean;
+  /** enrich 時是否略過下載 */
+  skipped?: boolean | null;
+  /** 略過/失敗原因（如「檔案過大」） */
+  error?: string | null;
+}
+
+/** 單案最新詳情版本（對應後端 RevisionDetail，皆 Layer A 公開欄位）。
+ *
+ * 僅在 enrich job 於「能連到 PCC 招標網」的環境跑過後才有值；未 enrich 時為 null，
+ * 前端據此優雅退化為空狀態。 */
+export interface TenderRevisionDetail {
+  revisionNo: number;
+  /** 詳情擷取時間（ISO datetime） */
+  fetchedAt?: string | null;
+  /** 決標方式（如「最有利標」） */
+  awardMethod?: string | null;
+  /** 是否須繳押標金 */
+  depositRequired?: boolean | null;
+  /** 押標金金額（TWD） */
+  depositAmountTwd?: number | null;
+  /** 押標金原文 */
+  depositRawText?: string | null;
+  /** 廠商資格代碼 */
+  qualificationCodes: string[];
+  /** 資格要求摘要 */
+  qualificationText?: string | null;
+  /** 採購類別大類（工程/財物/勞務） */
+  categoryMain?: string | null;
+  /** 採購類別名稱 */
+  categoryName?: string | null;
+  /** 採購類別原文 */
+  categoryRaw?: string | null;
+  /** 履約期限 */
+  performancePeriod?: string | null;
+  /** 履約地點 */
+  performanceLocation?: string | null;
+  /** 補助來源 */
+  subsidySource?: string | null;
+  /** 其他備註 */
+  extraNote?: string | null;
+  /** 附件索引 */
+  attachments: TenderAttachment[];
+}
+
+/** 標案完整詳情（對應後端 TenderDetail）：主檔 + 歷史快照 + 最新詳情版本 + 使用者狀態。 */
 export interface TenderDetail extends Tender {
   snapshots: TenderSnapshot[];
   userState?: TenderUserState | null;
+  /** 最新詳情版本（履約地點/資格/押標金/附件…）；未 enrich 時為 null。 */
+  revision?: TenderRevisionDetail | null;
 }
 
 // ── SL3 意圖與推理（對應後端 app/schemas/reasoning.py，皆 Layer A 公開欄位）──
@@ -152,6 +204,13 @@ export interface TenderReasoning {
   profile: CriteriaProfile;
 }
 
+export interface KanbanNote {
+  id: string;
+  author: string;
+  createdAt: string;
+  body: string;
+}
+
 export interface KanbanCard {
   id: string;
   tenderId?: string;
@@ -163,6 +222,7 @@ export interface KanbanCard {
   deadline?: string;
   blocked?: boolean;
   blockReason?: string;
+  notes?: KanbanNote[];
 }
 
 export interface User {

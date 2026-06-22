@@ -1,0 +1,329 @@
+---
+title: "Tender AI 小助手整合計畫｜三形態、首次引導與情境感知"
+brief: "以繁體中文為預設，把已落地的 RAG 對話助手升級為會引導使用者、能感知當前標案、可在浮窗／側欄／全屏間切換的右側助手。"
+kind: "plan"
+version: 2
+localOnly: true
+---
+
+# Tender AI 小助手整合計畫
+
+這套助手的「大腦」其實已經接通：使用者在右側問問題，後端會同時跑兩條檢索（標案 SQL＋語意＋相似案、知識庫向量＋關鍵字 RRF），把命中的證據塞進一段 grounding system prompt，再用 Ollama 串流回答；Ollama 不可用時自動退回模板，HTTP 仍是 200。前端則以 NDJSON 逐段累積、把 `delta.text`（累積全文）直接 replace 到最後一則 assistant，並把證據渲染成可點擊的來源卡。
+
+換句話說，「LLM 當資料／知識庫助手」這件事已經能動。本計畫要補的，是讓它**好用且越用越貼近使用者**的四個真實缺口：① 首次引導（onboarding，新人不知道它在、能幹嘛）、② 全屏「指揮中心工作台」（重度使用時的第三形態）、③ 情境感知（助手讀得到你正在看的標案）、④ 對話留存（refresh 不再清空）。其中有兩、三個決策一旦上線就難以回頭（情境傳輸格式、對話留存的公開 id、Layer B 邊界），會在下方先定調。
+
+<Callout id="decision-shape" tone="decision">
+
+**已定調**：全屏形態＝「指揮中心工作台」——左側對話、右側情境工作區（當前標案的可行性、證據來源與快速動作）。
+**開發優先序＝ 3 > 2 > 1 > 4**：先做①首次引導，再做②全屏，接著③情境感知接線，最後④對話留存。
+情境感知（③）雖排第三，但全屏工作區與「針對這案」的引導都需要一小片唯讀的 `tender_id` 情境，因此建議把**最小情境切片**提前隨 Phase 1–2 落地（見下方 Open Questions），主軸仍維持 3 > 2 > 1 > 4。
+
+</Callout>
+
+## 使用者會看到什麼
+
+David 第一次進站，畫面變暗、右下啟動鈕被聚光點亮，coach-mark 一句話說明「點這顆鈕就能問問題，它讀得到你正在看的標案」。他點開後是**浮窗**，空白狀態給四個建議題；問一題後浮窗可一鍵「展開為側欄」，側欄頂端有「正在看：標案 #115-0621-01」的情境 chip，回答下方是具名證據來源卡。當他要同時看對話與標案細節，按「全屏」進入指揮中心：左側對話、右側是當前標案的可行性、證據與承接／略過／轉發按鈕。整段繁體中文為預設，頂部 `EN／中` 可切換。
+
+## 目前已經有什麼（避免重做）
+
+<Table
+  id="current-status-table"
+  columns={["能力", "現況", "對應檔案 / 符號"]}
+  rows={[
+    ["兩路檢索 RAG", "標案 SQL＋語意＋相似案、知識庫向量＋關鍵字 RRF 已可用", "services/assistant.py：_collect_candidates／_collect_knowledge"],
+    ["grounding 回答", "Layer-A-only system prompt，嚴禁虛構清單外標案", "services/assistant.py：_GROUNDING_SYSTEM（269–283）"],
+    ["串流與退回", "NDJSON meta→delta→done；Ollama 失效退模板、HTTP 200", "services/assistant.py：stream_chat_events（342–428）"],
+    ["前端串接", "整段歷史送上、delta 為累積全文 replace、來源卡＋埋點", "lib/assistant.ts：streamAssistantChat；use-assistant-chat.ts"],
+    ["兩種形態", "浮窗（createPortal＋可拖拉）／側欄（右抽屜）已可切換並持久化", "assistant-window.tsx：AssistantMode、MODE_STORAGE_KEY（28）"],
+    ["請求 schema", "已宣告 thread_id 與 context 欄位（目前前後端皆未使用）", "schemas/assistant.py：AssistantChatRequest（34–41）"],
+  ]}
+/>
+
+## 四個真正的開發缺口
+
+### ① 首次引導（onboarding）— 全新
+
+目前完全沒有 onboarding：新人進站不知道右下角有助手、也不知道它能讀標案。Phase 1 以半透明遮罩 + 聚光圈點亮既有啟動鈕，搭配 coach-mark 分步解說；不使用 framer-motion，沿用專案既有的 tailwind animate。首次完成後寫入 `localStorage` 旗標（沿用 `assistant-window.tsx` 既有的 `saveMode`／`loadMode` 寫法），之後不再自動跳出。
+
+### ② 全屏指揮中心 — 擴充既有形態
+
+`AssistantMode` 目前只有 `sidebar | float`，需要新增 `fullscreen`。可重用既有 portal、`MODE_STORAGE_KEY` 持久化，連 `Maximize2` icon 都已 import；新增的是左對話／右情境工作區的版面與第三段切換按鈕。
+
+右側情境工作區**不是新後端**：可行性估算與理由重用 `GET /api/v1/tenders/{id}/reasoning`（reasoning.py），標案明細重用 `GET /api/v1/tenders/{id}`（tenders.py），相似案重用 `GET /api/v1/search/similar/{id}`（search.py），承接／略過／轉發就近呼叫既有 `behavior.py` 的 `accept`／`save`／`share`。沒有當前 `tender_id`（③ 尚未接線或不在標案頁）時，右欄落到空狀態而非空殼——因此這一欄要能動，依賴最小情境切片先到位（見 Open Questions 的 `q-context-slice`）。
+
+<AnnotatedCode
+  id="gap-mode-code"
+  filename="src/components/assistant/assistant-window.tsx"
+  language="ts"
+  code={"type AssistantMode = \"sidebar\" | \"float\";\n\nconst MODE_STORAGE_KEY = \"tender-assistant-mode\";\n\nfunction loadMode(): AssistantMode {\n  return localStorage.getItem(MODE_STORAGE_KEY) === \"float\"\n    ? \"float\"\n    : \"sidebar\";\n}"}
+  annotations={[
+    {
+      lines: "1",
+      label: "缺 fullscreen",
+      note: "擴充為 \"sidebar\" | \"float\" | \"fullscreen\"；全屏即指揮中心版面。",
+    },
+    {
+      lines: "3-8",
+      label: "持久化可重用",
+      note: "既有 MODE_STORAGE_KEY／load/saveMode 直接沿用，只需多認 fullscreen 一值。",
+    },
+  ]}
+/>
+
+### ③ 情境感知接線 — 免 DB migration、需擴充檢索簽名
+
+這是「讀得到你正在看的標案」的關鍵：前端 `streamAssistantChat` 的 body 目前**只送 `messages`**，後端 `stream_chat_events` 也**只取最後一則 user 訊息當 prompt**，兩端都沒碰 `context`。請求 schema 早已宣告 `thread_id` 與 `context`，所以**不需要 DB migration、也不需要改請求結構**；但仍是「接線＋小改函式簽名」而非純前端工：後端 `_collect_candidates(session, prompt)` 要擴充成能收 `context.tender_id`，在有當前標案時把該案與其相似案優先帶進候選。
+
+<AnnotatedCode
+  id="gap-context-fe-code"
+  filename="src/lib/assistant.ts"
+  language="ts"
+  code={"const body = {\n  messages: messages.map((m) => ({\n    role: m.role,\n    content: [{ type: \"text\", text: m.text }],\n  })),\n};\n\nconst res = await fetch(`${API_BASE}/assistant/chat`, {\n  method: \"POST\",\n  body: JSON.stringify(body),\n});"}
+  annotations={[
+    {
+      lines: "1-5",
+      label: "只送 messages",
+      note: "需加入 context（route / tender_id / lang）與 thread_id；schema 已能接收。",
+    },
+  ]}
+/>
+
+<AnnotatedCode
+  id="gap-context-be-code"
+  filename="app/services/assistant.py"
+  language="python"
+  code={"async def stream_chat_events(\n    session: AsyncSession, payload: AssistantChatRequest\n) -> AsyncIterator[str]:\n    prompt = _latest_user_prompt(payload)\n    evidence = await _collect_candidates(session, prompt)\n    knowledge = await _collect_knowledge(session, prompt)"}
+  annotations={[
+    {
+      lines: "4",
+      label: "忽略 payload.context",
+      note: "只用最後一則 user 訊息；當前標案資訊全丟失。",
+    },
+    {
+      lines: "5-6",
+      label: "檢索未加情境",
+      note: "讓 _collect_candidates 在有 context.tender_id 時優先帶入該案與其相似案。",
+    },
+  ]}
+/>
+
+### ④ 對話留存 — 新增資料表
+
+`turns` 目前是純 `useState`，refresh 即清空、跨裝置不存在。Phase 4 以新表 `assistant_threads` / `assistant_messages` 留存（見下方資料模型），thread 以公開 id 對外。
+
+<AnnotatedCode
+  id="gap-persist-code"
+  filename="src/components/assistant/use-assistant-chat.ts"
+  language="ts"
+  code={"export function useAssistantChat(scope: string) {\n  const [turns, setTurns] = useState<Turn[]>([]);\n  const [draft, setDraft] = useState(\"\");\n  // ...refresh 後 turns 歸零，沒有任何持久化\n}"}
+  annotations={[
+    {
+      lines: "2",
+      label: "無持久化",
+      note: "需在開啟時用 thread_id 載回歷史，送出時逐則寫入後端。",
+    },
+  ]}
+/>
+
+## 分階段路線（依 3 > 2 > 1 > 4）
+
+<Checklist
+  id="phases-checklist"
+  items={[
+    {
+      id: "phase-1",
+      label: "Phase 1 — 首次聚光導覽（對應優先序 3）",
+      note: "重用：既有啟動鈕、tailwind animate、saveMode/loadMode 的 localStorage 寫法。新增：SpotlightTour 元件、onboarded 旗標、coach-mark 分步＋助手主動引導第一題。",
+    },
+    {
+      id: "phase-2",
+      label: "Phase 2 — 全屏指揮中心（對應優先序 2）",
+      note: "重用：assistant-window.tsx 的 portal、MODE_STORAGE_KEY、已 import 的 Maximize2；右欄重用 tenders／reasoning／similar／behavior 既有端點。新增：fullscreen 值、左對話／右情境工作區版面、三段式切換鈕。",
+    },
+    {
+      id: "phase-3",
+      label: "Phase 3 — 情境感知接線（對應優先序 1）",
+      note: "重用：已宣告 context/thread_id 的請求 schema（免 migration）、use-assistant-chat 的 send()。新增：body 帶 context、stream_chat_events 消費 context.tender_id 進檢索與 prompt。",
+    },
+    {
+      id: "phase-4",
+      label: "Phase 4 — 對話留存（對應優先序 4）",
+      note: "重用：既有 fire-and-forget 寫入模式。新增：assistant_threads／assistant_messages 表＋migration、thread_id 鑄造與開啟時載回。",
+    },
+  ]}
+/>
+
+## 情境傳輸格式（難以回頭的決策）
+
+情境物件一旦由前端送出、被後端與行為記錄消費，改 key 就會同時打到兩端與已存的 Layer B 事件。先把形狀定下來，第一版只放唯讀、最小欄位：
+
+<Endpoint
+  id="chat-context-endpoint"
+  method="POST"
+  path="/api/v1/assistant/chat"
+  summary="對話串流，新增 context 與 thread_id"
+  request={{
+    "contentType": "application/json",
+    "example": "{\n  \"messages\": [{ \"role\": \"user\", \"content\": [{ \"type\": \"text\", \"text\": \"這案我們適合投嗎？\" }] }],\n  \"thread_id\": \"thr_8Qk2Lm9vXp4t\",\n  \"context\": {\n    \"route\": \"/tenders/:id\",\n    \"tender_id\": 4821,\n    \"lang\": \"zh-Hant\"\n  }\n}"
+  }}
+  responses={[
+    {
+      "status": "200",
+      "description": "NDJSON 串流：meta → delta（累積全文）→ done",
+      "example": "{\"type\":\"meta\",\"scope\":\"tender_sql + semantic_search + knowledge_base\",\"sources\":[...]}"
+    }
+  ]}
+>
+
+`context` 與 `thread_id` 皆為選填，schema（`AssistantChatRequest`，`extra="allow"`）已能接收，未來要加欄位（例如「只在我看得到的清單裡找」）不會破壞既有呼叫。第一版只放 `route／tender_id／lang` 三個唯讀欄位，後端只消費 `tender_id`。`tender_id` 在線上是整數主鍵（範例 `4821`）；UI 顯示的案號 `#115-0621-01` 是另一個展示欄位，兩者不混用。`context` 隨當前路由即時重算——只有「新的一次提問」才帶上當下的 `context`，不會回頭改寫或中斷進行中的串流。
+
+</Endpoint>
+
+## 對話留存資料模型（難以回頭的決策）
+
+**身分軸對齊既有 Layer B**：`owner_user_id` 採 `int FK → users.id`，與既有全部 Layer B 表（`events`／`tender_user_state`／`annotations`…）同一身分軸，具名透過 join `users.name／email` 取得，**不**在 thread 表另存帳號字串。現況 demo 尚無登入，寫入會落到 `name="default"` 的單一使用者（見 `services/behavior.py` `resolve_user_id`）——這也是下方治理段與 Open Questions 的關鍵前提。
+
+`assistant_threads.public_id` 是對外可見字串，一旦被分享或寫進事件就難以更換命名法；採不可猜的 id（nanoid/base62 ≥ 12 字元，加 unique 約束），不採可枚舉的短序號。
+
+**與既有 `events` 的關係（避免雙寫）**：`assistant_messages` 為對話全文的單一真相來源（逐則 `content`＋`sources`）；既有 `events`（已記 `type=search` 的提問、`click_link` 的點來源）維持輕量埋點，不重複保存全文。去識別化管線以 `assistant_messages` 為準，`events` 僅供行為計數。
+
+<DataModel
+  id="thread-data-model"
+  entities={[
+    {
+      id: "assistant_threads",
+      name: "assistant_threads",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "public_id", type: "text" },
+        { name: "owner_user_id", type: "int", fk: "users.id" },
+        { name: "route", type: "text" },
+        { name: "tender_id", type: "bigint" },
+        { name: "created_at", type: "timestamptz" }
+      ]
+    },
+    {
+      id: "assistant_messages",
+      name: "assistant_messages",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "thread_id", type: "uuid", fk: "assistant_threads.id" },
+        { name: "role", type: "text" },
+        { name: "content", type: "text" },
+        { name: "sources", type: "jsonb" },
+        { name: "created_at", type: "timestamptz" }
+      ]
+    }
+  ]}
+  relations={[
+    { from: "assistant_messages", to: "assistant_threads", kind: "n-1" }
+  ]}
+/>
+
+## 資料三層與共享邊界
+
+<Callout id="governance-callout" tone="warning">
+
+對話內容與「點了哪個來源、問了什麼」屬 **Layer B（行為與想法）**。共享邊界＝**白名單（原則上 @hqdesign.tw、由管理者開通）內共享、依登入帳號具名、對外永不揭露**，且須**已取得本人同意**。對外發佈／匯出一律去識別化，行為資料不進公開版控與 GitHub Pages 對外視圖。預設**不**把對話自動納入共享學習，僅在明確同意後依所選機制納入（見 Open Questions）。
+
+**現況前提（重要）**：demo 尚未有登入，`resolve_user_id` 會把所有寫入落到 `name="default"` 的單一使用者。也就是說，「依登入帳號具名共享」在登入落地前**還不成立**——Phase 4 的留存可以先做，但「具名」與「共享學習」必須等帳號身分到位後才開（見 Open Questions 的 `q-owner-login`）。
+
+</Callout>
+
+<Callout id="grounding-risk-callout" tone="risk">
+
+**回答仍維持 Layer-A-only**：`_GROUNDING_SYSTEM` 要求回答只根據候選標案清單＋知識庫片段、嚴禁虛構清單外標案、一律繁體中文。加入 `context` 只是改變「檢索哪些候選」，**不可**把 Layer B 行為明細灌進回答或證據卡。
+**雲端環境連不到 Ollama／PCC**：情境接線與 grounding 來源正確性需在能連線的本地環境驗證；雲端只跑得了不依賴 LLM 的單元測試與型別檢查。
+
+</Callout>
+
+## 驗證
+
+<Checklist
+  id="verify-checklist"
+  items={[
+    { id: "v-build", label: "前端 `npm run build`、`npm test` 通過；後端 pytest 通過" },
+    { id: "v-modes", label: "形態巡迴：浮窗 → 側欄 → 全屏可互切，且 MODE_STORAGE_KEY 在 refresh 後保留最後形態" },
+    { id: "v-onboard", label: "首次進站聚光導覽只出現一次；localStorage 旗標可抑制重複跳出" },
+    { id: "v-context", label: "在 /tenders/:id 開助手提問，Network 面板可見 POST body 帶 context.tender_id；回傳 sources 對應當前標案（標案 #id 一致）" },
+    { id: "v-grounding", label: "回答只引用候選清單＋知識庫片段，無 Layer B 行為明細外洩；Ollama 不可用時退回模板仍 HTTP 200" },
+    { id: "v-persist", label: "送出後重整頁面，以 thread_id 載回對話歷史與來源卡" },
+  ]}
+/>
+
+### Open Questions
+
+<Callout id="decisions-locked" tone="decision">
+
+**已定案（2026-06-22，採各題建議值）**——下方表單保留作為選項與理由的對照，實作以本段為準：
+
+- **`q-context-slice` → 是**：Phase 1–2 一併落地最小情境切片（只讀 `tender_id`）；主軸仍維持 3 > 2 > 1 > 4。
+- **`q-persist-store` → DB 表**：新增 `assistant_threads`／`assistant_messages`（需 migration），不走純 localStorage。
+- **`q-fullscreen-right` → 當前討論的標案**：全屏右欄預設帶當前 `tender_id` 的可行性／證據／快速動作。
+- **`q-owner-login` → 先留存、不具名、不共享**：`owner_user_id` 暫記 `default`、thread 標 `pending-consent`；登入身分落地後再回填具名與開放共享。
+- **`q-layerb-learning` → 逐串對話同意**；但**預設一律不納入**，且在 `q-owner-login` 的登入身分到位前不開具名／共享，**對外永不揭露**這條紅線不變。
+
+</Callout>
+
+<QuestionForm
+  id="assistant-open-questions"
+  questions={[
+    {
+      id: "q-context-slice",
+      title: "是否在 Phase 1–2 一併落地最小情境切片（只讀 tender_id）？",
+      subtitle: "全屏工作區與「針對這案」的引導都需要它；主軸仍維持 3 > 2 > 1 > 4。",
+      mode: "single",
+      options: [
+        { id: "yes", label: "是，提前落地唯讀 tender_id 切片", detail: "Phase 1–2 即可顯示「正在看」與情境建議題，接線風險低。", recommended: true },
+        { id: "no", label: "否，嚴格照 3 > 2 > 1 > 4 順序", detail: "情境完全留到 Phase 3，前期全屏／引導以無情境版本先上。" }
+      ],
+      required: true
+    },
+    {
+      id: "q-persist-store",
+      title: "對話留存的儲存層？",
+      mode: "single",
+      options: [
+        { id: "db", label: "新增 assistant_threads／assistant_messages 表", detail: "跨裝置、可作為 Layer B 來源（需同意）；要 migration。", recommended: true },
+        { id: "local", label: "僅 localStorage", detail: "最省，但跨裝置不存在、無法納入共享學習。" },
+        { id: "none", label: "暫不留存", detail: "維持現況，refresh 即清空。" }
+      ],
+      required: true
+    },
+    {
+      id: "q-fullscreen-right",
+      title: "全屏右側情境工作區的預設內容？",
+      mode: "single",
+      options: [
+        { id: "current-tender", label: "當前討論的標案", detail: "與對話對齊，承接／略過／轉發就近操作。", recommended: true },
+        { id: "watchlist", label: "收藏／待決策清單", detail: "偏向總覽，適合批次決策但與單一對話較鬆。" },
+        { id: "today-new", label: "今日新案", detail: "偏向探索，情境關聯最弱。" }
+      ]
+    },
+    {
+      id: "q-owner-login",
+      title: "登入身分還沒落地前，Phase 4 的 owner 與共享怎麼處理？",
+      subtitle: "現況寫入都會落到 name=\"default\" 單一使用者，「依登入帳號具名」此刻無法成立。",
+      mode: "single",
+      options: [
+        { id: "persist-no-share", label: "先留存、不具名、不共享", detail: "owner_user_id 暫記 default，thread 標記 pending-consent；等登入到位再回填具名與開放共享。最小風險。", recommended: true },
+        { id: "block-until-login", label: "Phase 4 整段等登入落地後再做", detail: "最保守，但對話留存（refresh 不清空）也一併延後，使用者體驗缺口拉長。" },
+        { id: "stub-account", label: "先以佔位帳號（如 HQadmin）綁定", detail: "可提早驗證具名鏈路，但佔位帳號的資料是否納入共享、事後如何歸屬需另行界定。" }
+      ],
+      required: true
+    },
+    {
+      id: "q-layerb-learning",
+      title: "對話納入 Layer B 共享學習的同意機制怎麼設計？（預設一律不納入）",
+      subtitle: "紅線固定為「預設不納入、對外永不揭露」；這裡只決定『同意』要怎麼收。",
+      mode: "single",
+      options: [
+        { id: "per-thread", label: "逐串對話同意（整串一次勾選）", detail: "操作最輕、心智負擔低；顆粒度較粗，整串一起納入。", recommended: true },
+        { id: "per-message", label: "逐則訊息同意", detail: "顆粒度最細、最保守，但每則都要決定、摩擦高。" },
+        { id: "defer", label: "暫不開放納入", detail: "Phase 4 先只做留存、不做共享學習，等同意流程設計成熟再開。" }
+      ],
+      required: true
+    }
+  ]}
+  submitLabel="送出回覆"
+/>

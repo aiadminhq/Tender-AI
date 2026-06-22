@@ -34,7 +34,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
-import { Fact, MeterRow, SectionLabel } from "@/components/tenders/detail-bits";
+import {
+  Fact,
+  MeterRow,
+  SectionLabel,
+  RevisionDetailBlock,
+} from "@/components/tenders/detail-bits";
 import { ReasoningPanel } from "@/components/tenders/reasoning-panel";
 import { cn } from "@/lib/utils";
 
@@ -381,6 +386,15 @@ export function TenderDetailPage() {
                 </div>
               </div>
             )}
+          </section>
+
+          {/* 標案詳情（履約／資格／押標金／附件）；未 enrich 時優雅退化為空狀態 */}
+          <section className="rounded-xl border border-border bg-card p-5">
+            <RevisionDetailBlock
+              revision={detail?.revision}
+              lang={lang}
+              t={t}
+            />
           </section>
 
           {/* SL3 為什麼·推理：可中標判準吻合度 + 逐條依據 + 判準輪廓 */}

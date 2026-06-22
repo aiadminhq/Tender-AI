@@ -2,9 +2,11 @@
 """v1 API 聚合 router（掛載於 /api/v1）。"""
 from fastapi import APIRouter
 
+from app.api.v1.admin import router as admin_router
 from app.api.v1.assistant import router as assistant_router
 from app.api.v1.behavior import router as behavior_router
 from app.api.v1.learning import router as learning_router
+from app.api.v1.me import router as me_router
 from app.api.v1.push import router as push_router
 from app.api.v1.reasoning import router as reasoning_router
 from app.api.v1.search import router as search_router
@@ -18,5 +20,7 @@ api_router.include_router(assistant_router)
 api_router.include_router(reasoning_router)
 api_router.include_router(push_router)
 api_router.include_router(learning_router)
+api_router.include_router(me_router)
+api_router.include_router(admin_router)
 
 __all__ = ["api_router"]

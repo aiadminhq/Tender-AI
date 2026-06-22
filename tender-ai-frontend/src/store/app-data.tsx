@@ -14,6 +14,7 @@ import type {
   Comment,
   FilterState,
   KanbanCard,
+  KanbanNote,
   SavedSearch,
   SortKey,
   TaskStatus,
@@ -22,6 +23,7 @@ import type {
 import { TENDERS } from "@/data/tenders";
 import { KANBAN_CARDS } from "@/data/kanban";
 import { ACTIVITY } from "@/data/activity";
+import { userById } from "@/data/users";
 import {
   fetchTenders,
   postAccept,
@@ -140,6 +142,9 @@ interface AppDataValue {
   // 看板
   cards: KanbanCard[];
   moveCard: (cardId: string, status: TaskStatus) => void;
+  addCardNote: (cardId: string, body: string) => void;
+  removeCardNote: (cardId: string, noteId: string) => void;
+  forwardCard: (cardId: string, toUserId: string) => void;
   // 動態
   activity: ActivityItem[];
   // 規則
@@ -621,6 +626,67 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [pushActivity],
   );
 
+  const addCardNote = useCallback(
+    (cardId: string, body: string) => {
+      const trimmed = body.trim();
+      if (!trimmed) return;
+      const note: KanbanNote = {
+        id: uid(),
+        author: person.id,
+        createdAt: nowISO(),
+        body: trimmed,
+      };
+      let card: KanbanCard | undefined;
+      setCards((prev) =>
+        prev.map((c) => {
+          if (c.id !== cardId) return c;
+          card = c;
+          return {
+            ...c,
+            notes: [...(c.notes ?? []), note],
+          };
+        }),
+      );
+      if (card) {
+        pushActivity("comment", `「${card.title}」新增註記`);
+        trackEvent("card_note_added", { payload: { cardId } });
+      }
+    },
+    [person.id, pushActivity],
+  );
+
+  const removeCardNote = useCallback((cardId: string, noteId: string) => {
+    setCards((prev) =>
+      prev.map((c) => {
+        if (c.id !== cardId) return c;
+        return {
+          ...c,
+          notes: (c.notes ?? []).filter((n) => n.id !== noteId),
+        };
+      }),
+    );
+    trackEvent("card_note_removed", { payload: { cardId, noteId } });
+  }, []);
+
+  const forwardCard = useCallback(
+    (cardId: string, toUserId: string) => {
+      let card: KanbanCard | undefined;
+      setCards((prev) =>
+        prev.map((c) => {
+          if (c.id !== cardId) return c;
+          card = c;
+          return { ...c, assignee: toUserId };
+        }),
+      );
+      if (card) {
+        const toName = userById(toUserId)?.name ?? toUserId;
+        pushActivity("move", `「${card.title}」轉傳給 ${toName}`);
+        trackEvent("card_forwarded", { payload: { cardId, toUserId } });
+      }
+    },
+    [pushActivity],
+  );
+
   const addKeyword = useCallback(
     (list: RuleList, word: string) => {
       const w = word.trim();
@@ -733,6 +799,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addComment,
       cards,
       moveCard,
+      addCardNote,
+      removeCardNote,
+      forwardCard,
       activity,
       focusKeywords,
       avoidKeywords,
@@ -770,6 +839,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addComment,
       cards,
       moveCard,
+      addCardNote,
+      removeCardNote,
+      forwardCard,
       activity,
       focusKeywords,
       avoidKeywords,

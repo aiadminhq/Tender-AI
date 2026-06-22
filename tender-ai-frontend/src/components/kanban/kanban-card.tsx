@@ -1,12 +1,29 @@
-import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useRef, useState } from "react";
+import { AlertTriangle, MessageSquare, Send } from "lucide-react";
 import type { KanbanCard } from "@/types/domain";
 import { useApp } from "@/store/app-context";
 import { userById } from "@/data/users";
 import { formatDate } from "@/lib/format";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { Avatar } from "@/components/ui/avatar";
+import { CardNotePopover } from "./card-note-popover";
+import { CardForwardMenu } from "./card-forward-menu";
 import { cn } from "@/lib/utils";
+
+const NOTE_POPOVER_W = 288; // w-72
+const FORWARD_MENU_W = 224; // w-56
+
+type Anchor = { top: number; left: number };
+
+/** 依觸發按鈕的位置，算出固定定位用的座標（右緣防溢出）。 */
+function anchorBelow(el: HTMLElement | null, width: number): Anchor | null {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return {
+    top: r.bottom + 6,
+    left: Math.max(12, Math.min(r.left, window.innerWidth - width - 12)),
+  };
+}
 
 export function KanbanCardView({
   card,
@@ -17,7 +34,12 @@ export function KanbanCardView({
 }) {
   const { t, lang } = useApp();
   const [dragging, setDragging] = useState(false);
+  const [notePos, setNotePos] = useState<Anchor | null>(null);
+  const [forwardPos, setForwardPos] = useState<Anchor | null>(null);
+  const noteBtnRef = useRef<HTMLButtonElement>(null);
+  const forwardBtnRef = useRef<HTMLButtonElement>(null);
   const assignee = userById(card.assignee);
+  const noteCount = card.notes?.length ?? 0;
 
   return (
     <div
@@ -65,8 +87,51 @@ export function KanbanCardView({
         ) : (
           <span />
         )}
+        <div className="flex items-center gap-1">
+          <button
+            ref={noteBtnRef}
+            onClick={(e) => {
+              e.stopPropagation();
+              setForwardPos(null);
+              setNotePos(anchorBelow(noteBtnRef.current, NOTE_POPOVER_W));
+            }}
+            className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-ink-dim transition-colors hover:bg-surface-2 hover:text-ink-muted"
+            title={t("cardNotes")}
+            aria-label={t("cardNotes")}
+          >
+            <MessageSquare size={13} />
+            {noteCount > 0 && <span>{noteCount}</span>}
+          </button>
+          <button
+            ref={forwardBtnRef}
+            onClick={(e) => {
+              e.stopPropagation();
+              setNotePos(null);
+              setForwardPos(anchorBelow(forwardBtnRef.current, FORWARD_MENU_W));
+            }}
+            className="rounded p-1 text-ink-dim transition-colors hover:bg-surface-2 hover:text-ink-muted"
+            title={t("forwardCard")}
+            aria-label={t("forwardCard")}
+          >
+            <Send size={13} />
+          </button>
+        </div>
         {assignee && <Avatar user={assignee} size="sm" />}
       </div>
+      {notePos && (
+        <CardNotePopover
+          card={card}
+          position={notePos}
+          onClose={() => setNotePos(null)}
+        />
+      )}
+      {forwardPos && (
+        <CardForwardMenu
+          card={card}
+          position={forwardPos}
+          onClose={() => setForwardPos(null)}
+        />
+      )}
     </div>
   );
 }

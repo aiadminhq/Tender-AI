@@ -1,0 +1,329 @@
+---
+title: "個人資料管理、白名單登入與學習庫具名綁定"
+brief: "讓白名單同事具名登入、管理個人資料與共享同意，並把行為綁到「團隊共享＋個人化」雙軌學習庫。先做 UI＋資料模型，真正認證留待 Phase 2。"
+kind: "plan"
+version: 2
+localOnly: true
+---
+
+這份計畫把三件事併成一條連貫的路：**白名單登入 → 個人資料管理 → 把使用者身分綁進後端學習庫**。對使用者來說，登入後會多出一頁「個人設定」，能看到自己的帳戶、調整「是否把行為分享給團隊」、檢視 AI 從自己行為學到的偏好；對系統來說，從此每一筆收藏／評分／註記都帶著**具名的白名單帳號**，餵進兩條學習線——團隊共享的 `keyword_weights`，以及每人專屬的個人化偏好。
+
+上方畫布是四個關鍵畫面（登入、個人設定、同意彈窗、白名單管理）。以下是技術計畫。
+
+### 決策摘要
+
+<Callout id="decision-core" tone="decision">
+
+**三個已拍板的方向（本計畫據此設計）：**
+
+1. **先 UI＋資料模型，認證延後**：Phase 1 只交付畫面與資料表結構；密碼／SSO／session 保護放到 **Phase 2**。Phase 1 沿用現行 `HQadmin` 佔位帳號，不阻斷既有流程。
+2. **兩段式同意**：第 1 段由**管理員開通白名單**（界定合作範圍），第 2 段由**本人在個人設定自行同意**共享。兩段都成立，行為才會具名匯入團隊共享庫。
+3. **雙軌學習都要**：同時建「團隊共享知識庫」與「每人個人化偏好輪廓」。團隊線沿用既有 `keyword_weights`，個人線新增專屬資料表。
+
+**實作層級也已確認（原 Open Questions，已拍板）：**
+
+- **權重儲存**：個人線採**新增 `user_keyword_weights` 表**（`user_id + term` 複合主鍵），既有 `keyword_weights` 與 revisions 管線不動。
+- **同意範圍**：同意**只 gate「匯入團隊共享庫」**；個人化（只用本人資料、只服務本人）免同意即可運作。
+- **撤回處理**：撤回**只停止後續匯入、不回溯重算**已聚合的去識別化權重。
+
+</Callout>
+
+### 使用者會看到什麼
+
+David（@hqdesign.tw、已被管理員開通）在登入頁輸入公司信箱進入系統。第一次他在「個人設定」看到一張**共享同意**卡片，點開彈窗讀完範圍說明後按「同意並加入」——從這一刻起，他的收藏與評分會以「David」具名進入團隊庫。即使他**不同意**，AI 仍會在「我的偏好輪廓」卡片裡，用他自己的行為替他做個人化推薦（這條線只用他自己的資料，不外流）。
+
+管理員 Aaron 在「白名單管理」頁開通／停用同事帳號，但他**看不到、也不能代勾**任何人的共享同意——同意永遠是本人的動作。
+
+### 現況 → 目標
+
+<Table
+  id="now-vs-target"
+  columns={["面向", "現況", "目標"]}
+  rows={[
+    ["登入身分", "前端寫死、行為不帶 user_id，後端落到預設 user", "白名單具名帳號，行為帶具名 user_id"],
+    ["個人資料", "無個人設定頁", "個人設定頁：帳戶／共享同意／偏好輪廓／我的貢獻"],
+    ["共享同意", "無同意機制，CLAUDE.md 已要求同意基礎", "兩段式（管理員白名單＋本人同意）＋可撤回，帶 consent_at"],
+    ["學習綁定", "keyword_weights 為全域團隊權重，無個人化", "團隊線（keyword_weights）＋個人線（新表），依登入帳號具名"],
+    ["管理", "無白名單管理介面", "管理員可開通／停用帳號，無法代勾同意"],
+  ]}
+/>
+
+### 資料模型變更
+
+<DataModel
+  id="schema-delta"
+  entities={[
+    { id: "users", name: "users（既有，擴充）", fields: [
+      { name: "id", type: "int", pk: true },
+      { name: "name", type: "varchar(64)" },
+      { name: "email", type: "varchar(128) unique", nullable: true },
+      { name: "role", type: "varchar(32)", nullable: true },
+      { name: "whitelist_active", type: "bool 〔新·預設 false〕" },
+      { name: "consent_shared", type: "bool 〔新·預設 false，回填亦 false〕" },
+      { name: "consent_at", type: "timestamp 〔新〕", nullable: true },
+      { name: "created_at", type: "timestamp" },
+    ]},
+    { id: "events", name: "events（既有）", fields: [
+      { name: "id", type: "int", pk: true },
+      { name: "user_id", type: "int", fk: true },
+      { name: "type", type: "varchar(32)" },
+      { name: "tender_id", type: "int", fk: true, nullable: true },
+      { name: "payload", type: "jsonb", nullable: true },
+    ]},
+    { id: "preference_profiles", name: "preference_profiles〔新〕", fields: [
+      { name: "id", type: "int", pk: true },
+      { name: "user_id", type: "int unique", fk: true },
+      { name: "top_keywords", type: "jsonb" },
+      { name: "avoid_keywords", type: "jsonb" },
+      { name: "preferred_categories", type: "jsonb" },
+      { name: "budget_min", type: "int", nullable: true },
+      { name: "budget_max", type: "int", nullable: true },
+      { name: "updated_at", type: "timestamp" },
+    ]},
+    { id: "user_keyword_weights", name: "user_keyword_weights〔新·個人線〕", fields: [
+      { name: "user_id", type: "int", pk: true, fk: true },
+      { name: "term", type: "varchar(128)", pk: true },
+      { name: "polarity", type: "varchar(16)" },
+      { name: "weight", type: "float" },
+      { name: "support", type: "int" },
+      { name: "updated_at", type: "timestamp" },
+    ]},
+    { id: "keyword_weights", name: "keyword_weights（既有·團隊線，不動）", fields: [
+      { name: "term", type: "varchar(128)", pk: true },
+      { name: "polarity", type: "varchar(16)" },
+      { name: "weight", type: "float" },
+      { name: "support", type: "int" },
+      { name: "notes", type: "text", nullable: true },
+      { name: "updated_at", type: "timestamp" },
+    ]},
+  ]}
+  relations={[
+    { from: "events", to: "users", kind: "N-1" },
+    { from: "preference_profiles", to: "users", kind: "1-1" },
+    { from: "user_keyword_weights", to: "users", kind: "N-1" },
+  ]}
+/>
+
+雙軌學習落在兩張表：團隊線**沿用既有 `keyword_weights`**（全域聚合權重，連同 `keyword_weight_revisions` 修訂鏈一起保留，不動既有學習管線）；個人線**新增 `user_keyword_weights`**（以 `user_id + term` 為複合主鍵）。這樣個人權重與團隊權重彼此獨立、互不污染。`preference_profiles` 則存較高層的個人化輪廓（重點／避免關鍵字、偏好類別、預算區間），直接餵畫面上的「我的偏好輪廓」卡片。`users` 擴充三欄承載白名單與同意狀態（皆預設 `false`，既有資料回填亦為 `false`，保守起見不預先開通、不預先視為已同意）。
+
+**寫入路徑（讀寫分離）**：`user_keyword_weights` 與 `preference_profiles` 都是**衍生表**，由 `app/jobs/learn_keywords.py` 擴充的 per-user 聚合計算後寫入（個人線只吃本人 `events`）；`GET /api/v1/me/preference-profile` 等 API **只讀不算**。亦即本計畫除了讀取端點，還需在學習任務裡新增個人線的計算邏輯，否則表會是空的。
+
+### Layer B 治理紅線
+
+<Callout id="layerb-guardrail" tone="warning">
+
+本計畫直接觸及 **Layer B（同事行為與想法）**，必須守住 CLAUDE.md 的邊界：
+
+- **同意基礎**：行為具名匯入團隊共享庫，須同時滿足「管理員開白名單」＋「本人 `consent_shared = true`」。撤回後**停止後續匯入**。
+- **共享範圍**：僅限 @hqdesign.tw 白名單同事與專案 AI，依登入帳號**具名**標示貢獻者。
+- **對外隔離**：行為資料**不進公開版控／GitHub Pages 對外視圖**；任何對外發佈或匯出一律**去識別化**。
+- 個人化線（`user_keyword_weights`、`preference_profiles`）只用本人資料、只服務本人，**不進團隊庫、不對任何他人揭露**。
+
+</Callout>
+
+### 兩段式同意與雙軌學習
+
+<Mermaid
+  id="consent-learning-flow"
+  source={`flowchart TD
+  A["管理員開通白名單<br/>users.whitelist_active = true"] --> B["本人登入"]
+  B --> C{"本人已同意共享?<br/>consent_shared"}
+  C -- "否" --> D["僅個人化學習<br/>user_keyword_weights、preference_profiles"]
+  C -- "是" --> E["個人化學習（本人）"]
+  C -- "是" --> F["具名匯入團隊共享庫<br/>keyword_weights"]
+  D --> G["本人推薦更準"]
+  E --> G
+  F --> H["白名單同事與 AI 共同受惠"]`}
+  caption="第 1 段管理員開白名單、第 2 段本人同意；同意只解鎖『團隊共享匯入』，個人化學習無論是否同意都進行。"
+/>
+
+### 當前使用者 API
+
+<Endpoint
+  id="ep-me"
+  method="GET"
+  path="/api/v1/me"
+  summary="取得當前登入者的帳戶、白名單與同意狀態"
+  auth="白名單 session（Phase 2 接入；Phase 1 回傳佔位帳號）"
+  params={[]}
+  responses={[
+    { status: 200, description: "目前使用者", example: '{ "id": 1, "name": "David", "email": "david@hqdesign.tw", "role": "member", "whitelist_active": true, "consent_shared": true, "consent_at": "2026-06-22T08:00:00Z" }' },
+    { status: 401, description: "未登入（Phase 2）" },
+  ]}
+>
+個人設定頁載入時呼叫，決定畫面顯示哪個帳號、同意開關的初始狀態與管理權限。
+</Endpoint>
+
+### 共享同意 API
+
+<Endpoint
+  id="ep-consent"
+  method="PUT"
+  path="/api/v1/me/consent"
+  summary="本人設定／撤回共享同意（第 2 段）"
+  auth="白名單 session（須本人；管理員不可代呼叫）"
+  params={[]}
+  request={{ contentType: "application/json", example: '{ "consent_shared": true }' }}
+  responses={[
+    { status: 200, description: "更新後狀態", example: '{ "consent_shared": true, "consent_at": "2026-06-22T08:00:00Z" }' },
+    { status: 403, description: "非本人或帳號未在白名單內" },
+  ]}
+>
+`consent_shared = true` 時寫入 `consent_at` 並開始具名匯入團隊庫；設為 `false` 即撤回。**已拍板**：撤回只停止後續匯入，已聚合的去識別化衍生物**不回溯重算**。
+</Endpoint>
+
+### 個人偏好輪廓 API
+
+<Endpoint
+  id="ep-preference"
+  method="GET"
+  path="/api/v1/me/preference-profile"
+  summary="取得 AI 從本人行為學到的個人化偏好"
+  auth="白名單 session（僅本人可讀）"
+  params={[]}
+  responses={[
+    { status: 200, description: "個人偏好輪廓", example: '{ "top_keywords": ["整修", "醫療", "室內"], "avoid_keywords": ["道路", "土木"], "preferred_categories": ["工程", "財物"], "budget_min": 8000000, "budget_max": 24000000, "updated_at": "2026-06-22T07:50:00Z" }' },
+  ]}
+>
+驅動「我的偏好輪廓」卡片。資料只來自本人 `events`，不需共享同意即可運作。
+</Endpoint>
+
+### 白名單管理 API
+
+<Endpoint
+  id="ep-whitelist"
+  method="POST"
+  path="/api/v1/admin/whitelist"
+  summary="管理員開通／停用白名單帳號（第 1 段）"
+  auth='管理員（users.role = "admin"，穩定列舉值 member/admin；Phase 2 伺服器端強制驗證）'
+  params={[]}
+  request={{ contentType: "application/json", example: '{ "email": "ken@hqdesign.tw", "whitelist_active": true }' }}
+  responses={[
+    { status: 200, description: "帳號白名單狀態已更新", example: '{ "id": 3, "email": "ken@hqdesign.tw", "whitelist_active": true }' },
+    { status: 403, description: "非管理員" },
+    { status: 422, description: "信箱非 @hqdesign.tw 網域" },
+  ]}
+>
+搭配 `GET /api/v1/admin/whitelist` 列出所有帳號與其白名單／同意狀態。管理員只改 `whitelist_active`，**不得**改任何人的 `consent_shared`。
+</Endpoint>
+
+### 行為寫入注入具名 user_id
+
+<Diff
+  id="diff-postbehavior"
+  filename="tender-ai-frontend/src/lib/api.ts"
+  language="ts"
+  mode="split"
+  before={`async function postBehavior(path: string, body: unknown): Promise<void> {
+  if (import.meta.env.VITE_USE_API === "false") return;
+  try {
+    await fetch(\`\${API_BASE}\${path}\`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    /* 盡力寫入，失敗不影響前端狀態 */
+  }
+}`}
+  after={`async function postBehavior(path: string, body: unknown): Promise<void> {
+  if (import.meta.env.VITE_USE_API === "false") return;
+  const user = getCurrentUser(); // 白名單登入後的具名帳號
+  try {
+    await fetch(\`\${API_BASE}\${path}\`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ ...(body as object), user_id: user?.id }),
+    });
+  } catch {
+    /* 盡力寫入，失敗不影響前端狀態 */
+  }
+}`}
+  annotations={[
+    { side: "after", lines: "3", label: "具名來源", note: "從白名單 session 取出登入帳號（Phase 1 為 HQadmin/選定帳號，Phase 2 為真實 session）" },
+    { side: "after", lines: "8", label: "注入 user_id", note: "後端 Event.user_id 落具名帳號，取代目前的預設 user" },
+  ]}
+/>
+
+既有 `postSave / postAccept / postNote / postRate / postShare` 都走這條 `postBehavior`，改這一處即涵蓋大部分行為。**但 `postSavedSearch` 走自己的 `fetch(\`\${API_BASE}/saved-searches\`)`、不經 `postBehavior`，須另外補上同樣的 `user_id` 注入**（否則「儲存的搜尋」會匿名落到預設 user）。
+
+**誠實標註（信任邊界）**：Phase 1 的 `user_id` 由前端 body 帶入，後端 `resolve_user_id()` 不驗證來源——**任何呼叫端都可偽造任意 `user_id`**，因此 Phase 1 的「具名」僅在白名單／本機環境內可信，不可作為對外可信來源。**Phase 2 必須改由伺服器端 session 推導 `user_id`**（忽略 body 帶入值），具名才真正可信。
+
+### 檔案異動範圍
+
+<FileTree
+  id="file-map"
+  title="預計新增／修改"
+  entries={[
+    { path: "tender-ai-backend/app/models/behavior.py", change: "modified", note: "users 加 whitelist_active / consent_shared / consent_at" },
+    { path: "tender-ai-backend/app/models/preference.py", change: "added", note: "preference_profiles 模型（個人化輪廓）" },
+    { path: "tender-ai-backend/app/models/knowledge.py", change: "modified", note: "新增 user_keyword_weights（個人線）；keyword_weights 不動" },
+    { path: "tender-ai-backend/alembic/versions/xxxx_profile_consent.py", change: "added", note: "users 加 3 欄（預設 false）＋建 preference_profiles / user_keyword_weights" },
+    { path: "tender-ai-backend/app/api/v1/me.py", change: "added", note: "GET /api/v1/me、PUT /api/v1/me/consent、GET /api/v1/me/preference-profile" },
+    { path: "tender-ai-backend/app/api/v1/admin.py", change: "added", note: "GET/POST /api/v1/admin/whitelist" },
+    { path: "tender-ai-backend/app/api/v1/__init__.py", change: "modified", note: "include_router 註冊 me / admin（api_router prefix=/api/v1）" },
+    { path: "tender-ai-backend/app/schemas/user.py", change: "added", note: "MeOut / ConsentIn / WhitelistIn / PreferenceProfileOut（目前無此檔）" },
+    { path: "tender-ai-backend/app/jobs/learn_keywords.py", change: "modified", note: "團隊聚合加 consent-aware join（只納入 whitelist_active && consent_shared 的行為）；新增計算個人線 user_keyword_weights / preference_profiles" },
+    { path: "tender-ai-frontend/src/lib/api.ts", change: "modified", note: "postBehavior 注入 user_id；postSavedSearch 亦補注入；新增 me / consent / whitelist client helpers" },
+    { path: "tender-ai-frontend/src/lib/session.ts", change: "added", note: "getCurrentUser / 白名單身分（Phase 1 localStorage，Phase 2 接 session）" },
+    { path: "tender-ai-frontend/src/pages/profile.tsx", change: "added", note: "個人設定頁（四張 Bento 卡）" },
+    { path: "tender-ai-frontend/src/pages/admin-whitelist.tsx", change: "added", note: "白名單管理頁" },
+    { path: "tender-ai-frontend/src/components/consent-dialog.tsx", change: "added", note: "共享同意彈窗（第 2 段）" },
+    { path: "tender-ai-frontend/src/types/domain.ts", change: "modified", note: "User / Consent / PreferenceProfile 型別" },
+  ]}
+/>
+
+### 分階段交付
+
+<Table
+  id="phasing"
+  columns={["階段", "範圍", "驗收"]}
+  rows={[
+    ["Phase 1（本次）", "四個畫面 UI＋資料模型＋migration＋API 骨架；身分以白名單帳號選擇（沿用 HQadmin 佔位），postBehavior 帶 user_id", "畫面可操作、表已建、行為帶具名 user_id、同意狀態可存取"],
+    ["Phase 2", "真正認證（密碼／SSO）、session 與權限保護、管理員強制驗證、撤回回溯策略落地", "未登入擋下、管理 API 僅管理員可呼叫、同意門檻在伺服器端強制"],
+  ]}
+/>
+
+### 風險與緩解
+
+<Callout id="risks" tone="risk">
+
+- **Phase 1 沒有真認證、`user_id` 可偽造**：`resolve_user_id()` 不驗證 body 帶入的 `user_id`，呼叫端可冒名（見上「行為寫入」段）。緩解：整支 API 目前已在 `app/main.py` 掛 `Depends(require_api_key)`，Phase 1 限本機／白名單環境使用；`/api/v1/admin/*` 與 `/api/v1/me/consent` 先加暫時性 header 檢查並標記 TODO；**Phase 2 改由伺服器端 session 推導 `user_id` 與 role，忽略 body 值**。
+- **同意門檻不能只在前端，否則行為仍可能未經同意入庫**：團隊聚合須在**伺服器端**過濾。緩解：在 `app/jobs/learn_keywords.py` 的團隊聚合加一道 **consent-aware join**——只納入 `whitelist_active && consent_shared` 的使用者行為。這是**真實新增工作**（既有聚合對全體 events 一視同仁，不分同意），非單純設定旗標。
+- **撤回的回溯**：已聚合進 `keyword_weights` 的去識別化權重難以單點移除。**已拍板**：撤回只停止後續匯入、不回溯重算；既有原始 `events` 保留但自撤回時點起不再納入團隊聚合（consent-aware join 以當下 `consent_shared` 為準）。
+- **複合主鍵 user_id + term**：避免 NULL 進主鍵的問題（這也是不在 keyword_weights 加 nullable user_id 的原因），但需確認 Alembic 與既有查詢相容。
+
+</Callout>
+
+### 驗證清單
+
+<Checklist
+  id="verify"
+  items={[
+    { id: "v1", label: "Alembic migration 可 upgrade/downgrade，既有 keyword_weights 與 revisions 不受影響" },
+    { id: "v2", label: "GET /api/v1/me 回傳白名單與同意狀態；PUT /api/v1/me/consent 寫入 consent_at 並可撤回" },
+    { id: "v3", label: "POST /api/v1/admin/whitelist 拒絕非 @hqdesign.tw 信箱、拒絕非管理員（Phase 1 暫以 header 檢查）" },
+    { id: "v4", label: "前端收藏／評分／儲存搜尋後，events 落具名 user_id（含 postSavedSearch，非預設 user）" },
+    { id: "v5", label: "未同意者：team keyword_weights 的 consent-aware join 不納入其行為；個人線仍更新" },
+    { id: "v8", label: "learn_keywords 任務確實產出 user_keyword_weights / preference_profiles，GET /api/v1/me/preference-profile 非空" },
+    { id: "v6", label: "個人設定四張卡與白名單管理頁通過 impeccable product 模式稽核（房規字體／16px 圓角／些微陰影）" },
+    { id: "v7", label: "新增文案 zh／en 成對，繁中為預設" },
+  ]}
+/>
+
+### 已確認決策與剩餘問題
+
+三項難回溯子決策皆已拍板（見上方「決策摘要」）：**權重儲存＝新增個人權重表**、**同意範圍＝只 gate 團隊匯入**、**撤回處理＝停止後續匯入不回溯**。以下僅留一個自由補充欄，給實作前任何剩餘疑慮。
+
+<QuestionForm
+  id="open-questions"
+  questions={[
+    {
+      id: "q-other",
+      title: "其他疑慮或補充？（非必填）",
+      mode: "freeform",
+      placeholder: "例如 Phase 1 身分切換方式、管理員角色定義、白名單以外的邀請流程……",
+    },
+  ]}
+  submitLabel="提交計畫回覆"
+/>

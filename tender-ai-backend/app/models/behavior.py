@@ -45,6 +45,19 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     email: Mapped[str | None] = mapped_column(String(128), unique=True, nullable=True)
     role: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 第 1 段同意：管理員開通白名單（界定合作範圍）。預設 false，既有資料回填亦 false。
+    whitelist_active: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    # 第 2 段同意：本人自行同意把行為具名匯入團隊共享庫。預設 false，回填亦 false。
+    # whitelist_active && consent_shared 兩者皆真，行為才會具名進團隊聚合（見 jobs/learn_keywords）。
+    consent_shared: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    # 本人按下「同意」的時間；撤回（consent_shared→false）時不清空，僅停止後續匯入。
+    consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

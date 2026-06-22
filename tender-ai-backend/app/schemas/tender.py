@@ -87,8 +87,46 @@ class UserStateOut(BaseModel):
     star: int | None
 
 
+class AttachmentItem(BaseModel):
+    """投標須知等附件索引（Layer A 公開來源；實檔離庫，這裡只回索引）。"""
+
+    filename: str | None = None
+    url: str | None = None
+    # 是否已歸檔到本地（storage_uri 有值）；skipped／error 為 enrich 下載結果註記
+    archived: bool = False
+    skipped: bool | None = None
+    error: str | None = None
+
+
+class RevisionDetail(BaseModel):
+    """單案最新詳情版本（tender_revisions 現值投影，皆 Layer A 公開欄）。
+
+    僅在 enrich job 於「能連到 PCC 招標網」的環境跑過後才有值；未 enrich 的案
+    （tenders.current_revision_id 為空）此物件為 None，前端據此優雅退化為空狀態。
+    """
+
+    revision_no: int
+    fetched_at: datetime | None = None
+    award_method: str | None = None
+    deposit_required: bool | None = None
+    deposit_amount_twd: int | None = None
+    deposit_raw_text: str | None = None
+    qualification_codes: list[str] = Field(default_factory=list)
+    qualification_text: str | None = None
+    category_main: str | None = None
+    category_name: str | None = None
+    category_raw: str | None = None
+    performance_period: str | None = None
+    performance_location: str | None = None
+    subsidy_source: str | None = None
+    extra_note: str | None = None
+    attachments: list[AttachmentItem] = Field(default_factory=list)
+
+
 class TenderDetail(TenderListItem):
-    """單案詳情：主檔 + 最新快照 + 歷史快照 + 該使用者狀態。"""
+    """單案詳情：主檔 + 最新快照 + 最新詳情版本 + 歷史快照 + 該使用者狀態。"""
 
     snapshots: list[SnapshotItem] = Field(default_factory=list)
     user_state: UserStateOut | None = None
+    # 最新詳情版本（履約地點/資格/押標金/附件…）；未 enrich 時為 None。
+    revision: RevisionDetail | None = None

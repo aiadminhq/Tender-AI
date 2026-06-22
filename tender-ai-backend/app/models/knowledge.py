@@ -162,6 +162,37 @@ class KeywordWeightRevision(Base):
     )
 
 
+class UserKeywordWeight(Base):
+    """層級 C：個人線關鍵字權重（雙軌學習的「個人化」軌）。
+
+    與團隊線 ``KeywordWeight`` 結構平行，但**以 ``user_id + term`` 為複合主鍵**，
+    只吃本人 ``events``、只服務本人——個人權重與團隊權重彼此獨立、互不污染。
+    由 ``app/jobs/learn_keywords.py`` 的 per-user 聚合計算後寫入（衍生表，
+    GET 端點只讀不算）。
+
+    **同意邊界**：個人化線**不需共享同意**即可運作（只用本人資料、不進團隊庫、
+    不對任何他人揭露）；共享同意只 gate 團隊線 ``KeywordWeight`` 的具名匯入。
+    複合主鍵避免 NULL user_id 進主鍵（這也是不在 ``KeywordWeight`` 加 nullable
+    user_id 的原因）。
+    """
+    __tablename__ = "user_keyword_weights"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    term: Mapped[str] = mapped_column(String(128), primary_key=True)
+    # 'positive'（重點詞） | 'negative'（避免詞）
+    polarity: Mapped[str] = mapped_column(String(16), index=True, nullable=False)
+    # 同團隊線：TF-IDF / 詞頻比 等計算結果，絕對值越大權重越高
+    weight: Mapped[float] = mapped_column(Float, nullable=False)
+    # 支援度（該詞在本人多少樣本中出現），越高信心越高
+    support: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+        nullable=False, index=True
+    )
+
+
 class EvolutionLog(Base):
     """層級 C：自我進化稽核日誌（SL6 self-evolve）。
 

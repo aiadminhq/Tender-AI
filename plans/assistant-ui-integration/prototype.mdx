@@ -1,0 +1,103 @@
+<Prototype
+  title="Tender AI 小助手｜引導→三形態 Prototype"
+  brief="從首次聚光導覽開始，點啟動鈕進浮窗，再操作浮窗↔側欄↔全屏指揮中心的互切。"
+  surface="desktop"
+  initialScreenId="assistant-onboarding"
+>
+<PrototypeScreen
+  id="assistant-onboarding"
+  title="首次聚光導覽"
+  summary="半透明遮罩點亮右下啟動鈕，coach-mark 解說；點下一步或啟動鈕進入浮窗。"
+  surface="desktop"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="position:relative;display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:12px">
+    <div style="display:flex;align-items:center;width:100%;gap:10px;border-bottom:1.4px solid var(--wf-line);padding-bottom:10px;white-space:nowrap"><strong>投標作戰台</strong><span class="wf-muted">標案情報</span><div style="flex:1"></div><button><span data-icon="search"></span></button><button>EN</button><button><span data-icon="user"></span></button></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex:1;min-height:0"><div class="wf-card"><strong>今日新案 6</strong><small class="wf-muted">北部 · 工程</small></div><div class="wf-card"><strong>已收藏 12</strong></div><div class="wf-card"><strong>待決策 4</strong></div></div>
+    <div style="position:absolute;inset:0;background:rgba(15,23,42,.55);border-radius:16px"></div>
+    <button data-goto="assistant-float" style="position:absolute;right:18px;bottom:18px;width:60px;height:60px;border-radius:999px;background:var(--wf-accent);color:var(--wf-accent-fg);box-shadow:0 0 0 6px var(--wf-accent-soft)"><strong>AI</strong></button>
+    <div class="wf-card" style="position:absolute;right:96px;bottom:30px;width:280px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center"><span class="wf-pill accent">1 / 4</span><div style="flex:1"></div><button data-goto="assistant-float" style="border:0;padding:0;background:none"><small class="wf-muted">跳過</small></button></div><strong>隨時呼叫小助手</strong><small class="wf-muted">點這顆鈕就能問問題。它讀得到你正在看的標案，回答只根據查得到的公開資料與共享知識庫。</small><div style="display:flex;gap:8px"><button>上一步</button><button class="primary" data-goto="assistant-float">下一步</button></div></div>
+  </div>`}
+/>
+
+<PrototypeScreen
+  id="assistant-float"
+  title="① 浮窗 Float"
+  summary="導覽後的輕量起手形態（回訪者持久化預設為側欄）：空白問候＋四個建議題。點建議題或送出展開為側欄；點全屏進指揮中心。"
+  surface="desktop"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:14px;gap:10px;max-width:440px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--wf-line);padding-bottom:10px"><span class="wf-pill accent">AI</span><strong>標案小助手</strong><div style="flex:1"></div><button data-goto="assistant-sidebar" title="展開為側欄">側欄</button><button data-goto="assistant-fullscreen" title="放大為全屏">全屏</button><button title="關閉">✕</button></div>
+    <div class="wf-box" style="display:flex;flex-direction:column;gap:6px"><strong>嗨，我是你的標案助手</strong><small class="wf-muted">我讀得到目前公開的標案資料與共享知識庫，回答只根據查得到的證據，不會亂編。試試這些：</small></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button data-goto="assistant-sidebar" style="text-align:left">今天有哪些值得關注的新案？</button>
+      <button data-goto="assistant-sidebar" style="text-align:left">這個標案我們適合投嗎？</button>
+      <button data-goto="assistant-sidebar" style="text-align:left">找出與這案相似的歷史標案</button>
+      <button data-goto="assistant-sidebar" style="text-align:left">解釋「最有利標」是什麼意思</button>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex;gap:8px;align-items:center"><input style="flex:1" placeholder="輸入問題…"><button class="primary" data-goto="assistant-sidebar"><span data-icon="send"></span></button></div>
+  </div>`}
+/>
+
+<PrototypeScreen
+  id="assistant-sidebar"
+  title="② 側欄 Sidebar"
+  summary="串流回答＋具名證據來源；頂端情境 chip 顯示正在看的標案。可縮回浮窗或放大為全屏。"
+  surface="desktop"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:14px;gap:10px;max-width:520px;margin:0 auto;border-left:1px solid var(--wf-line)">
+    <div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--wf-line);padding-bottom:10px"><span class="wf-pill accent">AI</span><strong>標案小助手</strong><div style="flex:1"></div><button data-goto="assistant-float" title="縮為浮窗">浮窗</button><button data-goto="assistant-fullscreen" title="放大為全屏">全屏</button><button title="關閉">✕</button></div>
+    <div class="wf-pill accent" style="align-self:flex-start"><span class="mono">正在看</span>　市立醫院門診空間整修工程 #115-0621-01</div>
+    <div style="display:flex;flex-direction:column;gap:10px;flex:1;overflow:auto">
+      <div style="align-self:flex-end;max-width:85%" class="wf-box accent">這個標案我們適合投嗎？</div>
+      <div class="wf-card" style="display:flex;flex-direction:column;gap:8px"><small class="wf-muted">小助手</small><p>就公開資料看，這案與你們近一年承接的醫療空間整修高度重疊：採購性質為工程、預算 NT$ 18.6M、公開招標，截止前還有 10 天，時程可行<span style="display:inline-block;width:7px;height:14px;background:var(--wf-accent);vertical-align:-2px"></span></p></div>
+      <div class="wf-box" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center"><strong>證據來源</strong><div style="flex:1"></div><small class="wf-muted">3 筆</small></div>
+        <div class="wf-card" style="display:flex;flex-direction:column;gap:3px;padding:9px"><div style="display:flex;gap:6px;align-items:center"><span class="wf-pill accent">標案</span><small class="wf-muted">PCC · 命中</small></div><small>市立醫院門診空間整修工程 #115-0621-01</small></div>
+        <div class="wf-card" style="display:flex;flex-direction:column;gap:3px;padding:9px"><div style="display:flex;gap:6px;align-items:center"><span class="wf-pill">相似</span><small class="wf-muted">語意 0.82</small></div><small>區域醫院候診區改善工程 #114-1130</small></div>
+        <div class="wf-card" style="display:flex;flex-direction:column;gap:3px;padding:9px"><div style="display:flex;gap:6px;align-items:center"><span class="wf-pill">知識庫</span><small class="wf-muted">評選辦法 §3</small></div><small>最有利標的評分項目與配分原則</small></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center"><input style="flex:1" placeholder="追問…"><button class="primary"><span data-icon="send"></span></button></div>
+  </div>`}
+/>
+
+<PrototypeScreen
+  id="assistant-fullscreen"
+  title="③ 全屏 指揮中心工作台"
+  summary="左對話／右情境工作區：當前標案可行性、證據與承接／略過／轉發。可縮回浮窗或側欄。"
+  surface="desktop"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:12px">
+    <div style="display:flex;align-items:center;width:100%;gap:10px;border-bottom:1.4px solid var(--wf-line);padding-bottom:10px;white-space:nowrap"><span class="wf-pill accent">AI</span><strong>標案小助手 · 指揮中心</strong><span class="wf-muted">情境：標案 #115-0621-01</span><div style="flex:1"></div><button data-goto="assistant-float">浮窗</button><button data-goto="assistant-sidebar">側欄</button><button title="關閉全屏">✕</button></div>
+    <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:12px;flex:1;min-height:0">
+      <section style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        <div style="display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;overflow:auto">
+          <div style="align-self:flex-end;max-width:80%" class="wf-box accent">今天有哪些值得關注的新案？</div>
+          <div class="wf-card"><small class="wf-muted">小助手</small><p style="margin-top:4px">今天北部新增 6 案，其中 2 案與你們的承接紀錄相符。最相關的是「市立醫院門診空間整修工程」。</p></div>
+          <div style="align-self:flex-end;max-width:80%" class="wf-box accent">這案我們適合投嗎？</div>
+          <div class="wf-card"><small class="wf-muted">小助手</small><p style="margin-top:4px">適合度偏高：醫療空間整修經驗可複用，預算與資格門檻在過往承接區間內，截止前剩 10 天<span style="display:inline-block;width:7px;height:14px;background:var(--wf-accent);vertical-align:-2px"></span></p></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center"><input style="flex:1" placeholder="輸入問題，或追問右側標案…"><button class="primary"><span data-icon="send"></span> 送出</button></div>
+      </section>
+      <aside style="display:flex;flex-direction:column;gap:10px;min-width:0;overflow:auto">
+        <div class="wf-card" style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center"><strong>情境工作區</strong><div style="flex:1"></div><span class="wf-pill accent">當前討論</span></div><small class="wf-muted">案號 115-0621-01</small><strong>市立醫院門診空間整修工程</strong><small class="wf-muted">臺北市立聯合醫院 · 截止 2026/06/28</small></div>
+        <div class="wf-card" style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;align-items:center"><strong>可行性估算 76</strong><div style="flex:1"></div><span class="wf-pill">拆解</span></div><div style="height:8px;background:var(--wf-line);border-radius:999px"><div style="width:76%;height:100%;background:var(--wf-accent);border-radius:999px"></div></div></div>
+        <div class="wf-card" style="display:flex;flex-direction:column;gap:6px"><strong>證據來源</strong><div class="wf-box" style="padding:8px"><span class="wf-pill accent">標案</span> <small>本案 PCC 原文</small></div><div class="wf-box" style="padding:8px"><span class="wf-pill">相似</span> <small>候診區改善工程 #114-1130</small></div><div class="wf-box" style="padding:8px"><span class="wf-pill">知識庫</span> <small>最有利標 評選辦法 §3</small></div></div>
+        <div class="wf-card" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="primary">承接</button><button>略過</button><button>轉發</button><button>開原文</button></div>
+      </aside>
+    </div>
+  </div>`}
+/>
+
+<PrototypeTransition id="t-onb-float" from="assistant-onboarding" to="assistant-float" label="完成導覽，開啟小助手" trigger="點啟動鈕／下一步／跳過" />
+<PrototypeTransition id="t-float-sidebar" from="assistant-float" to="assistant-sidebar" label="展開為側欄並串流回答" trigger="點建議題或送出" />
+<PrototypeTransition id="t-float-fullscreen" from="assistant-float" to="assistant-fullscreen" label="放大為指揮中心" trigger="點全屏" />
+<PrototypeTransition id="t-sidebar-fullscreen" from="assistant-sidebar" to="assistant-fullscreen" label="放大為指揮中心" trigger="點全屏" />
+<PrototypeTransition id="t-sidebar-float" from="assistant-sidebar" to="assistant-float" label="縮回浮窗" trigger="點浮窗" />
+<PrototypeTransition id="t-fullscreen-sidebar" from="assistant-fullscreen" to="assistant-sidebar" label="回到側欄" trigger="點側欄" />
+<PrototypeTransition id="t-fullscreen-float" from="assistant-fullscreen" to="assistant-float" label="縮回浮窗" trigger="點浮窗" />
+</Prototype>

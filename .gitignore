@@ -13,6 +13,8 @@
 
 # ── 本機 plan bridge token（含一次性 127.0.0.1 token）──
 **/.plan-url
+# ── plan 單檔靜態匯出（衍生檔，可由 mdx 重新產生，不入版控）──
+plans/**/preview.html
 
 # ── 其他專案產出（報表站台屬 tender-bot 產物，非本 repo 源碼）──
 tender-reports/

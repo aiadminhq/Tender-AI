@@ -1,0 +1,161 @@
+{/* Canvas source for plans/profile-and-learning-db. renderMode="design" 全程純直線、零手寫、零抖動。 */}
+
+<DesignBoard title="個人資料、白名單登入與學習庫綁定 — 線框" version={2}>
+
+<Section id="auth-profile" title="登入與個人設定（白名單具名）">
+
+<Artboard id="login-screen" label="登入（白名單）" surface="browser">
+<Screen
+  surface="browser"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:12px">
+  <div style="display:flex;align-items:center;width:100%;gap:10px;border-bottom:1.4px solid var(--wf-line);padding-bottom:10px;white-space:nowrap"><strong>投標作戰台</strong><span class="wf-muted">標案情報</span><div style="flex:1"></div><span class="wf-pill">繁中</span></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;min-height:0">
+    <div class="wf-card" style="width:360px;max-width:100%;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;flex-direction:column;gap:4px"><h1 style="font-size:20px">登入</h1><small>請使用公司信箱（@hqdesign.tw）登入；帳號須由管理員開通白名單。</small></div>
+      <label style="display:flex;flex-direction:column;gap:4px">公司信箱<input value="david@hqdesign.tw"></label>
+      <label style="display:flex;flex-direction:column;gap:4px">密碼<input value="••••••••" type="password"></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" checked> 記住我</label>
+      <button class="primary">登入</button>
+      <div class="wf-box" style="display:flex;gap:8px;align-items:flex-start"><span class="wf-pill">Phase 1</span><small>本頁僅為 UI 與資料模型雛形；密碼／SSO 實際驗證於 Phase 2 接入。現行 demo 仍以 HQadmin 佔位帳號運行。</small></div>
+    </div>
+  </div>
+</div>`}
+/>
+</Artboard>
+
+<Artboard id="profile-screen" label="個人設定" surface="desktop">
+<Screen
+  surface="desktop"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:12px">
+  <div style="display:flex;align-items:center;width:100%;gap:10px;border-bottom:1.4px solid var(--wf-line);padding-bottom:10px;white-space:nowrap"><strong>投標作戰台</strong><span class="wf-muted">標案情報</span><div style="flex:1"></div><button><span data-icon="search" aria-label="搜尋"></span></button><button>EN</button><span class="wf-pill accent"><span data-icon="user"></span> David</span></div>
+  <div style="display:flex;align-items:center;gap:8px"><button><span data-icon="arrowLeft"></span> 返回清單</button><h1 style="font-size:22px">個人設定</h1><div style="flex:1"></div><span class="wf-pill accent">白名單已開通</span></div>
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;flex:1;min-height:0;overflow:auto">
+    <div class="wf-card" style="display:flex;flex-direction:column;gap:8px">
+      <strong>帳戶資料</strong>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+        <div><small>顯示名稱（具名貢獻者）</small><br><strong>David</strong></div>
+        <div><small>公司信箱</small><br><strong class="mono">david@hqdesign.tw</strong></div>
+        <div><small>角色</small><br><strong>業務開發</strong></div>
+        <div><small>白名單狀態</small><br><span class="wf-pill accent">已開通</span></div>
+      </div>
+      <small class="wf-muted">姓名與帳號用於在白名單內「具名標示貢獻」；非合作範圍對象永不揭露。</small>
+    </div>
+    <div class="wf-card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center"><strong>共享同意 · Layer B</strong><div style="flex:1"></div><span class="wf-pill accent">已同意</span></div>
+      <label style="display:flex;align-items:flex-start;gap:8px"><input type="checkbox" checked> <span>願意把我的收藏、評分、想法納入團隊共享知識庫</span></label>
+      <small class="wf-muted">同意時間 2026/06/22 · 共享範圍限 @hqdesign.tw 白名單同事與專案 AI。</small>
+      <div style="display:flex;gap:8px"><button>查看同意說明</button><button>撤回同意</button></div>
+    </div>
+    <div class="wf-card" style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center"><strong>我的偏好輪廓</strong><div style="flex:1"></div><span class="wf-pill">僅供我自己</span></div>
+      <div><small>重點關鍵字</small><br><span class="wf-chip accent">整修</span> <span class="wf-chip accent">醫療</span> <span class="wf-chip accent">室內</span></div>
+      <div><small>避免關鍵字</small><br><span class="wf-chip">道路</span> <span class="wf-chip">土木</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><small>偏好類別</small><br><strong>工程 · 財物</strong></div><div><small>適配預算區間</small><br><strong class="mono">800–2,400 萬</strong></div></div>
+      <small class="wf-muted">由我自己的行為推導；未經同意不併入團隊庫。</small>
+    </div>
+    <div class="wf-card" style="display:flex;flex-direction:column;gap:8px">
+      <strong>我的貢獻（具名）</strong>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+        <div><small>收藏</small><br><strong>42</strong></div>
+        <div><small>評分</small><br><strong>28</strong></div>
+        <div><small>註記</small><br><strong>15</strong></div>
+        <div><small>轉發</small><br><strong>9</strong></div>
+      </div>
+      <small class="wf-muted">已同意後，這些行為以你的帳號具名進入共享庫，供白名單同事與 AI 學習。</small>
+    </div>
+  </div>
+</div>`}
+/>
+</Artboard>
+
+</Section>
+
+<Section id="consent" title="共享同意彈窗（第 2 段：本人自行同意）">
+
+<Artboard id="consent-popover" label="同意彈窗" surface="popover">
+<Screen
+  surface="popover"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:10px">
+  <div style="display:flex;align-items:center;gap:8px"><strong>加入團隊共享知識庫</strong><div style="flex:1"></div><button><span data-icon="x" aria-label="關閉"></span></button></div>
+  <div class="wf-box" style="display:flex;gap:8px;align-items:center"><span class="wf-pill accent">第 1 段 已完成</span><small>管理員已將 david@hqdesign.tw 開通白名單。</small></div>
+  <p>是否同意把你的<strong>收藏、評分、想法與操作</strong>量化為向量，與 @hqdesign.tw 白名單同事及專案 AI <strong>共享、並依你的登入帳號具名</strong>？</p>
+  <div class="wf-card" style="display:flex;flex-direction:column;gap:6px">
+    <small>· 共享範圍：白名單內同事 ＋ 專案 AI，彼此可見、可互相學習</small>
+    <small>· 具名：依登入帳號標示貢獻者（非匿名）</small>
+    <small>· 對外：非合作範圍對象永不揭露；對外發佈一律去識別化</small>
+    <small>· 可隨時於個人設定撤回；撤回後停止後續共享匯入</small>
+  </div>
+  <div style="display:flex;gap:8px"><button class="primary" style="flex:1">同意並加入</button><button style="flex:1">暫不</button></div>
+</div>`}
+/>
+</Artboard>
+
+</Section>
+
+<Section id="admin" title="管理員白名單管理">
+
+<Artboard id="admin-screen" label="白名單管理" surface="desktop">
+<Screen
+  surface="desktop"
+  renderMode="design"
+  css={`.tender-ui, .tender-ui * { box-sizing:border-box; } .tender-ui { color:var(--wf-ink); background:var(--wf-paper); line-height:1.5; } .tender-ui[lang="zh-Hant"], .tender-ui[lang="zh-Hant"] * { font-family:"Noto Sans TC",sans-serif; } .tender-ui .mono, .tender-ui code { font-family:"JetBrains Mono","SFMono-Regular",monospace; } .tender-ui h1 { margin:0; font-size:24px; line-height:1.3; } .tender-ui p { margin:0; } .tender-ui .wf-card, .tender-ui .wf-box { border:1px solid var(--wf-line); border-radius:16px; background:var(--wf-card); padding:12px; } .tender-ui .wf-card { box-shadow:0 1px 2px rgba(0,0,0,.06); } .tender-ui .wf-box { background:var(--wf-paper); box-shadow:none; } .tender-ui .wf-pill, .tender-ui .wf-chip { display:inline-flex; align-items:center; border:1px solid var(--wf-line); border-radius:999px; padding:4px 9px; background:var(--wf-paper); } .tender-ui .accent { border-color:var(--wf-accent); background:var(--wf-accent-soft); color:var(--wf-ink); } .tender-ui button, .tender-ui input, .tender-ui textarea { border:1px solid var(--wf-line); border-radius:10px; background:var(--wf-paper); color:var(--wf-ink); padding:7px 10px; box-shadow:none; } .tender-ui button.primary { border-color:var(--wf-accent); background:var(--wf-accent); color:var(--wf-accent-fg); } .tender-ui hr { width:100%; border:0; border-top:1px solid var(--wf-line); } .tender-ui small, .tender-ui .wf-muted { color:var(--wf-muted); }`}
+  html={`<div class="tender-ui" lang="zh-Hant" style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:16px;gap:12px">
+  <div style="display:flex;align-items:center;width:100%;gap:10px;border-bottom:1.4px solid var(--wf-line);padding-bottom:10px;white-space:nowrap"><strong>投標作戰台</strong><span class="wf-pill accent">管理</span><div style="flex:1"></div><button>EN</button><span class="wf-pill"><span data-icon="user"></span> Aaron</span></div>
+  <div style="display:flex;align-items:center;gap:8px"><h1 style="font-size:22px">白名單管理</h1><div style="flex:1"></div><input value="同事信箱 @hqdesign.tw" style="width:220px"><button class="primary"><span data-icon="plus"></span> 開通帳號</button></div>
+  <div class="wf-card" style="display:flex;flex-direction:column;gap:0;padding:0;flex:1;min-height:0;overflow:auto">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1.4px solid var(--wf-line);white-space:nowrap"><div style="flex:2"><small>帳號 / 姓名</small></div><div style="flex:1"><small>角色</small></div><div style="flex:1"><small>白名單</small></div><div style="flex:1"><small>共享同意</small></div><div style="flex:1"><small>操作</small></div></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--wf-line);white-space:nowrap"><div style="flex:2;min-width:0"><strong>David</strong><br><small class="mono">david@hqdesign.tw</small></div><div style="flex:1">業務開發</div><div style="flex:1"><span class="wf-pill accent">已開通</span></div><div style="flex:1"><span class="wf-pill accent">已同意</span></div><div style="flex:1"><button>停用</button></div></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--wf-line);white-space:nowrap"><div style="flex:2;min-width:0"><strong>Mia</strong><br><small class="mono">mia@hqdesign.tw</small></div><div style="flex:1">設計</div><div style="flex:1"><span class="wf-pill accent">已開通</span></div><div style="flex:1"><span class="wf-pill">未同意</span></div><div style="flex:1"><button>停用</button></div></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--wf-line);white-space:nowrap"><div style="flex:2;min-width:0"><strong>Ken</strong><br><small class="mono">ken@hqdesign.tw</small></div><div style="flex:1">工程</div><div style="flex:1"><span class="wf-pill">待審</span></div><div style="flex:1"><span class="wf-muted">—</span></div><div style="flex:1"><button class="primary">開通</button></div></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;white-space:nowrap"><div style="flex:2;min-width:0"><strong>Aaron</strong><br><small class="mono">aaron@hqdesign.tw</small></div><div style="flex:1">管理員</div><div style="flex:1"><span class="wf-pill accent">已開通</span></div><div style="flex:1"><span class="wf-pill accent">已同意</span></div><div style="flex:1"><button>停用</button></div></div>
+  </div>
+  <div class="wf-box" style="display:flex;gap:8px;align-items:flex-start"><span class="wf-pill">兩段式</span><small>管理員只負責「開通白名單」（第 1 段）；是否共享行為由本人在個人設定自行同意（第 2 段）。管理員看不到、也不能代為勾選同意。</small></div>
+</div>`}
+/>
+</Artboard>
+
+</Section>
+
+<Annotation id="note-login" title="Phase 1 只做 UI＋資料模型" targetId="login-screen" placement="bottom">
+
+本頁與帳戶資料表是 **Phase 1** 交付物：先把白名單登入的畫面與資料模型立起來。
+
+- 真正的密碼／SSO 驗證、session 與權限保護延到 **Phase 2**。
+- 現行 demo 仍以 `HQadmin` 佔位帳號運行，不阻斷既有流程。
+
+</Annotation>
+
+<Annotation id="note-profile" title="一頁看齊四件事" targetId="profile-screen" placement="right">
+
+個人設定整合四張 Bento 卡：
+
+- **帳戶資料**：登入帳號即「具名貢獻者」。
+- **共享同意**：可開關、可撤回，帶同意時間。
+- **我的偏好輪廓**：由本人行為推導的個人化偏好（不需共享同意也能用）。
+- **我的貢獻**：具名累計，進共享庫供白名單同事與 AI 學習。
+
+</Annotation>
+
+<Annotation id="note-consent" title="兩段式同意的第 2 段" targetId="consent-popover" placement="right">
+
+第 1 段是管理員開白名單；本彈窗是**本人自行同意**。
+
+同意所「解鎖」的是把行為**匯入團隊共享庫**——是否連個人化偏好的純本人學習也要同意，列入 Open Questions。
+
+</Annotation>
+
+<Annotation id="note-admin" title="白名單＝合作範圍邊界" targetId="admin-screen" placement="bottom">
+
+白名單就是 CLAUDE.md 定義的「合作範圍」。管理員只開通／停用帳號，**不能代勾同意**；共享同意一律由本人在個人設定操作。
+
+</Annotation>
+
+<Connector from="login-screen" to="profile-screen" label="登入後進入" />
+
+</DesignBoard>

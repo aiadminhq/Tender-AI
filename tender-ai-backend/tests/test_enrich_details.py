@@ -57,6 +57,25 @@ def _patch_pcc(monkeypatch, fn) -> None:
     monkeypatch.setattr(get_adapter("PCC"), "fetch_detail", fn)
 
 
+def _fake_archiver_factory(calls: list | None = None):
+    """假 archiver:每個附件回一筆含 storage_uri 的索引(不連網/不落地實檔)。"""
+    def fake(source_name, case_pk, attachments, *, base_dir=None):
+        if calls is not None:
+            calls.append((source_name, case_pk, base_dir))
+        return [
+            {
+                "url": a["url"],
+                "filename": a["filename"],
+                "storage_uri": f"{source_name}/{case_pk}/{a['filename']}.pdf",
+                "sha256": "deadbeef",
+                "skipped": False,
+                "error": None,
+            }
+            for a in attachments
+        ]
+    return fake
+
+
 # --------------------------------------------------------------------------- #
 # 共用查詢 helper(走測試讀 session)
 # --------------------------------------------------------------------------- #
@@ -460,3 +479,108 @@ async def test_tmu_is_skipped_without_failure(seeded, db_session, monkeypatch):
     assert len(await _snapshots(db_session, tmu)) == 0
     assert len(await _revisions(db_session, tmu)) == 0
     assert len(await _failures(db_session, tmu)) == 0
+
+
+# --------------------------------------------------------------------------- #
+# 18) 附件歸檔 + 衍生標注落 revision；snapshot.storage_uri 設離庫指標
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_enrich_persists_attachments_and_annotations(
+    seeded, db_session, monkeypatch, tmp_path
+):
+    """TTL enrich 路徑也要把附件索引 + 室內標注寫進 revision(與 research enrich 對齊)。
+
+    注入假 archiver(不連網/不落地實檔)→ 每個附件回一筆含 storage_uri 的索引。
+    """
+    full = _load("pcc_detail_full.html")
+    _patch_pcc(monkeypatch, lambda case_pk: _fetch_result(case_pk, full, key="01"))
+
+    calls: list = []
+    stats = await run_enrich(
+        session_factory=TestSessionLocal,
+        now=NOW,
+        rate_limit_s=0,
+        archiver=_fake_archiver_factory(calls),
+        archive_base_dir=tmp_path,
+    )
+
+    # 三筆 PCC 標的各有 1 個附件、皆命中室內語彙
+    assert stats["new_revisions"] == 3
+    assert stats["attachments_archived"] == 3
+    assert stats["interior_hits"] == 3
+    # archiver 確實以注入的 base_dir 被呼叫
+    assert ("PCC", "PCC-H", tmp_path) in calls
+
+    hid = seeded["high"]
+    revs = await _revisions(db_session, hid)
+    assert len(revs) == 1
+    rev = revs[0]
+
+    # 附件索引寫入 revision.attachments(含 storage_uri)
+    assert rev.attachments is not None
+    assert len(rev.attachments) == 1
+    assert rev.attachments[0]["storage_uri"].startswith("PCC/PCC-H/")
+
+    # 衍生標注:115年廁所改善工程 + 其他裝修工程 → interior_match=True、命中「廁所」
+    assert rev.annotations is not None
+    assert rev.annotations["interior_match"] is True
+    assert "廁所" in rev.annotations["interior_keywords"]
+
+    # snapshot.storage_uri = 附件共同目錄(離庫指標)
+    snaps = await _snapshots(db_session, hid)
+    assert len(snaps) == 1
+    assert snaps[0].storage_uri == "PCC/PCC-H"
+
+    # 仍只更新現值投影 + TTL 標記(不回填 Tender 主檔欄位 → 那是 research enrich 的事)
+    t = await db_session.get(Tender, hid)
+    assert t.current_revision_id == rev.id
+    assert t.detail_checked_at is not None
+
+
+# --------------------------------------------------------------------------- #
+# 19) CAPTCHA 攔截 → 記「可重試」captcha 失敗(非 parse_fail)+ 優雅中止整批
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_captcha_page_records_retriable_failure_and_aborts(
+    seeded, db_session, monkeypatch, tmp_path
+):
+    """PCC 詳情端點的反大量查詢圖形驗證碼:回 200+HTML 但 parse 不出內容。
+
+    不破解/不繞過 → 辨識後歸為「可重試的暫時阻擋」(stage=captcha),並優雅中止整批,
+    剩餘標的標為 deferred(下輪退避重試),避免連發被封 IP。
+    """
+    full = _load("pcc_detail_full.html")
+    captcha = _load("pcc_detail_captcha.html")
+
+    def fake(case_pk):
+        if case_pk == "PCC-H":  # 依 Tender.id 序,PCC-H 最先處理
+            return _fetch_result(case_pk, captcha, key=None)
+        return _fetch_result(case_pk, full, key="01")
+
+    _patch_pcc(monkeypatch, fake)
+    stats = await run_enrich(
+        session_factory=TestSessionLocal,
+        now=NOW,
+        rate_limit_s=0,
+        archiver=_fake_archiver_factory(),
+        archive_base_dir=tmp_path,
+    )
+
+    # 撞驗證碼即中止:captcha 計 1、aborted、剩餘 2 筆 deferred
+    assert stats["captcha"] == 1
+    assert stats["aborted_on_captcha"] is True
+    assert stats["deferred"] == 2
+    assert stats["failed"] == 1
+
+    high = seeded["high"]
+    fails = await _failures(db_session, high)
+    assert len(fails) == 1
+    assert fails[0].stage == "captcha"  # 非 parse_fail
+    assert fails[0].retriable is True
+    # CAPTCHA 不入 snapshot/revision
+    assert len(await _snapshots(db_session, high)) == 0
+    assert len(await _revisions(db_session, high)) == 0
+
+    # 中止後其餘標的未被處理(deferred,留待下輪)
+    assert len(await _revisions(db_session, seeded["mid"])) == 0
+    assert len(await _revisions(db_session, seeded["low"])) == 0

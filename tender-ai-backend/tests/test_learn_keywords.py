@@ -10,7 +10,12 @@ from sqlalchemy import select
 
 from app.jobs.learn_keywords import learn_keywords
 from app.models.behavior import Evaluation, User
-from app.models.knowledge import KeywordWeight, KeywordWeightRevision
+from app.models.knowledge import (
+    KeywordWeight,
+    KeywordWeightRevision,
+    UserKeywordWeight,
+)
+from app.models.preference import PreferenceProfile
 from app.models.tender import Source, Tender
 from tests.conftest import TestSessionLocal
 
@@ -23,8 +28,14 @@ async def learning_data(db_session):
     db_session.add(source)
     await db_session.flush()
 
-    # 創建使用者
-    user = User(name="david", email="david@hq.tw", role="scout")
+    # 創建使用者（白名單已開通＋已同意共享 → 行為納入團隊聚合）
+    user = User(
+        name="david",
+        email="david@hq.tw",
+        role="scout",
+        whitelist_active=True,
+        consent_shared=True,
+    )
     db_session.add(user)
     await db_session.flush()
 
@@ -292,3 +303,115 @@ async def test_learn_keywords_respects_category_priority(learning_data, db_sessi
     assert "工程" in kws
     assert kws["工程"].polarity == "positive"
     assert stats.get("category_features_added", 0) > 0
+
+
+# --------------------------------------------------------------------------- #
+# 個人線（user_keyword_weights / preference_profiles）
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_learn_keywords_writes_personal_line(learning_data, db_session):
+    """v8：學習任務確實產出 user_keyword_weights / preference_profiles。"""
+    user = learning_data["user"]
+    stats = await learn_keywords(session_factory=TestSessionLocal, min_support=1)
+
+    assert stats["personal_users_processed"] == 1
+    assert stats["user_keyword_weights_written"] > 0
+    assert stats["preference_profiles_written"] == 1
+
+    # 個人權重：本人專屬，含 工程(positive) 與 勞務(negative)
+    ukws = {
+        u.term: u
+        for u in (
+            await db_session.execute(
+                select(UserKeywordWeight).where(
+                    UserKeywordWeight.user_id == user.id
+                )
+            )
+        ).scalars()
+    }
+    assert ukws  # 非空
+    assert ukws["工程"].polarity == "positive"
+    assert ukws["勞務"].polarity == "negative"
+
+    # 高層輪廓：偏好類別含 工程；預算區間取本人可行案（500、800）
+    profile = (
+        await db_session.execute(
+            select(PreferenceProfile).where(
+                PreferenceProfile.user_id == user.id
+            )
+        )
+    ).scalar_one()
+    assert "工程" in profile.preferred_categories
+    assert "工程" in profile.top_keywords
+    assert "勞務" in profile.avoid_keywords
+    assert profile.budget_min == 500
+    assert profile.budget_max == 800
+
+
+@pytest.mark.asyncio
+async def test_team_join_is_consent_aware(learning_data, db_session):
+    """v5：未同意者的行為不納入團隊 keyword_weights，但個人線仍更新。
+
+    新增第二位使用者 erin（白名單但未同意），其評估只走個人線；團隊樣本數不應
+    把 erin 的標案算進去。
+    """
+    source = (await db_session.execute(select(Source).limit(1))).scalar()
+
+    # 未同意者：whitelist_active=True、consent_shared=False
+    erin = User(
+        name="erin",
+        email="erin@hqdesign.tw",
+        role="member",
+        whitelist_active=True,
+        consent_shared=False,
+    )
+    db_session.add(erin)
+    await db_session.flush()
+
+    # erin 的可行標案：含獨特詞「資訊」，不應進團隊聚合
+    t_erin = Tender(
+        source_id=source.id,
+        case_pk="PCC-ERIN",
+        name="資訊系統維護資訊資訊",
+        org="資訊局",
+        category="勞務",
+        budget_wan=400,
+        deadline_roc="115/08/01",
+        deadline_iso="2026-08-01",
+    )
+    db_session.add(t_erin)
+    await db_session.flush()
+    db_session.add(
+        Evaluation(
+            user_id=erin.id,
+            tender_id=t_erin.id,
+            feasible="可行",
+            criteria={"budget_fit": True},
+            rationale="erin 個人判斷可行",
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    await db_session.commit()
+
+    stats = await learn_keywords(session_factory=TestSessionLocal, min_support=1)
+
+    # 團隊線：只算 david（已同意）的 2 可行 + 2 不可行；erin 不計入
+    assert stats["consenting_users"] == 1
+    assert stats["feasible_samples"] == 2
+    assert stats["infeasible_samples"] == 2
+
+    # erin 的獨特詞「資訊」不得進團隊 keyword_weights
+    team_terms = {
+        kw.term
+        for kw in (await db_session.execute(select(KeywordWeight))).scalars()
+    }
+    assert "資訊" not in team_terms
+
+    # 但 erin 的個人線仍更新（兩位使用者都處理）
+    assert stats["personal_users_processed"] == 2
+    erin_ukws = (
+        await db_session.execute(
+            select(UserKeywordWeight).where(UserKeywordWeight.user_id == erin.id)
+        )
+    ).scalars().all()
+    assert any(u.term == "資訊" for u in erin_ukws)

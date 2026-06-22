@@ -58,6 +58,8 @@ _ALL_TABLES = [
     "doc_summaries",
     "keyword_weight_revisions",
     "keyword_weights",
+    "user_keyword_weights",
+    "preference_profiles",
     "crawl_failures",
     "tender_revisions",
     "tender_snapshots",
