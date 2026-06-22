@@ -80,13 +80,15 @@ async def test_expand_p4_learning_with_daily_reports(db_session):
     驗證：4,200+ 日報樣本能提升關鍵字權重的覆蓋面與準確率。
     """
     # 1. 建立基礎資料源與使用者
+    #    注意：ingest job 以獨立的 TestSessionLocal session 開新 transaction，
+    #    看不到本 session 未提交的列。source 必須先 commit，否則 job 插 tender 時
+    #    觸發 FK 違規（source_id 尚不存在）。對齊 job 用的 session = 先提交。
     source = Source(name="PCC", base_url="https://web.pcc.gov.tw")
     db_session.add(source)
-    await db_session.flush()
 
     user = User(name="scout", email="scout@hq.tw", role="scout")
     db_session.add(user)
-    await db_session.flush()
+    await db_session.commit()
 
     # 2. 導入日報資料
     reports_dir = "/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-reports/reports"
