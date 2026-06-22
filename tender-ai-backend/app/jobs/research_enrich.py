@@ -32,14 +32,20 @@ import random
 import re
 import sys
 from datetime import datetime, timezone
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from sqlalchemy import func, select, update
 
 from app.adapters import get_adapter
 from app.adapters.pcc import PCCAdapter
 from app.db.session import AsyncSessionLocal
-from app.jobs.enrich_details import _record_failure, _resolve_failures
+from app.jobs.enrich_details import (
+    INTERIOR_KEYWORDS,
+    _archive_dir,
+    _record_failure,
+    _resolve_failures,
+    derive_annotations,
+)
 from app.models.revision import CrawlRun, TenderRevision, TenderSnapshot
 from app.models.tender import Source, Tender
 from app.services.archiver import archive_attachments
@@ -48,20 +54,8 @@ from app.services.report_parser import parse_budget_wan, roc_to_date
 
 _SOURCE_NAME = "PCC"
 
-# 衍生標注標籤的室內/裝修語彙種子(後端自帶,獨立於每日報表 tender_daily.py;
-# **僅供標注,不過濾**)。涵蓋計畫指定的「整修/教室/廁所/空間改善/防水/裝修/室內…」。
-INTERIOR_KEYWORDS: tuple[str, ...] = (
-    "裝修", "整修", "修繕", "改善", "裝潢", "汰換", "室內", "教室",
-    "廁所", "衛生設備", "空間", "防水", "隔間", "地板", "天花板",
-    "油漆", "粉刷", "外牆", "翻新", "更新工程",
-)
-
-
-def derive_annotations(*texts: str | None) -> dict:
-    """由標案名稱/分類/說明等文字衍生標注標籤(布林 + 命中詞);**非過濾**。"""
-    blob = " ".join(t for t in texts if t)
-    hits = [kw for kw in INTERIOR_KEYWORDS if kw in blob]
-    return {"interior_match": bool(hits), "interior_keywords": hits}
+# 室內/裝修語彙種子、衍生標注、附件歸檔目錄三者與 TTL enrich 共用一份,
+# 集中定義於 app.jobs.enrich_details(此處 re-import,避免兩路徑漂移)。
 
 
 def _budget_wan_from_detail(raw: str | None) -> int | None:
@@ -135,15 +129,6 @@ async def _discover(
         out.append((tid, case_pk, city))
     await session.commit()
     return out
-
-
-def _archive_dir(archived: list[dict]) -> str | None:
-    """由附件歸檔結果取共同目錄相對路徑(寫入 snapshot.storage_uri 當離庫指標)。"""
-    for rec in archived:
-        uri = rec.get("storage_uri")
-        if uri:
-            return str(PurePosixPath(uri).parent)
-    return None
 
 
 async def _process_one(

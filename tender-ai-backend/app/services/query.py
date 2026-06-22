@@ -24,8 +24,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import EntityNotFound
 from app.models.behavior import TenderUserState
 from app.models.knowledge import KeywordWeight
+from app.models.revision import TenderRevision
 from app.models.tender import DailyTender, Source, Tender
 from app.schemas.tender import (
+    AttachmentItem,
+    RevisionDetail,
     SnapshotItem,
     TenderDetail,
     TenderListItem,
@@ -231,6 +234,43 @@ async def list_tenders(
     return [_row_to_item(r) for r in rows], int(total or 0)
 
 
+def _revision_to_detail(rev: TenderRevision) -> RevisionDetail:
+    """TenderRevision ORM → RevisionDetail（附件/資格碼做防呆正規化）。"""
+    codes = rev.qualification_codes if isinstance(rev.qualification_codes, list) else []
+    attachments: list[AttachmentItem] = []
+    raw_atts = rev.attachments if isinstance(rev.attachments, list) else []
+    for a in raw_atts:
+        if not isinstance(a, dict):
+            continue
+        attachments.append(
+            AttachmentItem(
+                filename=a.get("filename"),
+                url=a.get("url"),
+                archived=bool(a.get("storage_uri")),
+                skipped=a.get("skipped"),
+                error=a.get("error"),
+            )
+        )
+    return RevisionDetail(
+        revision_no=rev.revision_no,
+        fetched_at=rev.fetched_at,
+        award_method=rev.award_method,
+        deposit_required=rev.deposit_required,
+        deposit_amount_twd=rev.deposit_amount_twd,
+        deposit_raw_text=rev.deposit_raw_text,
+        qualification_codes=[str(c) for c in codes],
+        qualification_text=rev.qualification_text,
+        category_main=rev.category_main,
+        category_name=rev.category_name,
+        category_raw=rev.category_raw,
+        performance_period=rev.performance_period,
+        performance_location=rev.performance_location,
+        subsidy_source=rev.subsidy_source,
+        extra_note=rev.extra_note,
+        attachments=attachments,
+    )
+
+
 async def get_tender_detail(
     session: AsyncSession, tender_id: int, user_id: int | None
 ) -> TenderDetail:
@@ -278,8 +318,17 @@ async def get_tender_detail(
         if st is not None:
             user_state = UserStateOut.model_validate(st)
 
+    # 最新詳情版本：僅在 enrich 過（current_revision_id 有值）時投影；否則 None。
+    revision = None
+    rev_id = row.Tender.current_revision_id
+    if rev_id is not None:
+        rev = await session.get(TenderRevision, rev_id)
+        if rev is not None:
+            revision = _revision_to_detail(rev)
+
     return TenderDetail(
         **item.model_dump(),
         snapshots=snapshots,
         user_state=user_state,
+        revision=revision,
     )

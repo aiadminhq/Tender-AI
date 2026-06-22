@@ -23,6 +23,7 @@ import asyncio
 import hashlib
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path, PurePosixPath
 
 from sqlalchemy import and_, func, or_, select, update
 
@@ -30,10 +31,34 @@ from app.adapters import get_adapter, iter_adapters
 from app.db.session import AsyncSessionLocal
 from app.models.revision import CrawlFailure, CrawlRun, TenderRevision, TenderSnapshot
 from app.models.tender import Source, Tender
-from app.services.detail_parser import parse_pcc_detail
+from app.services.archiver import archive_attachments
+from app.services.detail_parser import is_captcha_page, parse_pcc_detail
 
 # 抓取失敗的退避基數(每次嘗試線性遞增);content-type/4xx/parse 類視為不可重試。
 _RETRY_BACKOFF = timedelta(hours=1)
+
+# 衍生標注標籤的室內/裝修語彙種子(**僅供標注,不過濾**);research_enrich 由此 re-import 共用。
+INTERIOR_KEYWORDS: tuple[str, ...] = (
+    "裝修", "整修", "修繕", "改善", "裝潢", "汰換", "室內", "教室",
+    "廁所", "衛生設備", "空間", "防水", "隔間", "地板", "天花板",
+    "油漆", "粉刷", "外牆", "翻新", "更新工程",
+)
+
+
+def derive_annotations(*texts: str | None) -> dict:
+    """由標案名稱/分類/說明等文字衍生標注標籤(布林 + 命中詞);**非過濾**。"""
+    blob = " ".join(t for t in texts if t)
+    hits = [kw for kw in INTERIOR_KEYWORDS if kw in blob]
+    return {"interior_match": bool(hits), "interior_keywords": hits}
+
+
+def _archive_dir(archived: list[dict]) -> str | None:
+    """由附件歸檔結果取共同目錄相對路徑(寫入 snapshot.storage_uri 當離庫指標)。"""
+    for rec in archived:
+        uri = rec.get("storage_uri")
+        if uri:
+            return str(PurePosixPath(uri).parent)
+    return None
 
 
 def _supported_sources(source: str | None) -> set[str]:
@@ -168,11 +193,13 @@ async def _process_one(
     case_pk: str,
     source_name: str,
     now: datetime,
-) -> str:
-    """處理單一標的(各自獨立 transaction);回傳結果碼供統計。
+    archive_base_dir: Path | None,
+    archiver,
+) -> tuple[str, int, bool]:
+    """處理單一標的(各自獨立 transaction);回傳 ``(結果碼, 歸檔數, 命中室內標注)``。
 
-    結果碼:``new`` / ``unchanged`` / ``fetch_fail`` / ``parse_fail``。
-    整批不中斷:任何失敗都記帳並 continue(由呼叫端 catch 殘餘例外)。
+    結果碼:``new`` / ``unchanged`` / ``captcha`` / ``fetch_fail`` / ``parse_fail``。
+    整批不中斷:一般失敗記帳後續跑;``captcha`` 由呼叫端優雅中止整批(避免被封 IP)。
     """
     adapter = get_adapter(source_name)
 
@@ -185,7 +212,7 @@ async def _process_one(
             session, run_id=run_id, tender_id=tender_id, stage="fetch",
             http_status=None, exc=exc, retriable=True, now=now,
         )
-        return "fetch_fail"
+        return "fetch_fail", 0, False
 
     # 2) 抓取驗證:非 200 / content-type 非 text/html → fetch 失敗
     if fr.status_code != 200:
@@ -195,13 +222,13 @@ async def _process_one(
             http_status=fr.status_code, exc=None,
             retriable=fr.status_code >= 500, now=now,
         )
-        return "fetch_fail"
+        return "fetch_fail", 0, False
     if "text/html" not in (fr.content_type or ""):
         await _record_failure(
             session, run_id=run_id, tender_id=tender_id, stage="fetch",
             http_status=fr.status_code, exc=None, retriable=False, now=now,
         )
-        return "fetch_fail"
+        return "fetch_fail", 0, False
 
     raw = fr.raw_content
     content_hash = hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -221,18 +248,39 @@ async def _process_one(
         )
         await _resolve_failures(session, tender_id, now)
         await session.commit()
-        return "unchanged"
+        return "unchanged", 0, False
 
-    # 4) 內容新/變更 → 先解析(失敗則不入 snapshot,等同 rollback;記 parse 失敗)
+    # 4) CAPTCHA 攔截:200+HTML 但屬反大量查詢圖形驗證碼 → 不破解/不繞過,
+    #    歸為「可重試的暫時阻擋」(stage=captcha),由呼叫端優雅中止整批。
+    if is_captcha_page(raw):
+        await _record_failure(
+            session, run_id=run_id, tender_id=tender_id, stage="captcha",
+            http_status=fr.status_code, exc=None, retriable=True, now=now,
+        )
+        return "captcha", 0, False
+
+    # 5) 內容新/變更 → 先解析(失敗則不入 snapshot,等同 rollback;記 parse 失敗)
     parsed = parse_pcc_detail(raw)
     if parsed is None:
         await _record_failure(
             session, run_id=run_id, tender_id=tender_id, stage="parse",
             http_status=fr.status_code, exc=None, retriable=False, now=now,
         )
-        return "parse_fail"
+        return "parse_fail", 0, False
 
-    # 5) 單一 transaction:snapshot → revision(不可變)→ 現值投影 → 解除失敗
+    # 6) 附件歸檔(實檔離庫,DB 僅存索引)+ 衍生室內/裝修標注(供研究標注,非過濾)
+    archived = (
+        archiver(source_name, case_pk, parsed.attachments, base_dir=archive_base_dir)
+        if parsed.attachments
+        else []
+    )
+    archived_ok = sum(1 for r in archived if r.get("storage_uri"))
+    name = parsed.raw_fields.get("標案名稱") if parsed.raw_fields else None
+    annotations = derive_annotations(
+        name, parsed.category_name, parsed.category_raw, parsed.extra_note
+    )
+
+    # 7) 單一 transaction:snapshot → revision(不可變)→ 現值投影 → 解除失敗
     revision_key = parsed.source_revision_key or fr.source_revision_key
     snapshot = TenderSnapshot(
         tender_id=tender_id,
@@ -242,6 +290,7 @@ async def _process_one(
         content_hash=content_hash,
         source_revision_key=fr.source_revision_key,
         raw_html=raw,
+        storage_uri=_archive_dir(archived),
         fetched_at=fr.fetched_at,
     )
     session.add(snapshot)
@@ -278,11 +327,14 @@ async def _process_one(
         subsidy_source=parsed.subsidy_source,
         extra_note=parsed.extra_note,
         raw_fields=parsed.raw_fields,
+        attachments=archived or None,
+        annotations=annotations,
         fetched_at=fr.fetched_at,
     )
     session.add(revision)
     await session.flush()  # 取得 revision.id 供現值投影
 
+    # 僅更新現值投影 + TTL 標記;**不回填 Tender 主檔欄位**(那是 research enrich 的事)
     await session.execute(
         update(Tender)
         .where(Tender.id == tender_id)
@@ -290,7 +342,7 @@ async def _process_one(
     )
     await _resolve_failures(session, tender_id, now)
     await session.commit()
-    return "new"
+    return "new", archived_ok, bool(annotations["interior_match"])
 
 
 async def run_enrich(
@@ -303,6 +355,8 @@ async def run_enrich(
     rate_limit_s: float = 1.0,
     now: datetime | None = None,
     session_factory=None,
+    archive_base_dir: Path | None = None,
+    archiver=archive_attachments,
 ) -> dict:
     """執行一次詳情 enrich;回傳統計 dict(含 crawl_run id 與各計數)。
 
@@ -313,6 +367,7 @@ async def run_enrich(
     trigger : 'manual'(預設)或 'daily',寫入 crawl_run。
     rate_limit_s : 每筆抓取間隔秒數(sequential + rate-limit;測試傳 0)。
     now / session_factory : 測試注入點(固定時鐘 / 測試庫 session)。
+    archive_base_dir / archiver : 附件歸檔落地根目錄 / 歸檔函式(測試注入假 archiver)。
     """
     now = now or datetime.now(timezone.utc)
     factory = session_factory or AsyncSessionLocal
@@ -324,6 +379,11 @@ async def run_enrich(
         "unchanged": 0,
         "new_revisions": 0,
         "failed": 0,
+        "captcha": 0,
+        "deferred": 0,
+        "attachments_archived": 0,
+        "interior_hits": 0,
+        "aborted_on_captcha": False,
     }
 
     async with factory() as session:
@@ -349,13 +409,15 @@ async def run_enrich(
             if idx and rate_limit_s:
                 await asyncio.sleep(rate_limit_s)
             try:
-                outcome = await _process_one(
+                outcome, archived_ok, interior = await _process_one(
                     session,
                     run_id=run_id,
                     tender_id=tid,
                     case_pk=case_pk,
                     source_name=src,
                     now=now,
+                    archive_base_dir=archive_base_dir,
+                    archiver=archiver,
                 )
             except Exception as exc:  # noqa: BLE001 — 殘餘未預期錯誤亦不中斷整批
                 await session.rollback()
@@ -363,20 +425,35 @@ async def run_enrich(
                     session, run_id=run_id, tender_id=tid, stage="fetch",
                     http_status=None, exc=exc, retriable=True, now=now,
                 )
-                outcome = "fetch_fail"
+                outcome, archived_ok, interior = "fetch_fail", 0, False
 
             if outcome == "new":
                 stats["fetched"] += 1
                 stats["new_revisions"] += 1
+                stats["attachments_archived"] += archived_ok
+                stats["interior_hits"] += int(interior)
             elif outcome == "unchanged":
                 stats["fetched"] += 1
                 stats["unchanged"] += 1
+            elif outcome == "captcha":
+                stats["failed"] += 1
+                stats["captcha"] += 1
             else:  # fetch_fail / parse_fail
                 stats["failed"] += 1
             print(
                 f"  [{idx + 1}/{stats['targeted']}] {src}/{case_pk} → {outcome}",
                 file=sys.stderr,
             )
+
+            # 撞驗證碼:不破解/不繞過,優雅中止整批,剩餘標的標為 deferred(下輪退避重試)
+            if outcome == "captcha":
+                stats["aborted_on_captcha"] = True
+                stats["deferred"] = stats["targeted"] - (idx + 1)
+                print(
+                    f"  ⚠ 撞 CAPTCHA,中止整批;剩餘 {stats['deferred']} 筆 deferred",
+                    file=sys.stderr,
+                )
+                break
 
         # crawl_run 收檔
         run = await session.get(CrawlRun, run_id)
@@ -387,6 +464,13 @@ async def run_enrich(
         run.failed = stats["failed"]
         run.finished_at = now
         run.status = "completed"
+        run.notes = {
+            "captcha": stats["captcha"],
+            "deferred": stats["deferred"],
+            "attachments_archived": stats["attachments_archived"],
+            "interior_hits": stats["interior_hits"],
+            "aborted_on_captcha": stats["aborted_on_captcha"],
+        }
         await session.commit()
 
     return stats
@@ -423,8 +507,11 @@ def main() -> None:
     print(
         f"enrich 完成(run #{stats['run_id']}）｜目標 {stats['targeted']}"
         f"｜新版 {stats['new_revisions']}｜未變 {stats['unchanged']}"
-        f"｜失敗 {stats['failed']}"
+        f"｜附件 {stats['attachments_archived']}｜室內命中 {stats['interior_hits']}"
+        f"｜失敗 {stats['failed']}（含 CAPTCHA {stats['captcha']}）"
     )
+    if stats["aborted_on_captcha"]:
+        print(f"⚠ 撞 CAPTCHA 已中止;{stats['deferred']} 筆 deferred 留待下輪退避重試")
 
 
 if __name__ == "__main__":
