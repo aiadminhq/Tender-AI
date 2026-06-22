@@ -319,6 +319,26 @@ export async function fetchTenderReasoning(
   };
 }
 
+/**
+ * 抓取操作者的「判準輪廓」（SL3）：系統從過往可行／不可行評估學到的承標偏好，
+ * 不綁定單一標案，供洞察分析就地標註各維度訊號。後端 GET /reasoning/profile。
+ * 非 200（含未啟動／無資料）一律回 null，由呼叫端優雅退化（不顯示學習訊號）。
+ */
+export async function fetchReasoningProfile(
+  signal?: AbortSignal,
+): Promise<CriteriaProfile | null> {
+  try {
+    const res = await fetch(`${API_BASE}/reasoning/profile`, {
+      headers: authHeaders(),
+      signal,
+    });
+    if (!res.ok) return null;
+    return adaptProfile((await res.json()) as CriteriaProfileRaw);
+  } catch {
+    return null; // 後端未啟動／網路錯誤 → 退化為無學習訊號
+  }
+}
+
 // ── 行為回寫（Layer B 共享學習迴圈，fire-and-forget） ──────────────
 // 後端 app/api/v1/behavior.py。Layer B 在白名單(@hqdesign.tw)合作範圍內共享，
 // 供同事與 AI/agent 互相學習。現行 demo 尚未建登入，故暫時省略 user_id（後端

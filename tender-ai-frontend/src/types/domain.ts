@@ -152,6 +152,13 @@ export interface TenderReasoning {
   profile: CriteriaProfile;
 }
 
+export interface KanbanNote {
+  id: string;
+  author: string;
+  createdAt: string;
+  body: string;
+}
+
 export interface KanbanCard {
   id: string;
   tenderId?: string;
@@ -163,6 +170,7 @@ export interface KanbanCard {
   deadline?: string;
   blocked?: boolean;
   blockReason?: string;
+  notes?: KanbanNote[];
 }
 
 export interface User {

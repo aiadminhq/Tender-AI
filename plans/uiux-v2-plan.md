@@ -60,6 +60,23 @@
 
 - [x] 首頁今日焦點展開列能可靠開出完整資訊彈窗,「快速預覽」為顯眼主行動,關閉行為正常,無 console 紅字。**N1 完成。**
 
+### N1-b 補充缺口(彈窗「內容」層,非互動模型;選做、非阻塞)
+
+> 互動模型(兩段式)已收口並驗收;但 `tender-drawer.tsx` 的彈窗**內容**仍有真實缺口,列為 N1-b,接手可擇期補:
+
+- **問題定位**:`tender-drawer.tsx:234-237` **渲染 4 個空的 `PlaceholderBlock`**(`deliveryLocation` / `qualification` / `attachments` / `similarCases`)。彈窗**只吃 `tender` prop(列表級資料)+ store**,**從未呼叫** `fetchTenderDetail` / `fetchSimilarTenders`(兩者 `api.ts` 已實作),故四格永遠空白。
+- **可立即補(無後端阻塞)**:`similarCases` —— `fetchSimilarTenders(id)` 已就緒。彈窗開啟時 lazy 載入,以 `Fact`/`TierBadge`/`FeasibilityMeter` 列出相似案;切換標案或關閉時用 `AbortController` 取消 in-flight。
+- **待後端補欄位**:`deliveryLocation` / `qualification` / `attachments` —— 後端 `TenderListItem` 與 `fetchTenderDetail` 回傳的 `TenderDetail` 皆**尚無**這些欄位。需先請後端補欄位再接線;在那之前**保留 `PlaceholderBlock`「待補」佔位**(禁止硬塞假資料)。
+- **介面(若實作 N1-b)**:
+
+```ts
+// tender-drawer.tsx:切換標案的 render 期重置區塊內 setSimilar([]);
+// 再以 effect/開啟事件觸發,abort 隨切換/關閉
+fetchSimilarTenders(id: string, limit = 6, signal?: AbortSignal): Promise<SimilarTender[]>; // {tender, score}[]
+```
+
+- **驗收(N1-b)**:開彈窗→相似案區塊載入並可點擊;快速切換不殘留上一筆;Esc/關閉取消 in-flight 無 console 紅字;其餘三格維持「待補」佔位直到後端補欄位。
+
 ---
 
 ## N2 — 招標看板:標註 + 轉傳(**優先**)
@@ -111,12 +128,12 @@ forwardCard(cardId: string, toUserId: string): void; // 指派/通知白名單�
 
 ### 步驟
 
-- [ ] 擴 `KanbanCard` + 新增 `KanbanNote` 型別。
-- [ ] `app-data.tsx` 實作 `addCardNote/removeCardNote/forwardCard`(先前端 state;持久化沿用既有 localStorage 慣例;呼叫 `trackEvent` 埋點)。
-- [ ] `kanban-card.tsx` 加註記 icon + 計數、轉傳入口(House style:直線、16px 圓角、些微陰影)。
-- [ ] `card-note-popover.tsx` / `card-forward-menu.tsx`(無 Radix,自寫;popover 注意不要被 `overflow:hidden` 裁切——用 fixed/portal)。
-- [ ] i18n zh/en 成對(註記、轉傳、轉傳給、新增註記…)。
-- [ ] 驗證:Preview MCP 新增/刪註記、轉傳指派生效;`tsc`/build 通過;`impeccable` product 稽核。
+- [x] 擴 `KanbanCard` + 新增 `KanbanNote` 型別(`{id, author, createdAt, body}`;`KanbanCard.notes?`)。
+- [x] `app-data.tsx` 實作 `addCardNote/removeCardNote/forwardCard`(前端 state;`person.id` 具名;`pushActivity` + `trackEvent`;`forwardCard` 用 `userById(toUserId)?.name` 顯示轉傳對象)。
+- [x] `kanban-card.tsx` 加註記 icon + 計數、轉傳入口(House style:直線、16px 圓角、些微陰影);用按鈕 `getBoundingClientRect()` + 右緣防溢出算 fixed 定位。
+- [x] `card-note-popover.tsx` / `card-forward-menu.tsx`(無 Radix,自寫;`position:fixed` 不被 `overflow` 裁切;`document.mousedown` 點外關閉;作者本人才出現刪除鈕)。
+- [x] i18n zh/en 成對(`cardNotes/addCardNote/noteAuthor/removeNote/forwardCard/forwardTo/selectTeamMember/add/cancel/noData`)。`events.ts` `EventType` 補 `card_note_added/removed/forwarded`(後端 enum 待同步,fire-and-forget 靜默吞錯,不影響 UI)。
+- [x] 驗證(2026-06-21,Preview MCP @5173):轉傳選單列出成員、轉傳後首卡指派 CW→DW 且選單關閉;註記新增顯示具名「Christian Wu」+日期+計數徽章「1」、輸入框清空;刪除回空狀態、徽章歸零;定位精準(top 308/left 395 對齊按鈕);`tsc -p tsconfig.app.json` 0 錯、全程 console 0 紅字。`impeccable` 稽核待跑。
 
 ### 驗收
 
@@ -220,3 +237,127 @@ forwardCard(cardId: string, toUserId: string): void; // 指派/通知白名單�
 - **format/工具**:`src/lib/format.ts`(`formatDate / formatDateLong / formatBudget / daysLeft`)、`src/lib/utils.ts`(`cn`)。
 - **API 層**:`src/lib/api.ts`(已接 fetchTenders/Detail/SimilarTenders/Reasoning、postSave/Accept/Note/Rate/Share、fetchSavedSearches/postSavedSearch);`src/lib/events.ts`(`trackEvent`→`/events`)。
 - **後端端點(已實作)**:tenders、reasoning(含 `/reasoning/profile`)、search(`/search/semantic`、`/search/similar/{id}`)、behavior(save/accept/rate/note/share/events/saved-searches)、learning(`/evolution/run`、`/evolution/status`)、push(`/push/run`、`/push/digest`、`/push/read`)、assistant(`/assistant/chat`)。**無** `/stats`/`/analytics` 彙總端點。
+
+---
+
+## 附錄 B:操作流程與情境地圖(跨 N1–N4)
+
+> 把「標案從出現到被處理」的完整動線攤平,讓接手 agent 知道每個面板/頁面**長在哪條流程上**、彼此怎麼接。三層下鑽模型 = **L1 清單列 → L2 就地展開 → L3 完整彈窗 → (L4) 完整詳情頁**。
+
+### 主動線:發現 → 比對 → 決策 → 追蹤 → 學習
+
+| 階段 | 使用者意圖                 | 入口畫面                                     | 關鍵互動                                 | 產生的行為(事件)                      |
+| ---- | -------------------------- | -------------------------------------------- | ---------------------------------------- | ------------------------------------- |
+| 發現 | 今天有什麼新標案           | Dashboard 今日焦點(`focus-list`)             | 排序(可行性/金額/截止)、掃讀精簡列       | `view`                                |
+| 初比 | 哪幾筆值得細看             | 今日焦點 **L2 就地展開**(`focus-row`)        | 同卡手風琴展開、可多列並排比對           | `expand`                              |
+| 細讀 | 這筆細節/可行性            | **L3 `TenderDrawer`**(快速預覽鈕)            | 事實格、可行性、關鍵字命中、(N1-b)相似案 | `open_detail`                         |
+| 決策 | 接 / 不接 / 收藏 / 評分    | L3 彈窗右欄                                  | accept→建看板卡;skip;star;rate;轉傳      | `accept`/`skip`/`save`/`rate`/`share` |
+| 深讀 | 看招標全文                 | **L4 `/tenders/:id`** 或原文連結             | 完整詳情頁;外開 PCC 原文                 | `click_link`                          |
+| 追蹤 | 接了的案子進度             | **看板 `/kanban`**(N2)                       | 拖拉換欄、加具名註記、轉傳同事           | `add_note`/`forward`/`move_card`      |
+| 設定 | 我要被怎麼推播/問助手      | **設定群 `/push` `/assistant` `/rules`**(N4) | 開關/門檻/digest/聊天                    | `push_config`/`assistant_chat`        |
+| 回看 | 篩選成效/類型分佈/為何偏好 | **洞察 `/insights`**(N3)                     | 圖表+篩選連動+權重來源解釋               | `insights_filter`                     |
+
+### 次要動線 / 旁支情境
+
+- **`/tenders` 全列表**:與今日焦點**不同**——點列**直接開 L3 彈窗**(無 L2 就地展開),供「我要翻全部、不只今天」的情境。N1 已驗證正常。
+- **排除案(excluded)**:命中硬排除規則的標案在列表/彈窗以 `opacity-60` + 排除原因 banner 呈現(`isExcluded`/`excludeReasonOf`),仍可開啟細讀但視覺降權。
+- **空狀態**:列表空 → `emptyTitle`/`emptyHint`;看板欄空、註記空、相似案空、洞察無資料,各需對應空狀態文案(見附錄 C 缺口表)。
+- **規則回饋迴路**:在 `/rules`(N4)改聚焦/避免/硬排除關鍵字 → 直接影響 `filteredTenders` 與 excluded 判定 → 反映回今日焦點與洞察。這是「越用越聰明」的前端可見入口。
+
+### 情境邊界(避免越權實作)
+
+- 速配 swipe(`/swipe`)/收藏頁:**本輪不接行為**,動線地圖標示其存在但不串接 Layer C。
+- Layer B 行為(註記/轉傳/評分/可見性):本輪一律**前端 state + `trackEvent`**,不入向量。
+
+---
+
+## 附錄 C:元件清單與規格(現有 + 待補,依工作包)
+
+> 「越完整越好」:逐一列出每個面板/頁面要用到的元件、現況(有/缺)、規格要點。**缺**的即為實作清單。
+
+### C-1 已具備、可直接複用(勿重造)
+
+| 元件                                                                                                            | 路徑                                 | 用途                                   |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| Button / Input / Badge / Card                                                                                   | `components/ui/*`                    | 基礎                                   |
+| Dialog / Sheet                                                                                                  | `components/ui/{dialog,sheet}.tsx`   | L3 彈窗殼、側欄(自寫,Esc/鎖捲動已內建) |
+| Avatar / Separator / TierBadge / FeasibilityMeter                                                               | `components/ui/*`                    | 頭像、分隔、級別徽、可行性條           |
+| MaximizableCard                                                                                                 | `components/ui/*`                    | Dashboard 區塊外殼(今日焦點用)         |
+| Fact / MeterRow / SectionLabel / LabelTags / FeasibilityBadge / DaysLeftBanner / PlaceholderBlock / RatingStars | `components/tenders/detail-bits.tsx` | 詳情/彈窗展示積木                      |
+| FocusList / FocusRow / FocusSortBar / FocusDeadline                                                             | `components/tenders/focus-*.tsx`     | 今日焦點(N1 已完成)                    |
+| category-chart(donut) / trend-chart(line+area)                                                                  | `components/dashboard/*`             | N3 圖表抄樣板                          |
+
+### C-2 N1-b 需補(彈窗內容)
+
+| 元件/接線          | 規格                                                                                                | 阻塞                                             |
+| ------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 相似案區塊         | 在 `tender-drawer` 內 lazy `fetchSimilarTenders`,`Fact`+`TierBadge`+score 列出;AbortController 取消 | 無(可立即做)                                     |
+| 交付地點/資格/附件 | 接 `fetchTenderDetail` 對應欄位                                                                     | **後端需先補欄位**;在那前維持 `PlaceholderBlock` |
+
+### C-3 N2 看板需補
+
+| 元件                                    | 路徑                             | 規格要點                                                                      |
+| --------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| `KanbanNote` 型別 + `KanbanCard.notes?` | `types/domain.ts`                | author(具名)/createdAt/body                                                   |
+| store 方法                              | `app-data.tsx`                   | `addCardNote`/`removeCardNote`/`forwardCard`;localStorage 持久化;`trackEvent` |
+| 註記計數徽 + 入口                       | `kanban-card.tsx`(已 `M` 改動中) | 卡面 icon+count,16px 圓角、些微陰影                                           |
+| `card-note-popover.tsx`                 | 新增(已存在 `??`)                | 檢視/新增/刪註記;**fixed/portal 避免被 `overflow:hidden` 裁切**               |
+| `card-forward-menu.tsx`                 | 新增(已存在 `??`)                | 選白名單同事;自寫(無 Radix);鍵盤可及                                          |
+
+### C-4 N4 設定群需補(**含基礎 primitive,N3 共用**)
+
+| 元件                    | 路徑                             | 規格要點                                                                                              |
+| ----------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Switch / Toggle**     | `components/ui/switch.tsx`(缺)   | 自寫,`role="switch"`、`aria-checked`、鍵盤 Space/Enter                                                |
+| **Select**              | `components/ui/select.tsx`(缺)   | 自寫,鍵盤上下/Enter/Esc、`aria-expanded`、fixed/portal                                                |
+| **Tabs**                | `components/ui/tabs.tsx`(缺)     | 自寫,`role="tablist"`、方向鍵切換、`aria-selected`                                                    |
+| (選)RadioGroup / Slider | `components/ui/*`(缺)            | 門檻/時段用;a11y 同上                                                                                 |
+| push 設定面板           | `pages/push-page.tsx`(空殼)      | 頻率/時段/門檻/關鍵字/地區 + digest 預覽(`/push/digest`)+ 已讀(`/push/read`);版型抄 `rules-page` 三卡 |
+| assistant 聊天          | `pages/assistant-page.tsx`(空殼) | 聊天接 `/assistant/chat` + 可看資料範圍/語氣/預設提問設定                                             |
+| api 接線                | `lib/api.ts`(缺)                 | `fetchPushDigest`/`postPushRun`/`postPushRead`/`postAssistantChat`                                    |
+
+### C-5 N3 洞察需補
+
+| 元件                | 路徑                               | 規格要點                                             |
+| ------------------- | ---------------------------------- | ---------------------------------------------------- |
+| 彙總純函式          | `lib/insights.ts`(缺)              | by-類別 / by-地區 / 篩選前後總額;可單元測試          |
+| Pie/Donut           | `components/insights/*`(缺)        | 抄 `category-chart` 樣式                             |
+| 橫向長條(類別×金額) | 同上                               | 旁標 `/reasoning/profile` 權重來源                   |
+| before/after 對比   | 同上                               | 單一大數字 + 對比長條                                |
+| 趨勢                | 複用 `trend-chart`                 | —                                                    |
+| 篩選控制            | **複用 C-4 的 Switch/Select/Tabs** | 即時連動彙總                                         |
+| api 接線            | `lib/api.ts`                       | `fetchReasoningProfile`(`/reasoning/profile`,已就緒) |
+
+---
+
+## 附錄 D:開發順序、進度管理與驗證
+
+### D-1 再次確認建置順序:N1 → N2 → N4 → N3 ✅
+
+順序維持不變(與 §0「建議動工順序」一致),理由再申明:
+
+1. **N1 先**:最小工作量、已大致完成(僅留 N1-b 內容缺口,非阻塞),先把互動模型釘死,作為 L1–L4 動線的地基。
+2. **N2 次**:人類**點名優先**;無新後端依賴(前端 state + `trackEvent`),可獨立交付,先把「接了的案子怎麼追蹤」這條動線補上。
+3. **N4 第三**:後端**已就緒**(push/assistant 端點),且會把缺的 **Switch/Select/Tabs primitive 一次補齊**。
+4. **N3 最後**:最重;其篩選控制**直接複用 N4 補的 primitive**,避免重工;前端彙總可先行,解釋層(`/reasoning/profile`)第二步再上。
+
+> **關鍵相依**:N4 → N3 的 primitive 複用是把 N4 排在 N3 前的唯一硬理由。若臨時要先做 N3,須把 Switch/Select/Tabs 前置補齊,等同把 N4 的隱藏前置工提前。
+
+### D-2 進度管理
+
+- **單一事實來源**:本檔每個工作包的 `- [ ]` checkbox 即進度;完成改 `- [x]` 並補「驗證結論」。
+- **每包動工前**:取得人類同意(本專案規矩)→ 在 `codex/card-swipe`(或指定 `claude/<主題>`)分支開發,未經同意不推別分支、不開 PR。
+- **每包完成**:`tsc`/build 綠 + Preview MCP 驗收 + `impeccable` product 稽核三者皆過,才算 done。
+- **Layer B 包(N2/N3)**:PR 描述必含 ①同意基礎 ②共享範圍 ③對外隔離方式,缺一不可合併。
+- **目前狀態**:N1 完成(N1-b 待排);**N2 完成**(2026-06-21 Preview MCP 驗收通過:轉傳指派生效、註記新增/刪除具名+計數;`tsc -p tsconfig.app.json` 綠;`impeccable` 稽核待補);**N4 進行中**(下一步:先補 Switch/Select/Tabs primitive);N3 未動工。
+
+### D-3 驗證方案(每包共用清單)
+
+1. `preview_console_logs`:無紅字、無 `TextKey` 缺對、無 import 錯誤。
+2. **功能**:照該包「驗收」逐項以 `preview_click`/`preview_fill`/`preview_snapshot` 實機點過。
+3. **i18n**:切英文一輪確認無漏字(繁中為預設、新增 key zh/en 成對)。
+4. **a11y**(N2 popover / N4 primitive 必跑):鍵盤可達、`aria-*` 正確、popover 不被 `overflow:hidden` 裁切。
+5. **視覺**:`preview_screenshot` 佐證;`preview_resize` 驗 RWD 與密度(今日焦點需較 `/tenders` 緊湊)。
+6. **型別/建置**:`tsc` 與 build 通過。
+7. **反 slop**:`impeccable`(**product 模式**)對新元件稽核打磨。
+8. **連線限制**:雲端環境連不到後端/Ollama;凡接 `/push`、`/assistant`、`/reasoning/profile` 的接線,須在**能連線環境**做最終驗收(雲端只驗 UI 結構與降級行為)。

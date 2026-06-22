@@ -8,6 +8,9 @@ const API_BASE =
   "http://localhost:8000/api/v1";
 
 // 對齊後端 EventRequest.type（app/schemas）。
+// 註：kanban 註記／轉傳三類為前端先行（Layer B 行為訊號），後端 EventRequest.type
+//     enum 尚未涵蓋；trackEvent 為 fire-and-forget 且靜默吞錯，後端未支援時不影響 UI。
+//     待後端同步擴充 enum 後即可入庫（見 plans/uiux-v2-plan.md N2 後續）。
 export type EventType =
   | "view"
   | "open_detail"
@@ -15,7 +18,10 @@ export type EventType =
   | "dwell"
   | "apply_filter"
   | "search"
-  | "sort";
+  | "sort"
+  | "card_note_added"
+  | "card_note_removed"
+  | "card_forwarded";
 
 interface TrackOptions {
   tenderId?: string;
