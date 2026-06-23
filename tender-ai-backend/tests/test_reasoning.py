@@ -230,3 +230,92 @@ async def test_api_tender_reasoning_endpoint(reasoning_data, client):
 async def test_api_tender_reasoning_404(reasoning_data, client):
     resp = await client.get(f"{REASON_BASE}/tenders/999999/reasoning")
     assert resp.status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# §3.2 分類直接映射先驗（無評估歷史時的領域先驗）
+# §3.3 預算絕對軟閾值（無個人承接區間時的概略判斷）
+# 對齊 P4_LEARNING_ANALYSIS.md §3.2/3.3 與 §5.1 測試構想。
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+async def prior_source(db_session):
+    """僅建立資料源；用於建構「無評估歷史」的冷啟動標案。"""
+    source = Source(name="PCC", base_url="https://web.pcc.gov.tw")
+    db_session.add(source)
+    await db_session.flush()
+    return source
+
+
+async def _make_tender(db_session, source, *, case_pk, category, budget, org="某機關"):
+    t = Tender(
+        source_id=source.id, case_pk=case_pk, name=f"{org}{category or ''}案",
+        org=org, category=category, budget_wan=budget, link=f"https://x.test/{case_pk}",
+    )
+    db_session.add(t)
+    await db_session.flush()
+    await db_session.commit()
+    return t.id
+
+
+@pytest.mark.asyncio
+async def test_category_prior_engineering_cold_start(db_session, prior_source):
+    """冷啟動（零評估）：工程類仍以分類先驗給正向、fit 高於基準。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="P1", category="工程", budget=200
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "category" in factors
+    assert factors["category"].direction == "positive"
+    assert out.criteria_fit > 50
+
+
+@pytest.mark.asyncio
+async def test_category_prior_goods_cold_start(db_session, prior_source):
+    """冷啟動：財物類方向尚未認證 → 中性（不扣分），不得以先驗壓低 fit。
+
+    財物/勞務 樣本少（7/5）且 0% 可行率尚未認證，依指示先視為 0.0；
+    待累積足量評估後再由 lift（資料優先分支）自然帶出方向。
+    """
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="P2", category="財物", budget=200
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "category" in factors
+    assert factors["category"].direction == "neutral"
+    assert factors["category"].impact == 0.0
+
+
+@pytest.mark.asyncio
+async def test_budget_soft_threshold_high(db_session, prior_source):
+    """無個人預算歷史：預算 ≥300 萬 → 預算軟正向（§3.3）。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="B1", category=None, budget=400
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "budget" in factors
+    assert factors["budget"].direction == "positive"
+
+
+@pytest.mark.asyncio
+async def test_budget_soft_threshold_low(db_session, prior_source):
+    """無個人預算歷史：預算 <100 萬 → 預算軟負向（§3.3）。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="B2", category=None, budget=50
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "budget" in factors
+    assert factors["budget"].direction == "negative"
+
+
+@pytest.mark.asyncio
+async def test_budget_soft_threshold_neutral_zone(db_session, prior_source):
+    """100–300 萬：中性區，不產生 budget reason；299 萬亦視為中性（§5.1）。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="B3", category=None, budget=299
+    )
+    out = await svc.explain_tender(db_session, tid)
+    assert "budget" not in {r.factor for r in out.reasons}

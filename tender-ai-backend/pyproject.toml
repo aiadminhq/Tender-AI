@@ -17,6 +17,7 @@ dependencies = [
     "pgvector>=0.4.2",
     "requests>=2.32",
     "jieba>=0.42.1",
+    "pypdf>=4.2",  # PDF 投標須知純文字抽取（純 Python、本機、不外送 LLM）
 ]
 
 [dependency-groups]

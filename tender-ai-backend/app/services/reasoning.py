@@ -54,6 +54,26 @@ _W_KEYWORD = 0.15
 _W_KEYWORD_CAP = 0.25
 _W_BEHAVIOR = 0.06
 
+# §3.2 分類直接映射先驗：當該分類「尚無個人評估歷史」時，以領域知識給方向
+# （對齊 learn_keywords._CATEGORY_POLARITY；資料一旦累積即改以 lift 為準，資料優先）。
+# 僅納入「方向已認證」的類別；財物/勞務 樣本少且 0% 可行率尚未認證，見 _CATEGORY_UNVERIFIED。
+_CATEGORY_PRIOR = {
+    "工程": "positive",      # 樣本 100% 可行（方向明確）
+    "營繕工程": "positive",  # 樣本 100% 可行（方向明確）
+}
+# 方向「待認證」的類別：樣本顯示偏低可行率但尚未認證 → 冷啟動先給中性 0.0（不扣分），
+# 待累積足量評估後改由 lift（資料優先分支）自然帶出方向。
+_CATEGORY_UNVERIFIED = {"財物", "勞務"}
+# 先驗影響量：足以定方向（base 0.5 → 0.68 / 0.32），但弱於有資料時的 lift。
+_W_CATEGORY_PRIOR = 0.18
+
+# §3.3 預算絕對軟閾值：當「尚無個人承接區間」時的退場信號（萬元）。
+# 弱信號，不主導；有個人預算歷史時改走 in/out-range 個人化邏輯。
+_BUDGET_HI_WAN = 300
+_BUDGET_LO_WAN = 100
+_W_BUDGET_SOFT_HI = 0.08
+_W_BUDGET_SOFT_LO = -0.06
+
 _LAPLACE = 1.0  # 加法平滑（每類別 +1 可行 +1 不可行的先驗）
 
 
@@ -350,14 +370,46 @@ async def explain_tender(
                 ),
             ))
         else:
-            neutral.append(ReasonCode(
-                factor="category",
-                label="標的類別",
-                value=t.category,
-                direction="neutral",
-                impact=0.0,
-                evidence=f"「{t.category}」類尚無評估紀錄，無法判定偏好",
-            ))
+            prior = _CATEGORY_PRIOR.get(t.category)
+            if prior == "positive":
+                impact = _W_CATEGORY_PRIOR
+                fit += impact
+                weighted.append((
+                    impact,
+                    ReasonCode(
+                        factor="category",
+                        label="標的類別",
+                        value=t.category,
+                        direction=_direction(impact),
+                        impact=round(impact, 4),
+                        evidence=(
+                            f"「{t.category}」類採購在領域經驗中普遍可承接"
+                            "（分類先驗；待你累積評估後改以實際偏好為準）"
+                        ),
+                    ),
+                ))
+            elif t.category in _CATEGORY_UNVERIFIED:
+                # 方向待認證：先給中性 0.0、不扣分，但說明與「全無紀錄」不同。
+                neutral.append(ReasonCode(
+                    factor="category",
+                    label="標的類別",
+                    value=t.category,
+                    direction="neutral",
+                    impact=0.0,
+                    evidence=(
+                        f"「{t.category}」類過往樣本可行率偏低，但樣本數不足、方向尚未認證，"
+                        "暫不納入評分（待累積評估後改以實際偏好為準）"
+                    ),
+                ))
+            else:
+                neutral.append(ReasonCode(
+                    factor="category",
+                    label="標的類別",
+                    value=t.category,
+                    direction="neutral",
+                    impact=0.0,
+                    evidence=f"「{t.category}」類尚無評估紀錄，無法判定偏好",
+                ))
 
     # 2) 地點（次要因素）
     if t.city:
@@ -407,6 +459,33 @@ async def explain_tender(
                     direction="negative",
                     impact=_W_BUDGET_OUT,
                     evidence=f"預算 {t.budget_wan} 萬落在你承接區間 {lo}–{hi} 萬之外",
+                ),
+            ))
+    elif t.budget_wan is not None:
+        # §3.3 尚無個人承接區間 → 絕對軟閾值（弱信號；100–300 萬視為中性不發 reason）
+        if t.budget_wan >= _BUDGET_HI_WAN:
+            impact = _W_BUDGET_SOFT_HI
+        elif t.budget_wan < _BUDGET_LO_WAN:
+            impact = _W_BUDGET_SOFT_LO
+        else:
+            impact = 0.0
+        if impact != 0.0:
+            fit += impact
+            weighted.append((
+                impact,
+                ReasonCode(
+                    factor="budget",
+                    label="預算規模",
+                    value=f"{t.budget_wan} 萬",
+                    direction=_direction(impact),
+                    impact=round(impact, 4),
+                    evidence=(
+                        f"預算約 {t.budget_wan} 萬，"
+                        + ("達工程案常見規模（≥300 萬），偏向可承接"
+                           if impact > 0 else
+                           "偏小（<100 萬），多為小型採購，承接價值較低")
+                        + "（預算軟閾值；尚無你的承接區間時的概略判斷）"
+                    ),
                 ),
             ))
 

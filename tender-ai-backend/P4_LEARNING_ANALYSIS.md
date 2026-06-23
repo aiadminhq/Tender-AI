@@ -29,9 +29,8 @@
 CATEGORY_POLARITY = {
     "工程": ("positive", 1.0),      # 100% 可行率
     "營繕工程": ("positive", 1.0),  # 100% 可行率
-    "財物": ("negative", 1.0),      # 0% 可行率（絕對拒絕）
-    "勞務": ("negative", 1.0),      # 0% 可行率（絕對拒絕）
-    # 其他分類學習後添加
+    "財物": ("negative", 1.0),      # 100% 可行率（待確認）
+    "勞務": ("negative", 1.0),      # 100% 可行率（待確認）
 }
 ```
 
@@ -74,8 +73,8 @@ def extract_budget_feature(tender: Tender) -> tuple[str, float]:
 | 詞彙 | 極性 | 權重  | 支援 | 含義               |
 | ---- | ---- | ----- | ---- | ------------------ |
 | 工程 | +    | 0.714 | 24   | 分類別名，最強信號 |
-| 財物 | –    | 1.000 | 7    | 分類別名，絕對拒絕 |
-| 勞務 | –    | 1.000 | 5    | 分類別名，絕對拒絕 |
+| 財物 | –    | 1.000 | 7    | 分類別名，待評分   |
+| 勞務 | –    | 1.000 | 5    | 分類別名，待評分   |
 | 營繕 | +    | 1.000 | 3    | 分類別名，完美可行 |
 
 **洞察**：Tier 1 詞彙幾乎都是分類欄位的別名。這意味著：
@@ -138,8 +137,9 @@ ORG_PATTERNS = {
 
 當 `tender.category` 不為 NULL 時：
 
-- "工程" / "營繕工程" → 直接評分 +1.0（跳過詞彙計算）
-- "財物" / "勞務" → 直接評分 -1.0（快速拒絕）
+- "工程" / "營繕工程" → 直接評分 +1.0（方向 100% 已認證，跳過詞彙計算）
+- "財物" / "勞務" → **暫不直接評分（先作為 0.0）**：樣本少（7/5）、0% 可行率尚未認證，
+  不在冷啟動硬扣分；待累積足量評估後，由 lift（資料優先）自然帶出負向。
 
 當 category 為 NULL 時，退回詞彙 TF 評分（現有邏輯）。
 
@@ -179,20 +179,47 @@ ORG_FEATURES = {
 
 - [x] 現有 TF 詞頻比較實現
 - [x] 版本快照（keyword_weight_revisions）
-- [ ] 添加分類直接對映表到 learn_keywords.py
-- [ ] 添加預算評分函數
+- [x] 添加分類直接對映表（學習端 `learn_keywords._CATEGORY_POLARITY`）
+- [x] 添加預算評分函數（評分端 §3.3 軟閾值，見下）
+- [x] **補 category NULL 天花板**：新增 offline 回填 job `jobs/backfill_category.py`——
+      把已抓進 `tender_revisions.category_main` 的分類，正規化後（「工程類」→「工程」，
+      與 research_enrich 共用 `normalize_category`）投影回 `tenders.category`。
+  - 缺口成因：`enrich_details` 對既有列做 TTL 補抓時**刻意不回填主檔**（詳情只落 revision），
+    故舊案 `category` 仍 NULL 即使 revision 早有分類。新案路徑（research_enrich）抓取時已回填。
+  - 性質：純讀既有 DB、**零網路**（CI/sandbox 安全）、**冪等且只補 NULL 不覆蓋**、
+    現值版本（current_revision_id）優先、否則退回最新有分類版本。測試見 `tests/test_backfill_category.py`。
+  - ⏳ 待網路環境：尚未 enrich 的案仍需先跑 PCC 詳情抓取（`scrape_detail_*` / `research_enrich`）
+    補出 revision，本 job 才能把分類投影上去——抓取那一步需連 PCC，於可連線環境執行。
 
 ### Phase 4.2（下周）
 
 - [ ] 機構特性識別模組
-- [ ] 多維評分框架整合
+- [x] 多維評分框架整合（評分端 `reasoning.explain_tender`）。
+  - §3.2 分類先驗 `_CATEGORY_PRIOR`：類別無評估歷史時以領域知識給方向（工程/營繕→+0.18）；
+    財物/勞務 方向尚未認證 → 冷啟動先給中性 0.0（`_CATEGORY_UNVERIFIED`，不硬扣分），
+    學習端 `learn_keywords._CATEGORY_POLARITY` 同步移除其負向種子；資料一旦累積即改以 lift 為準。
+  - §3.3 預算軟閾值 `_BUDGET_SOFT_*`：無個人承接區間時，≥300 萬→+0.08、<100 萬→−0.06、100–300 萬中性。
+  - 回歸測試見 `tests/test_reasoning.py`（category_prior / budget_soft_threshold 共 5 例）。
 - [ ] 標案評分 API（GET /tenders/{id}/feasibility-score）
+      ※ 目前可解釋評分由 `GET /api/v1/tenders/{id}/reasoning` 提供。
 
 ### Phase 5（2–3 周）
 
-- [ ] 決策向量嵌入（rationale + criteria + 多維特徵）
-- [ ] 相似案例檢索（HNSW cosine）
-- [ ] 決策助手交互
+- [x] 決策向量嵌入 job（`jobs/embed_decisions.py`）：rationale + criteria + 標案特徵 →
+      `decision_vectors`；同意門檻（`whitelist_active && consent_shared`）+ 結論門檻
+      （可行/不可行）+ 冪等 upsert（by evaluation_id）。**待 Ollama 環境實跑回填**。
+- [x] 相似案例檢索（HNSW cosine）：`search.recommend_from_decisions` +
+      `GET /api/v1/search/recommend/{tender_id}`，依相似度加權聚合承接傾向
+      （feasible_leaning / infeasible_leaning / unknown）+ 信心 + 白話總結。
+      回傳僅標案公開欄位 + 結論標籤，不外洩 rationale 全文／使用者身分。
+      測試見 `tests/test_decision_search.py`、`tests/test_embed_decisions.py`（mock embedding）。
+- [ ] 決策助手交互（前端串接 `/search/recommend`，呈現相似案例與傾向）
+- [x] **自演化觸發閘**（`jobs/self_evolve.py`）：把「何時值得再學一次」集中於一處——
+      團隊線可用樣本（consent-aware，與 `learn_keywords` 同準則）達 `min_samples`（預設 **50**）
+      **且**較上一批（`KeywordWeightRevision` 審計軌跡）有新增，才委派 `learn_keywords` 重學；
+      `force=True` 可無條件觸發。完全 offline／冪等（無新資料不重學）。
+      測試見 `tests/test_self_evolve.py`（門檻／觸發／無新增略過／force／同意過濾，5 例）。
+      ⏳ 樣本由 24 → 50+ 的累積仰賴前端評估 UI 實際使用，達標後此閘自動放行一次自演化。
 
 ---
 
@@ -243,6 +270,11 @@ metrics = {
 ```
 
 每次學習後，檢查 `accuracy_after > accuracy_before`；若否，觸發告警。
+
+> **觸發時機已落地**：`run_self_evolution()`（`jobs/self_evolve.py`）即上述 gate——
+> 樣本達 50+ 且較上批有新增才重學，避免 24 筆小樣本下的高頻抖動。`evaluate_gate()`
+> 可單獨呼叫做純判斷（不觸發學習），回傳 `current_samples / last_batch_samples /
+threshold_met / has_new_data / should_evolve`，供前端或排程觀察距離門檻多遠。
 
 ---
 

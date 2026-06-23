@@ -18,6 +18,8 @@ __pycache__/
 data/private/
 data/downloads/
 backfill_report.json
+backfill_category_report.json
+self_evolve_report.json
 
 # OS
 .DS_Store

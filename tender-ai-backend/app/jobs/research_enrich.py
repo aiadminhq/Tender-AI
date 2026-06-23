@@ -39,6 +39,7 @@ from sqlalchemy import func, select, update
 from app.adapters import get_adapter
 from app.adapters.pcc import PCCAdapter
 from app.db.session import AsyncSessionLocal
+from app.jobs.backfill_category import normalize_category
 from app.jobs.enrich_details import (
     INTERIOR_KEYWORDS,
     _archive_dir,
@@ -287,7 +288,7 @@ async def _process_one(
         "deadline_roc": deadline_roc,
         "deadline_iso": roc_to_date(deadline_roc),
         "tender_method": (rf.get("招標方式") or "")[:32] or None,
-        "category": (parsed.category_main or "").replace("類", "")[:8] or None,
+        "category": normalize_category(parsed.category_main),
     }
     if name:  # 有真實名稱才覆蓋暫定名
         tender_values["name"] = name
@@ -310,6 +311,8 @@ async def run_research_enrich(
     session_factory=None,
     archive_base_dir: Path | None = None,
     archiver=archive_attachments,
+    adapter: PCCAdapter | None = None,
+    limit: int | None = None,
 ) -> dict:
     """執行一次研究 enrich;回傳統計 dict。
 
@@ -320,10 +323,12 @@ async def run_research_enrich(
     trigger / rate_limit_s : 寫入 crawl_run 的觸發來源 / 每筆抓取間隔秒數(測試傳 0)。
     now / session_factory / archive_base_dir / archiver : 測試注入點(固定時鐘 / 測試庫 /
         歸檔根目錄 / 假 archiver),全注入即可離線、不連網。
+    adapter : 注入自訂 PCC adapter(如 ``PCCOpenCLIAdapter`` 走瀏覽器繞 CAPTCHA);
+        省略則用 registry 預設的 server-side ``PCCAdapter``。
     """
     now = now or datetime.now(timezone.utc)
     factory = session_factory or AsyncSessionLocal
-    adapter = get_adapter(_SOURCE_NAME)
+    adapter = adapter or get_adapter(_SOURCE_NAME)
     cities = cities or list(adapter.EXEC_LOCATIONS)
     today_roc = _ad_to_roc(now)
     start = start or today_roc
@@ -359,6 +364,9 @@ async def run_research_enrich(
             session, adapter=adapter, source_id=source_id,
             cities=cities, start=start, end=end, now=now,
         )
+        if limit is not None and limit >= 0:
+            # 分階段抓取(先單頁驗證再全批)：discovery 後截斷處理數，不影響去重建檔。
+            targets = targets[:limit]
         stats["discovered"] = len(targets)
 
         for idx, (tid, case_pk, _city) in enumerate(targets):
@@ -452,12 +460,32 @@ def main() -> None:
         help="執行觸發來源(寫入 crawl_run)",
     )
     ap.add_argument("--rate-limit", type=float, default=2.0, help="每筆抓取基準間隔秒數(預設 2.0;另加 0~50% 抖動)")
+    ap.add_argument(
+        "--opencli", action="store_true",
+        help="走 OpenCLI 瀏覽器 bridge 抓詳情(繞 CAPTCHA;需已 bind 已過驗證分頁)。"
+        "此模式下 --start/--end 請給西元年 YYYY/MM/DD。",
+    )
+    ap.add_argument("--limit", type=int, default=None, help="只處理前 N 筆(分階段抓取;省略=全部)")
     args = ap.parse_args()
+
+    adapter = None
+    start, end = args.start, args.end
+    if args.opencli:
+        from app.adapters.pcc_opencli import PCCOpenCLIAdapter  # lazy:避免污染測試環境
+
+        # OpenCLI/isDate 用西元年;未給日期時預設為「公告日期=當日」(西元年)。
+        today_ad = datetime.now(timezone.utc).strftime("%Y/%m/%d")
+        start = start or today_ad
+        end = end or today_ad
+        adapter = PCCOpenCLIAdapter()
+        print("綁定 OpenCLI 瀏覽器 session …", file=sys.stderr)
+        adapter.bind()
 
     stats = asyncio.run(
         run_research_enrich(
-            start=args.start, end=args.end, cities=args.city,
+            start=start, end=end, cities=args.city,
             trigger=args.trigger, rate_limit_s=args.rate_limit,
+            adapter=adapter, limit=args.limit,
         )
     )
     print(

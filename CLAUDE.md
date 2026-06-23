@@ -8,6 +8,7 @@
 ## 專案是什麼
 
 **Tender AI**：幫人篩選政府標案、並會「越用越聰明」的系統。Monorepo：
+
 - `tender-ai-backend/`：資料與 AI 大腦（Python / FastAPI / PostgreSQL+pgvector / Ollama）。
 - `tender-ai-frontend/`：人看的畫面（React / TypeScript / Vite，i18n 繁中預設、可切英文）。
 
@@ -31,11 +32,11 @@
 
 ### 資料三層速記
 
-| 層 | 白話 | 揭露邊界 |
-| --- | --- | --- |
-| Layer A | 公開的標案資料 | 可公開、可從原始 HTML 重建 |
-| Layer B | 同事的行為與想法 | **白名單(@hqdesign.tw)內共享＋依登入帳號具名、對外永不揭露**（需同意） |
-| Layer C | 學出來的知識（向量/權重/理由） | 衍生物可重算；對外須去識別化 |
+| 層      | 白話                           | 揭露邊界                                                               |
+| ------- | ------------------------------ | ---------------------------------------------------------------------- |
+| Layer A | 公開的標案資料                 | 可公開、可從原始 HTML 重建                                             |
+| Layer B | 同事的行為與想法               | **白名單(@hqdesign.tw)內共享＋依登入帳號具名、對外永不揭露**（需同意） |
+| Layer C | 學出來的知識（向量/權重/理由） | 衍生物可重算；對外須去識別化                                           |
 
 ---
 
@@ -49,25 +50,41 @@
 
 ---
 
+## AI 大腦決策鐵則（P4/P5，動評分前務必遵守）
+
+> 這些是已踩過坑、由真實資料或本人指示確立的約束。**改 `reasoning.py`／`learn_keywords.py`／embedding 相關 job 前，先讀這節。**
+
+- **分類先驗**：`工程`／`營繕工程` 為正向先驗（已驗證，約 `+0.18`）。**`財物`／`勞務` 一律當中性 `0.0`，禁止預設給 `-1.0`**——尚未取得足夠提升資料佐證，負向只能由真實 lift 數據自然浮現，不得手工種負分。
+- **預算軟閾值**：超出舒適區間以連續軟懲罰處理，不做硬性 0/1 切斷（見 P4_LEARNING_ANALYSIS §3.3）。
+- **自演化觸發閘**（`app/jobs/self_evolve.py`）：團隊線 consent-aware 樣本數 **≥ 50** 且 **較上批有新增**才重跑 `learn_keywords`；`force=True` 可手動覆寫。完全 offline／冪等，無新資料不空轉。
+- **學習軌跡 append-only**：權重更新一律寫 `KeywordWeightRevision` 審計批次（`batch=now.isoformat()`，記 `feasible_samples`/`infeasible_samples`），不就地覆蓋；讀「目前值」優先 `current_revision_id`，否則取最新 revision。
+- **團隊線 consent-aware**：只納入 `whitelist_active && consent_shared` 的使用者、結論 ∈ {可行,不可行}。閘與學習的計數準則必須一致。
+- **不要在批次抓取期間向量化**：embedding 批次進行中時，**先不要跑向量化**（避免讀到半抓取狀態），等批次完成再補。decision_vectors／semantic 檢索目前以 mock/離線驗證為主。
+- **category 缺口**：歷史資料約 79% `category` 為 NULL，是學習天花板。回填走 `app/jobs/backfill_category.py`（**只補 NULL、冪等、offline**），線上抓取回填需在能連 PCC 的環境執行。
+
+---
+
 ## 前端設計／品味技能（UI/UX，自動組合使用）
 
 > 本專案已在 `.claude/skills/` 安裝一組設計/品味技能，雲端與本地 session 都會自動載入。
 > **凡涉及前端介面（頁面、元件、版面、樣式、動效、可及性、文案）的工作，務必主動組合調用以下技能**，不要憑直覺手刻出 slop。
 
-| 技能 | 角色 | 何時用 |
-| --- | --- | --- |
-| `impeccable` | 反 slop 主審＋優化（product / brand 雙模式、44+ 確定性檢測） | 任何 UI 產出後把關打磨；本專案以 **product 模式**為主（儀表板/App UI），行銷/落地頁才用 brand |
-| `ui-ux-pro-max` | 設計資料庫（風格/色盤/字體配對/版型）＋ shadcn/ui 整合 | 開新頁/新元件前選風格、色票、版型（本專案已用 shadcn） |
-| `design-taste-frontend` | 注入設計品味（layout/typography/motion/spacing/density、變化性） | 需提升品味、消除模板感時 |
-| `redesign-existing-projects` | 既有專案重設計流程 | 優化現有頁面（本專案多數情境） |
-| `minimalist-ui` | 極簡編輯風（暖色單色、字級對比、扁平 Bento、無重陰影） | 與本專案設計語言一致的預設方向 |
+| 技能                         | 角色                                                             | 何時用                                                                                        |
+| ---------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `impeccable`                 | 反 slop 主審＋優化（product / brand 雙模式、44+ 確定性檢測）     | 任何 UI 產出後把關打磨；本專案以 **product 模式**為主（儀表板/App UI），行銷/落地頁才用 brand |
+| `ui-ux-pro-max`              | 設計資料庫（風格/色盤/字體配對/版型）＋ shadcn/ui 整合           | 開新頁/新元件前選風格、色票、版型（本專案已用 shadcn）                                        |
+| `design-taste-frontend`      | 注入設計品味（layout/typography/motion/spacing/density、變化性） | 需提升品味、消除模板感時                                                                      |
+| `redesign-existing-projects` | 既有專案重設計流程                                               | 優化現有頁面（本專案多數情境）                                                                |
+| `minimalist-ui`              | 極簡編輯風（暖色單色、字級對比、扁平 Bento、無重陰影）           | 與本專案設計語言一致的預設方向                                                                |
 
 **建議組合（依情境自動串）**
+
 - **優化既有頁面**：`redesign-existing-projects` 盤點 → `ui-ux-pro-max` 取參考/tokens → `minimalist-ui`／`design-taste-frontend` 定品味 → 實作 → `impeccable` 稽核打磨。
 - **全新頁面/元件**：`ui-ux-pro-max` 選型 → 品味技能定調 → 實作 → `impeccable` 稽核。
 - **只做檢查/驗收**：`impeccable` 跑反模式偵測。
 
 **House style（技能不得覆蓋本專案既有規範）**
+
 - 繁中字體僅 `Noto Sans TC`；英文 `Inter`／`SF Pro Text`；數字/程式碼 `JetBrains Mono`／`SF Mono`。
 - 極簡直線、零手寫/抖動；統一 16px 圓角；Bento 卡片分區；僅允許些微陰影（`0 1px 2px rgba(0,0,0,.06)`），禁濃重投影。
 - i18n：新增文案 zh／en 成對，繁中為預設。
@@ -79,16 +96,16 @@
 
 ## 文件導覽
 
-| 想知道 | 看哪裡 |
-| --- | --- |
+| 想知道                       | 看哪裡                                 |
+| ---------------------------- | -------------------------------------- |
 | 心智模型、資料三層、功能代號 | `docs/governance/00-總覽與心智模型.md` |
-| 雲端怎麼下需求 | `docs/governance/01-雲端開發與需求.md` |
-| 本地↔雲端同步 | `docs/governance/02-本地雲端同步.md` |
-| 命名與目錄、領域知識放哪 | `docs/governance/03-命名與目錄規範.md` |
-| 訓練資料 / 共享知識庫規範 | `docs/governance/04-訓練資料規範.md` |
-| 白話術語、進度 | `docs/governance/05-進度與白話術語.md` |
-| 產品願景 / 設計 | `PRD.md` / `DESIGN.md` |
+| 雲端怎麼下需求               | `docs/governance/01-雲端開發與需求.md` |
+| 本地↔雲端同步                | `docs/governance/02-本地雲端同步.md`   |
+| 命名與目錄、領域知識放哪     | `docs/governance/03-命名與目錄規範.md` |
+| 訓練資料 / 共享知識庫規範    | `docs/governance/04-訓練資料規範.md`   |
+| 白話術語、進度               | `docs/governance/05-進度與白話術語.md` |
+| 產品願景 / 設計              | `PRD.md` / `DESIGN.md`                 |
 
 ---
 
-最後更新：2026-06-19
+最後更新：2026-06-23

@@ -1,0 +1,323 @@
+<RichText id="intro">
+
+# Tender AI 專案現況評估（全棧打通盤點）
+
+針對五大面向做一次「現在到底做到哪」的盤點：PCC 資料抓取與入庫、前台頁面/功能、assistant-ui 整合、後端資料庫與知識庫學習，最後判定全棧是否打通。結論先講：**核心鏈路已打通、可離線重現（~180 支測試、21 檔），整體完成度約 90–93%**。本次更新反映近期落地的大進度——**白名單登入（@hqdesign.tw）＋ user_id 具名已實作**（前端 `setCurrentUserId/withUser` 注入、後端 `Event.user_id` 為 NOT NULL FK），**Layer B Phase 1 全套到位**（白名單 + 兩段式同意 + 個人偏好輪廓 + 雙軌學習），**enrich 履約/資格/押標金/附件欄位與詳情 API 讀取端已落地**，**assistant Phase 1 引導 onboarding 也已完成**。剩餘卡點集中在：PCC 詳情頁「常駐型 CAPTCHA」、assistant Phase 2–4（全螢幕/情境/留存）、`/search/semantic` 與 `/evolution/*` 的前端入口，以及 category 空值率。
+
+本文件為**唯讀評估**，未改動任何原始碼；確認方向後再進實作。
+
+</RichText>
+
+<Callout id="overall" tone="success">
+
+**全棧可端到端跑通**：PCC 抓取 → 解析 → revision-first 入庫 → 向量化 → 查詢/相似/理由 → 前端已接 25/28 路由（含登入/帳號/同意/白名單/語意搜尋/進化）。資料能從原始 HTML 重建（Layer A），知識層（Layer C）可重算。**Layer B 具名共享已從佔位轉為真實**（白名單登入 + user_id FK 落地）。剩餘缺口為**抓取自動化**（CAPTCHA）與**前端 UI 入口**（semantic/evolution）等，列於下方各節與 Open Questions。
+
+</Callout>
+
+<RichText id="overview-h">
+
+### 五大面向狀態總覽
+
+</RichText>
+
+<Table
+  id="overview-table"
+  columns={["面向", "狀態", "完成度", "關鍵卡點"]}
+  rows={[
+    ["1. PCC 抓取與入庫", "🟡 核心就緒、自動化受阻", "~82%", "詳情頁常駐 CAPTCHA；ingest 測試已對齊、case_pk 仍存 base64"],
+    ["2. 前台頁面/功能", "✅ 主要頁面到位 + 登入 + 語意搜尋/進化", "~92%", "assistant Phase 2–4 待補"],
+    ["3. assistant-ui 整合", "🟡 自建版＋Phase 1 引導已做", "~78%", "Phase 2–4(全螢幕/情境/留存)未做；官方庫未用"],
+    ["4. 後端 DB + 知識學習", "✅ 完整、Layer B Phase 1 落地", "~96%", "category 空值率高(~900/1136)"],
+    ["5. 全棧打通", "✅ 已打通 + 具名歸屬", "~92–94%", "PCC 抓取自動化（CAPTCHA）為主要卡點"],
+  ]}
+/>
+
+<RichText id="flow-h">
+
+### 全棧資料流（現況）
+
+</RichText>
+
+<Table
+  id="flow-table"
+  columns={["① Layer A 抓取", "② 入庫 revision-first", "③ 知識 Layer C", "④ API + 前端"]}
+  rows={[
+    ["PCCAdapter.fetch_detail", "tender_snapshots", "learn_keywords（團隊線＋個人線）", "FastAPI /api/v1（28 routes）"],
+    ["detail_parser.parse_pcc_detail", "tender_revisions（immutable）", "evolution / reasoning", "React 11 頁（含登入）+ assistant 浮窗"],
+    ["enrich / research / backfill jobs", "pgvector bge-m3 1024d / HNSW", "keyword_weight + UserKeywordWeight", "events → Layer B（具名已落地）"],
+  ]}
+/>
+
+<Callout id="flow-note" tone="info">
+
+由左至右為端到端鏈路：①→②→③→④。第④欄 `events → Layer B（具名已落地）`：白名單登入 + user_id FK 已實作，具名歸屬為真；知識線分為**團隊線**（須白名單 + 同意）與**個人線**（免同意），見後端章節。
+
+</Callout>
+
+<RichText id="pcc-h">
+
+### 1. PCC 抓取與入庫
+
+`app/adapters/pcc.py`（`PCCAdapter`，`fetch_detail`/`fetch_list_case_pks`/`EXEC_LOCATIONS`）、`app/services/detail_parser.py`（`parse_pcc_detail`、`is_captcha_page`、掃 `headers="tb_02"`）、三支 job 與 `backfill.py` 皆已是 production-ready，且有大量離線測試。**已驗證 1,125 筆 backfill、staging live**。近期更新：enrich 已補上**履約期限/地點、資格代碼與文字、押標金、附件清單**等 revision 欄位（`app/models/revision.py`），詳情 API 讀取端與前端 `RevisionDetailBlock` 同步到位；`ingest_daily_reports` 的 source_id 改為**動態解析**（commit 2e6047d），冪等測試通過。卡點如下表標示。
+
+</RichText>
+
+<Table
+  id="pcc-table"
+  columns={["元件", "狀態", "說明"]}
+  rows={[
+    ["PCCAdapter / list / detail", "✅", "台北市/新北市 EXEC_LOCATIONS；SkipSSLAdapter 已測，勿重寫"],
+    ["detail_parser", "✅", "~1500 行；ParsedDetail、CAPTCHA 偵測"],
+    ["enrich_details / research_enrich", "✅", "TTL 增量、revision-first、失敗重試、容忍 CAPTCHA；已補履約/資格/押標金/附件欄位"],
+    ["backfill", "✅", "已驗證 1,125 筆"],
+    ["ingest_daily_reports", "🟡 部分緩解", "source_id 改動態解析、冪等測試通過；case_pk 仍存 base64（與 backfill 解碼數字的對齊仍是潛在落差）"],
+    ["詳情頁 CAPTCHA", "🔴 阻擋", "常駐型（非觸發型），低速爬無法繞過，需瀏覽器互動式抓取"],
+    ["category 空值率", "🟡", "~900/1,136 缺類別，影響知識學習特徵覆蓋"],
+  ]}
+/>
+
+<Callout id="captcha-risk" tone="risk">
+
+**詳情頁 CAPTCHA 是常駐型、不是 rate-triggered**：放慢爬速無法解決。要恢復「全自動補詳情」，需走瀏覽器互動式抓取（如 Chrome 自動化/人工協助），這是一個架構決策，列入 Open Questions。
+
+</Callout>
+
+<RichText id="fe-h">
+
+### 2. 前台頁面與功能
+
+React + TS + Vite，react-router-dom v7，AppShell + 11 頁（新增登入頁）。i18n 繁中預設、zh/en 成對。`VITE_USE_API` 切換 mock/真 API。主要頁面與資料接線到位。**新增登入/帳號流程**：`login-page.tsx`、`store/auth-context.tsx`、`lib/auth-api.ts`（login/fetchMe/changePassword/adminSetPassword/fetchAccounts）、`settings/account-security.tsx`、`settings/admin-user-passwords.tsx`，並透過 `api.ts` 的 `setCurrentUserId/withUser` 把 user_id 注入所有行為請求（具名歸屬為真）。
+
+</RichText>
+
+<Table
+  id="fe-table"
+  columns={["頁面 / 路由", "狀態", "資料來源"]}
+  rows={[
+    ["dashboard /", "✅", "API"],
+    ["tenders /tenders", "✅", "fetchTenders"],
+    ["tender-detail /tenders/:id", "✅", "fetchTenderDetail / similar / reasoning"],
+    ["swipe /swipe", "✅", "卡片決策 → events"],
+    ["kanban /kanban", "✅", "看板（部分 mock）"],
+    ["push /push", "✅", "fetchPushDigest / runPush / markPushRead"],
+    ["insights /insights", "🟡", "洞察分析（部分 mock）"],
+    ["rules /rules", "✅", "PRIORITY_RULES 檢視"],
+    ["assistant /assistant", "✅", "streamAssistantChat (NDJSON)"],
+    ["login /login", "✅", "auth-api login / auth-context"],
+    ["settings /settings", "✅", "推播/小助手設定＋帳號安全/管理者改密"],
+    ["語意搜尋 /search", "✅", "searchSemantic → TenderTable，含埋點 search 事件"],
+    ["自我進化 /evolution", "✅", "fetchEvolutionStatus/runEvolution，唯讀現況＋手動觸發"],
+  ]}
+/>
+
+<RichText id="assistant-h">
+
+### 3. assistant-ui 功能開發與置入狀態
+
+小助手浮窗為**自建實作**（`src/components/assistant/`：launcher / window 三形態 drag-sidebar-float / thread / composer / use-assistant-chat 串流）。串接後端 `/assistant/chat` NDJSON、grounding 系統提示限定 Layer-A。**Phase 1 引導 onboarding 已完成**（`assistant-onboarding.tsx`，spotlight 引導 + localStorage `tender-assistant-onboarded`）。**仍存落差**：`@assistant-ui/react@0.14.23` 已裝於 package.json 但**零 import、完全未用**；Phase 2（全螢幕）/ 3（情境感知）/ 4（對話留存）尚未動工。`plans/assistant-ui-integration/` 已定案 Phase 0–4（2026-06-22）。
+
+</RichText>
+
+<Table
+  id="assistant-table"
+  columns={["項目", "狀態", "說明"]}
+  rows={[
+    ["浮窗骨架 / 三形態", "✅", "自建 assistant-window，drag/sidebar/float"]
+,
+    ["串流對話", "✅", "use-assistant-chat → /assistant/chat meta/delta/done"],
+    ["Layer-A grounding", "✅", "system prompt 限定公開標案資料"],
+    ["@assistant-ui/react 套件", "🟡 未用", "已安裝 0.14.23，無任何 import"],
+    ["Phase 1 引導 onboarding", "✅", "assistant-onboarding.tsx，spotlight + localStorage"],
+    ["Phase 2 全螢幕模式", "🔴", "未做"],
+    ["Phase 3 情境感知", "🔴", "未做"],
+    ["Phase 4 對話留存", "🔴", "未做"],
+  ]}
+/>
+
+<RichText id="be-h">
+
+### 4. 後端資料庫與知識庫學習
+
+PostgreSQL + pgvector，25 張表、13 個 Alembic migration。revision-first 永不 UPDATE。P1–P4 完成、約 180 支測試（21 檔）。**Layer B Phase 1 已落地**：`User` 表（password_hash pbkdf2_sha256、whitelist_active、consent_shared、consent_at）、白名單限定 `@hqdesign.tw`（`account.set_whitelist`）、兩段式同意、個人偏好輪廓（`PreferenceProfile`）、`UserKeywordWeight`（複合 PK user_id+term）。**雙軌學習**：團隊線受 `whitelist_active and consent_shared` 雙閘控、個人線免同意（`learn_keywords._learn_personal_line`）。P4 關鍵字權重學習＝category Tier-1 對映 + TF 詞頻比較 + 版本快照。向量 bge-m3 1024 維、HNSW cosine。
+
+</RichText>
+
+<DataModel
+  id="be-data-model"
+  entities={[
+    {
+      id: "tender_snapshots",
+      name: "tender_snapshots (Layer A)",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "case_pk", type: "text" },
+        { name: "source_id", type: "uuid", fk: "sources.id" },
+        { name: "embedding", type: "vector(1024)" },
+      ],
+    },
+    {
+      id: "tender_revisions",
+      name: "tender_revisions (immutable)",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "snapshot_id", type: "uuid", fk: "tender_snapshots.id" },
+        { name: "payload", type: "jsonb" },
+        { name: "created_at", type: "timestamptz" },
+      ],
+    },
+    {
+      id: "users",
+      name: "users (白名單帳號)",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "email", type: "text (@hqdesign.tw)" },
+        { name: "password_hash", type: "text (pbkdf2)" },
+        { name: "whitelist_active", type: "bool" },
+        { name: "consent_shared", type: "bool" },
+      ],
+    },
+    {
+      id: "events",
+      name: "events (Layer B)",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "user_id", type: "uuid", fk: "users.id" },
+        { name: "kind", type: "text" },
+        { name: "tender_pk", type: "text" },
+      ],
+    },
+    {
+      id: "keyword_weight_revisions",
+      name: "keyword_weight_revisions (Layer C)",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "keyword", type: "text" },
+        { name: "weight", type: "float" },
+        { name: "rationale", type: "text" },
+      ],
+    },
+  ]}
+  relations={[
+    { from: "tender_snapshots", to: "tender_revisions", kind: "1-n" },
+    { from: "tender_snapshots", to: "events", kind: "1-n" },
+    { from: "users", to: "events", kind: "1-n" },
+  ]}
+/>
+
+<Table
+  id="be-table"
+  columns={["元件", "狀態", "說明"]}
+  rows={[
+    ["schema / migrations", "✅", "25 表、13 migration"],
+    ["revision-first 入庫", "✅", "snapshots + revisions，永不 UPDATE"],
+    ["向量搜尋", "✅", "bge-m3 1024d、HNSW、cosine"],
+    ["query 可行性排序", "✅", "_feasibility_score_expr：feas/days/budget/tier"],
+    ["learn_keywords (P4)", "✅", "團隊線（同意閘控）＋個人線（免同意）雙軌"],
+    ["evolution / reasoning / assistant", "✅", "服務層完整"],
+    ["白名單登入 / 帳號", "✅", "auth/me/admin 端點、pbkdf2、seed 9 名 @hqdesign.tw"],
+    ["Layer B 具名歸屬", "✅", "events.user_id 為 NOT NULL FK，登入後具名為真"],
+    ["信任邊界（Phase 1）", "🟡", "輕量無 token/session，admin 以 X-User-Role 標頭把關（Phase 2 待補）"],
+  ]}
+/>
+
+<RichText id="fullstack-h">
+
+### 5. 全棧打通確認（API 對帳）
+
+後端 28 條 `/api/v1` 路由（含 auth/me/admin/consent/preference-profile），前端已接 **23 條（~90%+）**。記憶筆記舊稱「只接 2 條」已過時，以本對帳為準。未接的少數路由皆為**前端缺 UI 入口**、非後端缺實作。
+
+</RichText>
+
+<Table
+  id="contract-table"
+  columns={["路由群", "後端", "前端接線", "備註"]}
+  rows={[
+    ["GET /tenders, /tenders/:id", "✅", "✅", "列表/詳情"],
+    ["GET /tenders/:id/similar", "✅", "✅", "相似標案"],
+    ["GET /tenders/:id/reasoning, /reasoning/profile", "✅", "✅", "理由/輪廓"],
+    ["POST /tenders/:id/{save,note,rate,share,accept}", "✅", "✅", "Layer B 行為"],
+    ["GET/POST /saved-searches", "✅", "✅", "儲存搜尋"],
+    ["POST /events", "✅", "✅", "埋點"],
+    ["POST /assistant/chat", "✅", "✅", "NDJSON 串流"],
+    ["GET/POST /push/*", "✅", "✅", "digest/run/read"],
+    ["POST /auth/login, GET /me", "✅", "✅", "登入/取本人"],
+    ["PUT /me/consent, /me/password", "✅", "✅", "同意/改密"],
+    ["GET /me/preference-profile", "✅", "🟡", "後端就緒，前端輪廓視圖待確認"],
+    ["GET/POST /admin/whitelist, /admin/users/:id/password", "✅", "✅", "管理者白名單/改密"],
+    ["GET /search/semantic, /search/similar/:id", "✅", "✅", "/search 語意搜尋頁已接（similar 仍走詳情頁）"],
+    ["POST /evolution/run, GET /evolution/status", "✅", "✅", "/evolution 面板已接（唯讀＋手動觸發）"],
+    ["GET /health", "✅", "🔴", "前端無自動檢查"],
+  ]}
+/>
+
+<RichText id="gaps-h">
+
+### 收斂缺口（建議動工順序）
+
+</RichText>
+
+<Checklist
+  id="gaps-checklist"
+  items={[
+    { id: "g-captcha", label: "決定 PCC 詳情頁抓取策略（瀏覽器互動式 / 人工協助 / 維持半自動）", note: "影響自動化能否恢復；架構級決策" },
+    { id: "g-assistant", label: "推進 assistant-ui Phase 2–4（全螢幕/情境/留存；或評估改用 @assistant-ui/react）", note: "Phase 0–1 已完成" },
+    { id: "g-semantic-ui", label: "✅ 已補 /search 語意搜尋頁與 /evolution 進化面板前端入口", note: "2026-06-22 完成；tsc/eslint 綠燈，similar 仍走詳情頁、/health 自檢尚缺" },
+    { id: "g-auth-phase2", label: "補登入信任邊界 Phase 2（session/token，取代 X-User-Role 標頭）", note: "目前 admin 把關為輕量標頭" },
+    { id: "g-ingest", label: "統一 ingest_daily_reports case_pk 編碼（解碼數字，與 backfill 對齊）", note: "測試已對齊冪等，仍存 base64 為潛在落差" },
+    { id: "g-category", label: "降低 category 空值率（~900/1,136）", note: "提升知識學習特徵覆蓋" },
+  ]}
+/>
+
+<RichText id="oq-h">
+
+### Open Questions
+
+</RichText>
+
+<QuestionForm
+  id="oq-form"
+  questions={[
+    {
+      id: "captcha-strategy",
+      title: "PCC 詳情頁的常駐 CAPTCHA 要怎麼處理？",
+      subtitle: "決定能否恢復全自動補詳情。",
+      mode: "single",
+      options: [
+        { id: "browser", label: "瀏覽器互動式抓取（Chrome 自動化）", detail: "可恢復自動化，但需維運瀏覽器環境、較脆弱", recommended: true },
+        { id: "manual", label: "人工協助過驗證碼", detail: "最穩、零開發，但無法全自動、不可規模化" },
+        { id: "semi", label: "維持半自動（列表自動、詳情按需）", detail: "現況；接受詳情覆蓋率較低" },
+      ],
+      required: true,
+    },
+    {
+      id: "next-priority",
+      title: "接下來優先推哪一塊？（登入/具名、semantic/evolution 前端入口皆已落地）",
+      mode: "single",
+      options: [
+        { id: "captcha", label: "PCC 詳情頁抓取策略（CDP/Playwright 互動式）", detail: "唯一架構級卡點；恢復自動化的關鍵，建議優先", recommended: true },
+        { id: "assistant", label: "assistant-ui Phase 2–4", detail: "全螢幕/情境/留存，提升小助手體驗與留存" },
+        { id: "auth-phase2", label: "登入信任邊界 Phase 2（session/token）", detail: "取代輕量 X-User-Role 標頭、強化權限" },
+        { id: "data-quality", label: "ingest case_pk 統一 + category 覆蓋", detail: "資料品質基礎工" },
+      ],
+      required: true,
+    },
+    {
+      id: "assistant-lib",
+      title: "小助手要不要改用 @assistant-ui/react？",
+      subtitle: "套件已安裝但完全未用。",
+      mode: "single",
+      options: [
+        { id: "keep", label: "維持自建", detail: "已可用、可控；移除未用套件即可", recommended: true },
+        { id: "migrate", label: "改用官方庫", detail: "得到成熟元件，但需重寫現有浮窗" },
+        { id: "later", label: "先擱置，Phase 推進時再評估", detail: "不急著決定" },
+      ],
+    },
+    {
+      id: "notes",
+      title: "其他要補充或修正的現況？",
+      mode: "freeform",
+      placeholder: "補充任何我盤點漏掉或判斷有誤的地方…",
+    },
+  ]}
+  submitLabel="送出評估回饋"
+/>
