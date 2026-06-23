@@ -2,7 +2,7 @@
 
 # Tender AI 專案現況評估（全棧打通盤點）
 
-針對五大面向做一次「現在到底做到哪」的盤點：PCC 資料抓取與入庫、前台頁面/功能、assistant-ui 整合、後端資料庫與知識庫學習，最後判定全棧是否打通。結論先講：**核心鏈路已打通、可離線重現（~180 支測試、21 檔），整體完成度約 90–93%**。本次更新反映近期落地的大進度——**白名單登入（@hqdesign.tw）＋ user_id 具名已實作**（前端 `setCurrentUserId/withUser` 注入、後端 `Event.user_id` 為 NOT NULL FK），**Layer B Phase 1 全套到位**（白名單 + 兩段式同意 + 個人偏好輪廓 + 雙軌學習），**enrich 履約/資格/押標金/附件欄位與詳情 API 讀取端已落地**，**assistant Phase 1 引導 onboarding 也已完成**。剩餘卡點集中在：PCC 詳情頁「常駐型 CAPTCHA」、assistant Phase 2–4（全螢幕/情境/留存）、`/search/semantic` 與 `/evolution/*` 的前端入口，以及 category 空值率。
+針對五大面向做一次「現在到底做到哪」的盤點：PCC 資料抓取與入庫、前台頁面/功能、assistant-ui 整合、後端資料庫與知識庫學習，最後判定全棧是否打通。結論先講：**核心鏈路已打通、可離線重現（~180 支測試、21 檔），整體完成度約 90–93%**。本次更新反映近期落地的大進度——**白名單登入（@hqdesign.tw）＋ user_id 具名已實作**（前端 `setCurrentUserId/withUser` 注入、後端 `Event.user_id` 為 NOT NULL FK），**Layer B Phase 1 全套到位**（白名單 + 兩段式同意 + 個人偏好輪廓 + 雙軌學習），**enrich 履約/資格/押標金/附件欄位與詳情 API 讀取端已落地**，**`/search` 語意搜尋頁與 `/evolution` 進化面板前端入口已接**，**小助手已改用 `@assistant-ui/react` 重build**（FAB 非阻擋浮窗 ＋ `/assistant` 指揮中心；Phase 1 引導、Phase 2 全螢幕皆完成）。剩餘卡點集中在：PCC 詳情頁「常駐型 CAPTCHA」、assistant Phase 3（情境接進對話檢索）/ Phase 4（對話留存），以及 category 空值率。
 
 本文件為**唯讀評估**，未改動任何原始碼；確認方向後再進實作。
 
@@ -26,7 +26,7 @@
   rows={[
     ["1. PCC 抓取與入庫", "🟡 核心就緒、自動化受阻", "~82%", "詳情頁常駐 CAPTCHA；ingest 測試已對齊、case_pk 仍存 base64"],
     ["2. 前台頁面/功能", "✅ 主要頁面到位 + 登入 + 語意搜尋/進化", "~92%", "assistant Phase 2–4 待補"],
-    ["3. assistant-ui 整合", "🟡 自建版＋Phase 1 引導已做", "~78%", "Phase 2–4(全螢幕/情境/留存)未做；官方庫未用"],
+    ["3. assistant-ui 整合", "✅ 官方庫重build＋Phase 1/2 完成", "~88%", "Phase 3(情境接檢索)/Phase 4(留存)待補"],
     ["4. 後端 DB + 知識學習", "✅ 完整、Layer B Phase 1 落地", "~96%", "category 空值率高(~900/1136)"],
     ["5. 全棧打通", "✅ 已打通 + 具名歸屬", "~92–94%", "PCC 抓取自動化（CAPTCHA）為主要卡點"],
   ]}
@@ -114,7 +114,7 @@ React + TS + Vite，react-router-dom v7，AppShell + 11 頁（新增登入頁）
 
 ### 3. assistant-ui 功能開發與置入狀態
 
-小助手浮窗為**自建實作**（`src/components/assistant/`：launcher / window 三形態 drag-sidebar-float / thread / composer / use-assistant-chat 串流）。串接後端 `/assistant/chat` NDJSON、grounding 系統提示限定 Layer-A。**Phase 1 引導 onboarding 已完成**（`assistant-onboarding.tsx`，spotlight 引導 + localStorage `tender-assistant-onboarded`）。**仍存落差**：`@assistant-ui/react@0.14.23` 已裝於 package.json 但**零 import、完全未用**；Phase 2（全螢幕）/ 3（情境感知）/ 4（對話留存）尚未動工。`plans/assistant-ui-integration/` 已定案 Phase 0–4（2026-06-22）。
+小助手已**改用官方 `@assistant-ui/react ^0.14.23` 重build**（commit c8ccf49）：底座為 `useExternalStoreRuntime` ＋ primitives（`AssistantModalPrimitive` / `ThreadPrimitive` / `ComposerPrimitive` / `MessagePrimitive` / `AuiIf` / `useAuiState`），渲染層仍維持房屋風格（`RichText`、四類 `SourceChip`、自寫 Button）。形態為 **FAB 非阻擋式 popover**（`assistant-modal.tsx`，`modal=false` 無遮罩、不鎖背景、點外不自動關，主畫面照常可操作）＋標題列「指揮中心」連結。串接後端 `/assistant/chat` NDJSON、grounding 系統提示限定 Layer-A。**Phase 1 引導 onboarding 已完成**（`assistant-onboarding.tsx`，spotlight 引導 + localStorage `tender-assistant-onboarded`）；**Phase 2 全螢幕指揮中心已完成**（`assistant-page.tsx`，`/assistant` 左對話＋右情境工作台，與浮窗共用同一 runtime）。**仍存落差**：Phase 3 情境感知——右欄 `assistant-context-panel.tsx` 已依 `?tender=<id>` 顯示概況/可行性/相似案，但**尚未把 `tender_id` 接進對話檢索**（該檔註明「那是 Phase 3」）；Phase 4 對話留存——`use-assistant-chat` 仍為純 useState、未持久化。`plans/assistant-ui-integration/` 已定案 Phase 0–4（2026-06-22）。
 
 </RichText>
 
@@ -122,15 +122,15 @@ React + TS + Vite，react-router-dom v7，AppShell + 11 頁（新增登入頁）
   id="assistant-table"
   columns={["項目", "狀態", "說明"]}
   rows={[
-    ["浮窗骨架 / 三形態", "✅", "自建 assistant-window，drag/sidebar/float"]
-,
-    ["串流對話", "✅", "use-assistant-chat → /assistant/chat meta/delta/done"],
+    ["FAB 非阻擋浮窗", "✅", "assistant-modal.tsx，AssistantModalPrimitive、modal=false 無遮罩、portal 掛 body"],
+    ["串流對話", "✅", "ThreadPrimitive/ComposerPrimitive → /assistant/chat meta/delta/done"],
+    ["四類來源 SourceChip", "✅", "tender/semantic/similar/knowledge；知識庫 primary badge、具名貢獻者"],
     ["Layer-A grounding", "✅", "system prompt 限定公開標案資料"],
-    ["@assistant-ui/react 套件", "🟡 未用", "已安裝 0.14.23，無任何 import"],
+    ["@assistant-ui/react 套件", "✅", "已採用 0.14.23，useExternalStoreRuntime + primitives 重度使用"],
     ["Phase 1 引導 onboarding", "✅", "assistant-onboarding.tsx，spotlight + localStorage"],
-    ["Phase 2 全螢幕模式", "🔴", "未做"],
-    ["Phase 3 情境感知", "🔴", "未做"],
-    ["Phase 4 對話留存", "🔴", "未做"],
+    ["Phase 2 全螢幕指揮中心", "✅", "assistant-page.tsx，/assistant 左對話＋右情境，共用 runtime"],
+    ["Phase 3 情境感知", "🟡", "右欄已顯示標案情境，但 tender_id 尚未接進對話檢索"],
+    ["Phase 4 對話留存", "🔴", "use-assistant-chat 純 useState，未持久化"],
   ]}
 />
 
@@ -260,7 +260,7 @@ PostgreSQL + pgvector，25 張表、13 個 Alembic migration。revision-first �
   id="gaps-checklist"
   items={[
     { id: "g-captcha", label: "決定 PCC 詳情頁抓取策略（瀏覽器互動式 / 人工協助 / 維持半自動）", note: "影響自動化能否恢復；架構級決策" },
-    { id: "g-assistant", label: "推進 assistant-ui Phase 2–4（全螢幕/情境/留存；或評估改用 @assistant-ui/react）", note: "Phase 0–1 已完成" },
+    { id: "g-assistant", label: "推進 assistant Phase 3（tender_id 接進對話檢索）/ Phase 4（對話留存）", note: "Phase 0–2 已完成、官方庫已採用；Phase 3 右欄情境已顯示，僅缺檢索接線" },
     { id: "g-semantic-ui", label: "✅ 已補 /search 語意搜尋頁與 /evolution 進化面板前端入口", note: "2026-06-22 完成；tsc/eslint 綠燈，similar 仍走詳情頁、/health 自檢尚缺" },
     { id: "g-auth-phase2", label: "補登入信任邊界 Phase 2（session/token，取代 X-User-Role 標頭）", note: "目前 admin 把關為輕量標頭" },
     { id: "g-ingest", label: "統一 ingest_daily_reports case_pk 編碼（解碼數字，與 backfill 對齊）", note: "測試已對齊冪等，仍存 base64 為潛在落差" },
@@ -295,7 +295,7 @@ PostgreSQL + pgvector，25 張表、13 個 Alembic migration。revision-first �
       mode: "single",
       options: [
         { id: "captcha", label: "PCC 詳情頁抓取策略（CDP/Playwright 互動式）", detail: "唯一架構級卡點；恢復自動化的關鍵，建議優先", recommended: true },
-        { id: "assistant", label: "assistant-ui Phase 2–4", detail: "全螢幕/情境/留存，提升小助手體驗與留存" },
+        { id: "assistant", label: "assistant Phase 3–4", detail: "情境接檢索/對話留存，提升小助手體驗與留存（Phase 1/2 已完成）" },
         { id: "auth-phase2", label: "登入信任邊界 Phase 2（session/token）", detail: "取代輕量 X-User-Role 標頭、強化權限" },
         { id: "data-quality", label: "ingest case_pk 統一 + category 覆蓋", detail: "資料品質基礎工" },
       ],
@@ -303,12 +303,12 @@ PostgreSQL + pgvector，25 張表、13 個 Alembic migration。revision-first �
     },
     {
       id: "assistant-lib",
-      title: "小助手要不要改用 @assistant-ui/react？",
-      subtitle: "套件已安裝但完全未用。",
+      title: "小助手已採用 @assistant-ui/react，下一步要用到多深？",
+      subtitle: "已重build（useExternalStoreRuntime + primitives）；本題決定官方元件的採用深度。",
       mode: "single",
       options: [
-        { id: "keep", label: "維持自建", detail: "已可用、可控；移除未用套件即可", recommended: true },
-        { id: "migrate", label: "改用官方庫", detail: "得到成熟元件，但需重寫現有浮窗" },
+        { id: "minimal", label: "維持目前最小集（primitives + 自寫渲染）", detail: "可控、房屋風格一致；只在 Phase 3/4 補必要件", recommended: true },
+        { id: "expand", label: "擴用官方更多元件（附件/分支/工具群組等）", detail: "省自寫成本，但需評估與房屋風格落差" },
         { id: "later", label: "先擱置，Phase 推進時再評估", detail: "不急著決定" },
       ],
     },

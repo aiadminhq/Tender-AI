@@ -5,7 +5,7 @@ category: development
 tags: [tender-ai, prd, nextjs, fastapi, postgres, pgvector, rag, learning-loop]
 status: in-progress
 created: 2026-06-17
-updated: 2026-06-18
+updated: 2026-06-23
 author: claude-cowork
 ---
 
@@ -138,7 +138,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 在既有網站嵌入可串流回覆的「標案助手」，第一階段採 **assistant-ui** 作為 React 對話介面，後端沿用 FastAPI Agent/RAG API。assistant-ui 官方支援 Next.js，亦可透過 custom runtime／AI SDK runtime 整合任何 React-based framework；因此目前 Vite + React 前端可直接導入，**不以遷移 Next.js 為前置條件**。若日後改採 Next.js，可使用 App Router + AI SDK v6 route handler，保留相同對話元件與 Agent tool contract。
 
-- **入口**：全站浮動按鈕、標案詳情頁側欄；帶入目前頁面、標案 ID、篩選條件與登入使用者作為受控 context。
+- **入口**：全站右下角 FAB 浮鈕（非阻擋式 popover，無遮罩、主畫面照常可操作）＋浮窗標題列「指揮中心」連結至整頁工作台 `/assistant`（左對話、右情境，依 `?tender=<id>` 帶入當前標案）；帶入目前頁面、標案 ID、篩選條件與登入使用者作為受控 context。
 - **第一階段能力**：自然語言搜尋、單案問答、相似案、案件比較、推薦理由、引用原始公告與文件頁碼。
 - **Agent tools（先唯讀）**：`search_tenders`、`get_tender_detail`、`get_current_revision`、`search_documents`、`compare_tenders`、`explain_recommendation`、`get_user_saved_tenders`。
 - **回答規則**：日期／預算／分類等精確條件先走 SQL；內容問題走 Hybrid RAG；無 citation 不得斷言資格、金額或期限；更正公告須標示 revision。
@@ -237,43 +237,50 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 ---
 
-## 13. 開發狀態快照（2026-06-18）
+## 13. 開發狀態快照（2026-06-23）
 
-> 回填自實作 session；本節隨開發更新，為「PRD 規劃 vs 實際落地」對照。各階段一覽見 §10 Roadmap。
+> 回填自實作 session；本節隨開發更新，為「PRD 規劃 vs 實際落地」對照。各階段一覽見 §10 Roadmap。詳盡盤點另見 `plans/project-status-assessment/plan.mdx`。
 
 ### 13.1 技術選型偏移（與 §5 差異）
 
 - **前端**：實際採 **Vite 8 + React 19 + TypeScript（strict）+ Tailwind v4 + react-router-dom 7**，非原訂 Next.js。原因：本期為內部工具 + demo，無 SSR 需求、Vite 啟動／建置快；日後若需 SSR/SEO 再評估遷移。路由為 BrowserRouter 真實路徑。
-- **後端**：**FastAPI + SQLAlchemy 2.0 async + psycopg 3 + Pydantic v2 + PostgreSQL 16 + pgvector**，符合 §5；embeddings 用本地模型（bge-m3＝1024 維）。皆 brew 原生、無容器。
-- **預覽**：開發站非 vite dev，而是靜態 build 經自製 `serve-tender.py` 服務（沙箱限制使然）；改前端需 rebuild 才反映。
+- **後端**：**FastAPI + SQLAlchemy 2.0 async + psycopg 3 + Pydantic v2 + PostgreSQL 16 + pgvector**，符合 §5；embeddings 用本地模型（bge-m3＝1024 維、HNSW cosine）。皆 brew 原生、無容器。
+- **預覽**：兩種——**vite dev（:5173，HMR、優先）** 與靜態 build（:8771，須 rebuild + cache-bust）。
 
-### 13.2 後端 API 現況（FastAPI `/api/v1`，CORS 放行本機任意埠）
+### 13.2 後端 API 現況（FastAPI `/api/v1`，28 路由，CORS 放行本機任意埠）
 
-| 範圍     | Endpoint                                                         | 狀態                                |
-| -------- | ---------------------------------------------------------------- | ----------------------------------- |
-| 標案清單 | `GET /tenders`（filter/sort/page，page_size ≤ 200）              | ✅ live                             |
-| 標案詳情 | `GET /tenders/{id}` → 主檔＋歷史快照＋user_state                 | ✅ 已實作（前端尚未取用）           |
-| 行為     | `POST /tenders/{id}/{save,accept,rate,note,share}`、`/events` 等 | ✅ 已實作（前端尚未回寫）           |
-| 語意     | `GET /search/semantic`、`GET /search/similar/{id}`               | ✅ 端點就緒（embedding 索引待確認） |
+| 範圍     | Endpoint                                                                      | 狀態                                    |
+| -------- | ----------------------------------------------------------------------------- | --------------------------------------- |
+| 標案清單 | `GET /tenders`（filter/sort/page，page_size ≤ 200）                           | ✅ live、前端已接                       |
+| 標案詳情 | `GET /tenders/{id}` → 主檔＋歷史快照＋user_state（含履約/資格/押標金/附件）   | ✅ live、前端 `/tenders/:id` 已取用     |
+| 理由     | `GET /tenders/{id}/reasoning`、`/reasoning/profile`                           | ✅ live、前端已接（profile 視圖待確認） |
+| 行為     | `POST /tenders/{id}/{save,accept,rate,note,share}`、`/events`、saved-searches | ✅ live、前端已回寫（具名 user_id）     |
+| 語意     | `GET /search/semantic`、`GET /search/similar/{id}`                            | ✅ live、前端 `/search` 已接            |
+| 助手     | `POST /assistant/chat`（NDJSON 串流）                                         | ✅ live、前端浮窗＋指揮中心已接         |
+| 推播     | `GET/POST /push/{digest,run,read}`                                            | ✅ live、前端 `/push` 已接              |
+| 進化     | `POST /evolution/run`、`GET /evolution/status`                                | ✅ live、前端 `/evolution` 已接         |
+| 帳號     | `POST /auth/login`、`GET /me`、`PUT /me/{consent,password}`、`/admin/*`       | ✅ live、前端登入/設定已接              |
 
-### 13.3 前端六畫面狀態（對應 §6）
+### 13.3 前端畫面狀態（對應 §6，AppShell + 11 頁 + 全站浮窗）
 
-- **6.1 儀表板**：✅ 今日焦點／KPI 已對接 live 標案；即時動態、看板計數仍為 seed。
-- **6.2 標案列表**：✅ 已對接 live（`GET /tenders?sort=feas&page_size=200`）；filter bar／排序／RWD 表格↔卡片完成。
-- **6.3 標案詳情**：🟡 右側抽屉（peek）已具雛形（標籤／事實格／量表／註記／承接·略過），但**只吃清單列資料、未打 detail endpoint**；PCC 原始連結、案號、招標方式、歷史快照走勢、相似案尚未呈現。**完整詳情頁（彈窗／獨立路由）為下一步**（見 §13.4）。
-- **6.4 語意搜尋頁**：⬜ 後端就緒、前端頁未建。
-- **6.5 後台 admin**：🟡 規則頁有重點／排除關鍵字摘要（mock）；手動重跑／log／匯出未建。
-- **6.6 登入頁**：⬜ 未建（demo 階段無 auth）。
+- **6.1 儀表板**：✅ 今日焦點／KPI 已對接 live 標案；三層下鑽（清單→就地展開→彈窗→`/tenders/:id`）已收口。
+- **6.2 標案列表**：✅ live（`GET /tenders?sort=feas&page_size=200`）；filter bar／排序／RWD 表格↔卡片完成。
+- **6.3 標案詳情**：✅ 完整詳情頁 `/tenders/:id` 已建（事實格／量表／歷史快照／相似案／PCC 原文／履約·資格·押標金·附件區塊）；列表彈窗 `TenderDrawer` 並存。
+- **6.4 語意搜尋頁**：✅ `/search` 已建（`searchSemantic` → 表格，含 search 埋點）。
+- **6.5 後台 admin**：🟡 規則頁（聚焦/避免/硬排除＋關鍵字編輯）完整；設定頁含推播/小助手/帳號安全/管理者改密；手動重跑改走 `/evolution` 面板，log／匯出未建。
+- **6.6 登入頁**：✅ `/login` 已建（白名單 @hqdesign.tw、auth-context、改密、管理者重置）。
+- **6.7 標案助手**：✅ FAB 非阻擋浮窗（`@assistant-ui/react`）＋整頁指揮中心 `/assistant`；Phase 1 引導、Phase 2 全螢幕完成，Phase 3 情境接檢索／Phase 4 留存待補。
+- **其他**：`/swipe` 速配、`/kanban` 看板（具名註記＋轉傳）、`/insights` 洞察（部分 mock）、`/push` 推播、`/evolution` 進化、`/settings` 設定皆已建。
 
-### 13.4 進行中規劃：標案詳情強化（本次評估）
+### 13.4 已落地：標案詳情強化（原本次評估，已完成）
 
-需求：①每列點擊展開更多資訊；②「查看完整詳情」按鈕 → 彈窗或獨立頁面。
-方案分三增量：peek 補欄位（PCC 連結／案號／招標方式）→ 獨立詳情頁 `/tenders/:id` 取 `GET /tenders/{id}`（含歷史快照走勢）→ RAG 相似案／行為回寫。落地後回填本節。
+需求①每列點擊展開更多資訊、②「查看完整詳情」→ 獨立頁面，**皆已落地**：今日焦點兩段式下鑽（就地展開→彈窗）＋ 獨立詳情頁 `/tenders/:id`（取 `GET /tenders/{id}`、含歷史快照與相似案）＋ 行為回寫（具名）。enrich 已補履約/資格/押標金/附件欄位，詳情 API 與前端 `RevisionDetailBlock` 同步到位。
 
 ### 13.5 已知債務
 
-- 清單僅取前 200／共 1125 筆，待分頁。
-- `category` 後端多為 null，前端暫由標案名稱啟發式回推。
-- feasibility／supplierCoverage／score 為 tier 衍生佔位，待 P4／P5。
+- 清單分頁仍取前 200／共 ~1,136 筆，待真分頁。
+- `category` 後端約 79%（~900/1,136）為 null，是知識學習特徵覆蓋天花板；回填走 `backfill_category`（只補 NULL、冪等、offline）。
+- feasibility／supplierCoverage／score 部分仍為 tier 衍生佔位，續隨 P4/P5 真實 lift 數據收斂。
 - 多數 live 標案截止日早於今日 → 顯示「已截止」（資料屬實，非 bug）。
-- 行為（承接／收藏／註記）目前存 localStorage，未回寫後端 Layer B。
+- PCC 詳情頁「常駐型 CAPTCHA」阻擋全自動補詳情，需瀏覽器互動式抓取（架構級決策）。
+- 登入信任邊界為 Phase 1 輕量版（admin 以 `X-User-Role` 標頭把關），session/token Phase 2 待補。
