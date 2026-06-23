@@ -77,6 +77,7 @@ const FILTER: FilterState = {
   focusOnly: false,
   hideExcluded: true,
   sort: "score",
+  sortDir: "asc",
   categories: [],
   orgKeyword: "",
   deadlineFrom: null,

@@ -13,16 +13,63 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // 桌機表格欄寬（與 TenderTable 表頭共用，務必同步）。
+// 8 欄：分級／標案／預算／截止日期／剩餘天數／可行性／負責人／操作。
 export const ROW_GRID =
-  "lg:grid-cols-[76px_minmax(0,1fr)_92px_104px_110px_44px_112px]";
+  "lg:grid-cols-[76px_minmax(0,1fr)_92px_96px_76px_110px_44px_112px]";
 
+// 後端可能無截止日（deadline_iso=null → adapt 給空字串）。無效日期會讓
+// Intl.DateTimeFormat.format(Invalid Date) 拋 RangeError 進而整列崩潰，故先驗證。
+function isValidDate(iso: string) {
+  return Boolean(iso) && !Number.isNaN(new Date(iso).getTime());
+}
+
+// 剩餘天數的緊迫色：逾期淡化、≤3 紅、≤7 黃，其餘中性。
+function daysLeftTone(d: number) {
+  return d < 0
+    ? "text-ink-dim"
+    : d <= 3
+      ? "text-tier-low"
+      : d <= 7
+        ? "text-tier-mid"
+        : "text-ink-muted";
+}
+
+// 桌機：截止日期（獨立欄，可排序）。
+function DeadlineDateCell({ iso }: { iso: string }) {
+  const { lang } = useApp();
+  return (
+    <div className="text-right">
+      <span className="tnum text-[12px] text-ink">
+        {isValidDate(iso) ? formatDate(iso, lang) : "—"}
+      </span>
+    </div>
+  );
+}
+
+// 桌機：剩餘天數（獨立欄，可排序；與截止日期同 deadline 排序鍵）。
+function DaysLeftCell({ iso }: { iso: string }) {
+  const { t } = useApp();
+  if (!isValidDate(iso)) {
+    return (
+      <div className="text-right">
+        <span className="tnum text-[12px] text-ink-dim">—</span>
+      </div>
+    );
+  }
+  const d = daysLeft(iso);
+  return (
+    <div className="text-right">
+      <span className={cn("tnum text-[12px]", daysLeftTone(d))}>
+        {d < 0 ? t("deadlinePassed") : `${d} ${t("daysLeft")}`}
+      </span>
+    </div>
+  );
+}
+
+// 手機卡片：截止日期 + 剩餘天數合併直排（維持原行動裝置版面）。
 function DeadlineCell({ iso, className }: { iso: string; className?: string }) {
   const { t, lang } = useApp();
-  // 後端可能無截止日（deadline_iso=null → adapt 給空字串）。無效日期會讓
-  // Intl.DateTimeFormat.format(Invalid Date) 拋 RangeError 進而整列崩潰，
-  // 故先驗證；無效則以佔位「—」呈現，不參與天數警示。
-  const valid = Boolean(iso) && !Number.isNaN(new Date(iso).getTime());
-  if (!valid) {
+  if (!isValidDate(iso)) {
     return (
       <div className={cn("flex flex-col gap-0.5", className)}>
         <span className="tnum text-[12px] text-ink-dim">—</span>
@@ -30,18 +77,10 @@ function DeadlineCell({ iso, className }: { iso: string; className?: string }) {
     );
   }
   const d = daysLeft(iso);
-  const tone =
-    d < 0
-      ? "text-ink-dim"
-      : d <= 3
-        ? "text-tier-low"
-        : d <= 7
-          ? "text-tier-mid"
-          : "text-ink-muted";
   return (
     <div className={cn("flex flex-col gap-0.5", className)}>
       <span className="tnum text-[12px] text-ink">{formatDate(iso, lang)}</span>
-      <span className={cn("tnum text-[11px]", tone)}>
+      <span className={cn("tnum text-[11px]", daysLeftTone(d))}>
         {d < 0 ? t("deadlinePassed") : `${d} ${t("daysLeft")}`}
       </span>
     </div>
@@ -146,7 +185,8 @@ export function TenderRow({
         <div className="tnum text-right text-[12px] text-ink">
           {formatBudget(tender.budget, lang)}
         </div>
-        <DeadlineCell iso={tender.deadline} className="items-end" />
+        <DeadlineDateCell iso={tender.deadline} />
+        <DaysLeftCell iso={tender.deadline} />
         <FeasibilityMeter value={tender.feasibility} showLabel />
         <div className="flex justify-center">
           <OwnerCell ownerId={tender.owner} />

@@ -3,7 +3,7 @@ import { Eye, EyeOff, Target, X, Link2, Save } from "lucide-react";
 import type { Category, SortKey, SourceKey, Tier } from "@/types/domain";
 import type { TextKey } from "@/i18n/strings";
 import { useApp } from "@/store/app-context";
-import { useAppData } from "@/store/app-data";
+import { useAppData, SORT_DEFAULT_DIR } from "@/store/app-data";
 import { SOURCES } from "@/data/sources";
 import { formatBudget } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -310,7 +310,10 @@ export function FilterBar() {
         </span>
         <select
           value={filter.sort}
-          onChange={(e) => setFilter({ sort: e.target.value as SortKey })}
+          onChange={(e) => {
+            const key = e.target.value as SortKey;
+            setFilter({ sort: key, sortDir: SORT_DEFAULT_DIR[key] });
+          }}
           aria-label={t("sortBy")}
           className="h-9 cursor-pointer rounded-md border border-input bg-surface-1 px-2.5 text-[12px] text-ink outline-none transition-colors focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
         >

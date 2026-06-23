@@ -253,6 +253,8 @@ export interface ActivityItem {
 }
 
 export type SortKey = "score" | "deadline" | "budget" | "feasibility";
+/** 排序方向：asc 升冪、desc 降冪 */
+export type SortDir = "asc" | "desc";
 
 export interface FilterState {
   query: string;
@@ -265,6 +267,8 @@ export interface FilterState {
   /** 隱藏硬排除項 */
   hideExcluded: boolean;
   sort: SortKey;
+  /** 排序方向（搭配 sort）；切換排序欄時重設為該欄預設方向 */
+  sortDir: SortDir;
   /** 採購類別篩選（空=不限） */
   categories: Category[];
   /** 機關名稱關鍵字（包含比對） */

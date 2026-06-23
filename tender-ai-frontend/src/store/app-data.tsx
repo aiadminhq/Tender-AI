@@ -16,6 +16,7 @@ import type {
   KanbanCard,
   KanbanNote,
   SavedSearch,
+  SortDir,
   SortKey,
   TaskStatus,
   Tender,
@@ -59,6 +60,7 @@ const DEFAULT_FILTER: FilterState = {
   focusOnly: false,
   hideExcluded: true,
   sort: "score",
+  sortDir: "asc",
   categories: [],
   orgKeyword: "",
   deadlineFrom: null,
@@ -92,18 +94,36 @@ function uid(): string {
 function nowISO(): string {
   return new Date().toISOString();
 }
-function comparator(sort: SortKey): (a: Tender, b: Tender) => number {
+// 每個排序欄「首次點擊」的預設方向（沿用既有預設行為）：
+// 預算/可行性 大→小（desc）最直覺；截止/分數 小→大（asc）。
+export const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
+  score: "asc",
+  deadline: "asc",
+  budget: "desc",
+  feasibility: "desc",
+};
+
+// 自然升冪比較（asc）；降冪由外層取負號，集中管理避免兩份相反邏輯漂移。
+function baseComparator(sort: SortKey): (a: Tender, b: Tender) => number {
   switch (sort) {
     case "deadline":
       return (a, b) => a.deadline.localeCompare(b.deadline);
     case "budget":
-      return (a, b) => b.budget - a.budget;
+      return (a, b) => a.budget - b.budget;
     case "feasibility":
-      return (a, b) => b.feasibility - a.feasibility;
+      return (a, b) => a.feasibility - b.feasibility;
     case "score":
     default:
       return (a, b) => a.score - b.score;
   }
+}
+
+function comparator(
+  sort: SortKey,
+  dir: SortDir,
+): (a: Tender, b: Tender) => number {
+  const base = baseComparator(sort);
+  return dir === "asc" ? base : (a, b) => -base(a, b);
 }
 
 export interface Metrics {
@@ -119,6 +139,8 @@ interface AppDataValue {
   filter: FilterState;
   setFilter: (patch: Partial<FilterState>) => void;
   resetFilter: () => void;
+  /** 點擊可排序表頭：同欄翻轉方向、換欄套用預設方向 */
+  toggleSort: (key: SortKey) => void;
   // 標案
   tenders: Tender[];
   filteredTenders: Tender[];
@@ -376,9 +398,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return true;
     });
     if (filter.sort === "feasibility") {
-      return list.sort((a, b) => feasOf(b).score - feasOf(a).score);
+      // 可行性以衍生分數 feasOf 排序（非原始欄位）；asc 低→高、desc 高→低。
+      const base = (a: Tender, b: Tender) => feasOf(a).score - feasOf(b).score;
+      return list.sort(filter.sortDir === "asc" ? base : (a, b) => -base(a, b));
     }
-    return list.sort(comparator(filter.sort));
+    return list.sort(comparator(filter.sort, filter.sortDir));
   }, [tenders, filter, hasFocus, isExcluded, feasOf, todayISO]);
 
   // ── 指標 ────────────────────────────────────────────────────
@@ -456,6 +480,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [debouncedTrack],
   );
   const resetFilter = useCallback(() => setFilterState(DEFAULT_FILTER), []);
+
+  // 點擊可排序表頭：同欄翻轉方向；換欄則套用該欄預設方向。
+  const toggleSort = useCallback(
+    (key: SortKey) => {
+      setFilter(
+        filter.sort === key
+          ? { sortDir: filter.sortDir === "asc" ? "desc" : "asc" }
+          : { sort: key, sortDir: SORT_DEFAULT_DIR[key] },
+      );
+    },
+    [filter.sort, filter.sortDir, setFilter],
+  );
 
   // 篩選預設：localStorage 為真相來源；live 時掛載合併雲端（同名以雲端為準）。
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(() =>
@@ -785,6 +821,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       filter,
       setFilter,
       resetFilter,
+      toggleSort,
       tenders,
       filteredTenders,
       isExcluded,
@@ -825,6 +862,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       filter,
       setFilter,
       resetFilter,
+      toggleSort,
       tenders,
       filteredTenders,
       isExcluded,
