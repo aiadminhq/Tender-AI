@@ -50,17 +50,19 @@
 
 ---
 
-## AI 大腦決策鐵則（P4/P5，動評分前務必遵守）
+## AI 大腦決策原則（P4/P5）— 預設判斷＋會主動建議，非死規則
 
-> 這些是已踩過坑、由真實資料或本人指示確立的約束。**改 `reasoning.py`／`learn_keywords.py`／embedding 相關 job 前，先讀這節。**
+> 這些是踩過坑、由真實資料或本人指示而來的**預設判斷**。它們是「系統應如何自動判斷、何時該主動向人建議」的方向，不是不可動的硬規。
+> **精神**：能由資料自動學的就自動學；風險高、會誤殺、或牽涉「要避開什麼」的決定，系統只**提出候選＋附理由建議**，由人拍板。
+> 動 `reasoning.py`／`learn_keywords.py`／embedding job 前先讀本節；若現況與此處不符，停下回報、提出你的判斷與建議，而非照舊或硬改。
 
-- **分類先驗**：`工程`／`營繕工程` 為正向先驗（已驗證，約 `+0.18`）。**`財物`／`勞務` 一律當中性 `0.0`，禁止預設給 `-1.0`**——尚未取得足夠提升資料佐證，負向只能由真實 lift 數據自然浮現，不得手工種負分。
+- **分類傾向（自動學正向，負向只建議）**：`工程`／`營繕工程` 視為正向先驗（已驗證，約 `+0.18`）。`財物`／`勞務` 預設中性 `0.0`，**不要預設給負分**（尚未有足夠 lift 佐證）。正向權重可由資料自動學習；**負分（avoid／降權關鍵字）一律由人手動給出**——系統可在累積到足夠 lift 證據時，把可疑詞**列為候選並附理由主動建議**給管理者，但**不得自動寫入負權重**，最終由人確認。詳見記憶 `negative-keywords-human-only`。
 - **預算軟閾值**：超出舒適區間以連續軟懲罰處理，不做硬性 0/1 切斷（見 P4_LEARNING_ANALYSIS §3.3）。
-- **自演化觸發閘**（`app/jobs/self_evolve.py`）：團隊線 consent-aware 樣本數 **≥ 50** 且 **較上批有新增**才重跑 `learn_keywords`；`force=True` 可手動覆寫。完全 offline／冪等，無新資料不空轉。
-- **學習軌跡 append-only**：權重更新一律寫 `KeywordWeightRevision` 審計批次（`batch=now.isoformat()`，記 `feasible_samples`/`infeasible_samples`），不就地覆蓋；讀「目前值」優先 `current_revision_id`，否則取最新 revision。
-- **團隊線 consent-aware**：只納入 `whitelist_active && consent_shared` 的使用者、結論 ∈ {可行,不可行}。閘與學習的計數準則必須一致。
-- **不要在批次抓取期間向量化**：embedding 批次進行中時，**先不要跑向量化**（避免讀到半抓取狀態），等批次完成再補。decision_vectors／semantic 檢索目前以 mock/離線驗證為主。
-- **category 缺口**：歷史資料約 79% `category` 為 NULL，是學習天花板。回填走 `app/jobs/backfill_category.py`（**只補 NULL、冪等、offline**），線上抓取回填需在能連 PCC 的環境執行。
+- **自演化觸發閘**（`app/jobs/self_evolve.py`）：預設在團隊線 consent-aware 樣本數 **≥ 50** 且 **較上批有新增**才重跑 `learn_keywords`；`force=True` 可手動覆寫。完全 offline／冪等，無新資料不空轉。閘值是經驗預設，若資料情境改變可評估調整並說明理由。
+- **學習軌跡 append-only**：權重更新寫 `KeywordWeightRevision` 審計批次（`batch=now.isoformat()`，記 `feasible_samples`/`infeasible_samples`），不就地覆蓋；讀「目前值」優先 `current_revision_id`，否則取最新 revision。
+- **團隊線 consent-aware**：只納入 `whitelist_active && consent_shared` 的使用者、結論 ∈ {可行,不可行}；閘與學習的計數準則需一致。此為 Layer B 共享紅線，不放寬。
+- **批次抓取期間先不向量化**：embedding 批次進行中時先別跑向量化（避免讀到半抓取狀態），等批次完成再補。decision_vectors／semantic 檢索目前以 mock/離線驗證為主。
+- **category 缺口**：歷史資料約 79% `category` 為 NULL，是學習天花板。回填走 `app/jobs/backfill_category.py`（只補 NULL、冪等、offline）；線上抓取回填需在能連 PCC 的環境執行。
 
 ---
 
