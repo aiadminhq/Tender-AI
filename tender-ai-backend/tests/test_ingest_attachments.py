@@ -53,9 +53,13 @@ def test_sniff_docx():
     )
 
 
-def test_sniff_old_doc_ole_is_none():
-    # 舊版 .doc（OLE 複合檔頭）不支援解析 → 不給型別提示
-    assert _sniff_content_type(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1rest") is None
+def test_sniff_old_doc_ole():
+    # 舊版 .doc（OLE 複合檔頭）→ msword，交由轉檔器以 macOS textutil 解
+    assert _sniff_content_type(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1rest") == "application/msword"
+
+
+def test_sniff_unknown_is_none():
+    assert _sniff_content_type(b"\x00\x01\x02\x03rubbish") is None
 
 
 def test_doc_id_rule():

@@ -148,10 +148,18 @@ def test_unknown_format_records_error():
     assert rec["error"] is not None
 
 
-def test_doc_old_binary_unsupported():
+def test_doc_routed_to_doc_kind():
+    # 舊版 .doc(副檔名或 OLE 檔頭)一律路由到 doc 種類,交給 extract_doc(textutil)。
     rec = ca.convert_attachment_bytes("old.doc", None, b"\xd0\xcf\x11\xe0junk")
     assert rec["kind"] == "doc"
-    assert "不支援" in rec["error"]
+
+
+def test_doc_unavailable_when_no_textutil(monkeypatch):
+    # 模擬「非 macOS / 無 textutil」環境:extract_doc 應拋明確 RuntimeError
+    monkeypatch.setattr(ca.shutil, "which", lambda _name: None)
+    rec = ca.convert_attachment_bytes("old.doc", None, b"\xd0\xcf\x11\xe0junk")
+    assert rec["kind"] == "doc"
+    assert "textutil" in rec["error"]
 
 
 def test_size_limit_enforced(monkeypatch):

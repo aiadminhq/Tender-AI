@@ -32,7 +32,11 @@ from __future__ import annotations
 
 import argparse
 import io
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import unicodedata
 import xml.etree.ElementTree as ET
 import zipfile
@@ -155,6 +159,41 @@ def extract_docx(data: bytes) -> str:
         if line:
             lines.append(line)
     return "\n".join(lines)
+
+
+def extract_doc(data: bytes) -> str:
+    """舊版 ``.doc``(OLE 二進位)→ 文字。
+
+    markitdown 與純標準庫皆**無法**解析舊版二進位 ``.doc``(只吃 ``.docx``)。本附件
+    入庫 job 僅在本機 macOS 執行(需連 PCC 歸檔＋本機 Ollama),故改用 macOS 內建
+    ``textutil``:走系統文字引擎,**本機處理、不下載、不外送任何 LLM**。
+    非 macOS 或無 ``textutil`` 時拋錯,由 dispatcher 收斂為可記錄的 error。
+    """
+    if sys.platform != "darwin" or not shutil.which("textutil"):
+        raise RuntimeError(
+            "舊版 .doc 需 macOS 內建 textutil 解析(markitdown 不支援二進位 .doc);"
+            "此環境無 textutil,略過"
+        )
+    with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as tmp:
+        tmp.write(data)
+        tmp_path = tmp.name
+    try:
+        proc = subprocess.run(
+            ["textutil", "-convert", "txt", "-encoding", "UTF-8", "-stdout", tmp_path],
+            capture_output=True,
+            timeout=60,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"textutil 轉檔失敗(rc={proc.returncode}):"
+                f"{proc.stderr.decode('utf-8', 'replace').strip()}"
+            )
+        return proc.stdout.decode("utf-8", errors="replace")
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 def extract_odt(data: bytes) -> str:
@@ -288,8 +327,7 @@ def _convert_bytes_inner(
             rec["char_count"] = len(rec["text"])
             return rec
         elif kind == "doc":
-            rec["error"] = "舊版 .doc(OLE 二進位)不支援純標準庫解析,略過"
-            return rec
+            text = extract_doc(data)
         else:
             rec["error"] = "無法辨識的附件格式,略過"
             return rec

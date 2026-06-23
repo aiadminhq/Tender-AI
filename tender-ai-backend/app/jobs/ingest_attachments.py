@@ -79,7 +79,9 @@ def _sniff_content_type(data: bytes) -> str | None:
         if b"word/" in window or b"[Content_Types].xml" in window:
             return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         return "application/zip"
-    # 舊版 .doc（OLE 二進位 \xd0\xcf\x11\xe0）目前無純標準庫解析，留給轉檔器記 error。
+    # 舊版 .doc（OLE 複合檔 \xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1）：轉檔器以 macOS textutil 解。
+    if head.startswith(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"):
+        return "application/msword"
     return None
 
 
