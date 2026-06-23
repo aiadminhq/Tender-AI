@@ -9,6 +9,7 @@ import {
   streamAssistantChat,
   type AssistantSource,
   type ChatMessage,
+  type PreferenceSuggestion,
 } from "@/lib/assistant";
 
 export interface Turn {
@@ -16,15 +17,24 @@ export interface Turn {
   text: string;
   sources?: AssistantSource[];
   error?: boolean;
+  /** 此回合偵測到的長期條件建議（confirm-to-remember）；null/未定義＝無。 */
+  preference?: PreferenceSuggestion | null;
+  /** 偏好建議的處理狀態：待確認／已記住／不用。預設 pending（有 preference 時）。 */
+  preferenceState?: "pending" | "confirmed" | "dismissed";
 }
 
-export function useAssistantChat(scope: string) {
+export function useAssistantChat(scope: string, focusTenderId?: string | null) {
   const { t } = useApp();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // 「目前正在檢視的標案」放 ref：使用者可能在對話途中切換標案，send 時讀最新值即可，
+  // 不必把它列入 send 的依賴而頻繁重建 callback。
+  const focusRef = useRef<string | null>(focusTenderId ?? null);
+  focusRef.current = focusTenderId ?? null;
 
   // 卸載 / 關閉時中止進行中的串流。
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -69,9 +79,16 @@ export function useAssistantChat(scope: string) {
           {
             onMeta: (_scope, sources) => patchLastAssistant({ sources }),
             onText: (full) => patchLastAssistant({ text: full }),
+            onPreferenceSuggestion: (suggestion) =>
+              patchLastAssistant(
+                suggestion
+                  ? { preference: suggestion, preferenceState: "pending" }
+                  : {},
+              ),
             onDone: () => setStreaming(false),
           },
           ctrl.signal,
+          focusRef.current,
         );
       } catch {
         // 使用者主動中止（stop/clear）不算錯誤，不覆寫已串流內容。
@@ -98,6 +115,42 @@ export function useAssistantChat(scope: string) {
     setDraft("");
     inputRef.current?.focus();
   }, []);
+
+  // 確認後才記：使用者按「好」→ POST 一筆具名 state_preference 事件（fire-and-forget），
+  // 按「不用」→ 僅關閉 chip、不入庫。兩者都把該回合的偏好狀態定下來避免重複詢問。
+  // 入庫只是「共享軟訊號」，由後端 learn_keywords 依真實 lift 漸進調整，不立即硬擋。
+  const resolvePreference = useCallback(
+    (pref: PreferenceSuggestion, action: "confirm" | "dismiss") => {
+      if (action === "confirm") {
+        trackEvent("state_preference", {
+          payload: {
+            scope,
+            kind: pref.kind,
+            op: pref.op,
+            value: pref.value,
+            raw: pref.raw,
+            via: "assistant_confirm",
+          },
+        });
+      }
+      setTurns((prev) =>
+        prev.map((tn) =>
+          tn.role === "assistant" &&
+          tn.preferenceState === "pending" &&
+          tn.preference?.raw === pref.raw &&
+          tn.preference?.kind === pref.kind &&
+          tn.preference?.value === pref.value
+            ? {
+                ...tn,
+                preferenceState:
+                  action === "confirm" ? "confirmed" : "dismissed",
+              }
+            : tn,
+        ),
+      );
+    },
+    [scope],
+  );
 
   const onSourceClick = useCallback(
     (s: AssistantSource) => {
@@ -132,6 +185,7 @@ export function useAssistantChat(scope: string) {
     stop,
     clear,
     onSourceClick,
+    resolvePreference,
     suggestions,
     inputRef,
   };

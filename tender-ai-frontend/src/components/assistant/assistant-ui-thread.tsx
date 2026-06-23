@@ -4,6 +4,7 @@
 // 分支切換／聽寫等本專案用不到的零件。浮窗 Modal 與整頁指揮中心共用此元件。
 import {
   Bot,
+  Check,
   ExternalLink,
   Loader2,
   SendHorizontal,
@@ -20,7 +21,7 @@ import {
 } from "@assistant-ui/react";
 import { useApp } from "@/store/app-context";
 import type { TextKey } from "@/i18n/strings";
-import type { AssistantSource } from "@/lib/assistant";
+import type { AssistantSource, PreferenceSuggestion } from "@/lib/assistant";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { RichText } from "./rich-text";
@@ -106,7 +107,14 @@ function useMessageMeta(): AssistantCustomMeta {
     (s: AssistantState) =>
       s.message.metadata?.custom as unknown as AssistantCustomMeta | undefined,
   );
-  return custom ?? { sources: null, error: false };
+  return (
+    custom ?? {
+      sources: null,
+      error: false,
+      preference: null,
+      preferenceState: null,
+    }
+  );
 }
 
 function UserMessage() {
@@ -124,7 +132,7 @@ function AssistantMessage() {
   const { t } = useApp();
   const { onSourceClick } = useAssistantBridge();
   const text = useMessageText();
-  const { sources, error } = useMessageMeta();
+  const { sources, error, preference, preferenceState } = useMessageMeta();
 
   return (
     <MessagePrimitive.Root className="flex gap-2.5">
@@ -167,8 +175,69 @@ function AssistantMessage() {
             </div>
           </div>
         )}
+        {preference && preferenceState && preferenceState !== "dismissed" && (
+          <PreferenceChip preference={preference} state={preferenceState} />
+        )}
       </div>
     </MessagePrimitive.Root>
+  );
+}
+
+/**
+ * 偏好確認 chip（confirm-to-remember）：偵測到對話中的長期條件時詢問使用者，
+ * 按「好,記住」才 POST 一筆具名 state_preference 事件（共享軟訊號,逐步調整,不立即硬擋）；
+ * 按「不用」則收起（dismissed 不渲染）。已確認顯示「已記住」靜態提示。
+ */
+function PreferenceChip({
+  preference,
+  state,
+}: {
+  preference: PreferenceSuggestion;
+  state: "pending" | "confirmed" | "dismissed";
+}) {
+  const { t } = useApp();
+  const { resolvePreference } = useAssistantBridge();
+
+  if (state === "confirmed") {
+    return (
+      <div className="flex items-center gap-1.5 rounded-2xl border border-primary/30 bg-primary/8 px-3 py-2 text-[12px] text-primary">
+        <Check size={13} className="shrink-0" />
+        {t("assistantPrefSaved")}
+      </div>
+    );
+  }
+
+  const question = (
+    preference.op === "only"
+      ? t("assistantPrefAskOnly")
+      : t("assistantPrefAskExclude")
+  ).replace("{region}", preference.value);
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-primary/30 bg-primary/8 px-3.5 py-3">
+      <p className="text-[13px] leading-relaxed text-foreground/90">
+        {question}
+      </p>
+      <p className="text-[11px] leading-relaxed text-ink-dim">
+        {t("assistantPrefHint")}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={() => resolvePreference(preference, "confirm")}
+        >
+          {t("assistantPrefConfirm")}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => resolvePreference(preference, "dismiss")}
+        >
+          {t("assistantPrefDismiss")}
+        </Button>
+      </div>
+    </div>
   );
 }
 

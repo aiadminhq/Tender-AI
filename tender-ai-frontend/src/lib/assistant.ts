@@ -33,6 +33,15 @@ export interface ChatMessage {
   text: string;
 }
 
+// 對話中偵測到的「長期條件」建議（confirm-to-remember）。對齊後端 PreferenceSuggestionOut。
+// 偵測到只代表「建議」——使用者按確認後才會 POST state_preference 事件入庫。
+export interface PreferenceSuggestion {
+  kind: "region";
+  op: "only" | "exclude";
+  value: string;
+  raw: string;
+}
+
 interface MetaEvent {
   type: "meta";
   scope: string;
@@ -48,6 +57,7 @@ interface MetaEvent {
     doc_id: string | null;
     heading: string | null;
   }[];
+  preference_suggestion?: PreferenceSuggestion | null;
 }
 interface DeltaEvent {
   type: "delta";
@@ -62,6 +72,8 @@ export interface StreamHandlers {
   onMeta?: (scope: string, sources: AssistantSource[]) => void;
   /** delta.text 為累積全文 → 直接 replace 當前助手訊息內容。 */
   onText?: (fullText: string) => void;
+  /** 偵測到對話中的長期條件時回呼（否則帶 null）；UI 據此顯示確認 chip。 */
+  onPreferenceSuggestion?: (suggestion: PreferenceSuggestion | null) => void;
   onDone?: () => void;
 }
 
@@ -87,13 +99,21 @@ export async function streamAssistantChat(
   messages: ChatMessage[],
   handlers: StreamHandlers,
   signal?: AbortSignal,
+  /** 使用者「目前正在檢視」的標案 id（情境感知接線）；後端 context.focus_tender_id 消費。 */
+  focusTenderId?: string | number | null,
 ): Promise<void> {
-  const body = {
+  const body: {
+    messages: { role: string; content: { type: "text"; text: string }[] }[];
+    context?: { focus_tender_id: string | number };
+  } = {
     messages: messages.map((m) => ({
       role: m.role,
       content: [{ type: "text", text: m.text }],
     })),
   };
+  if (focusTenderId != null && String(focusTenderId).trim() !== "") {
+    body.context = { focus_tender_id: focusTenderId };
+  }
 
   const res = await fetch(`${API_BASE}/assistant/chat`, {
     method: "POST",
@@ -118,6 +138,7 @@ export async function streamAssistantChat(
     }
     if (evt.type === "meta") {
       handlers.onMeta?.(evt.scope, evt.sources.map(adaptSource));
+      handlers.onPreferenceSuggestion?.(evt.preference_suggestion ?? null);
     } else if (evt.type === "delta") {
       handlers.onText?.(evt.text);
     } else if (evt.type === "done") {

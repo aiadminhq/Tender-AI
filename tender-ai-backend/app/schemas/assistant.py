@@ -76,6 +76,20 @@ class AssistantToolContractOut(BaseModel):
     )
 
 
+class PreferenceSuggestionOut(BaseModel):
+    """對話中偵測到的「長期條件」建議（confirm-to-remember）。
+
+    僅是「建議」——前端據此顯示確認 chip，使用者按確認後才會寫入一筆具名
+    Layer B Event（``type="state_preference"``）。後端在此「不」自動寫入、
+    「不」碰評分權重（負向只由真實 lift 自然浮現，見 CLAUDE.md AI 大腦鐵則）。
+    """
+
+    kind: Literal["region"]
+    op: Literal["only", "exclude"]
+    value: str
+    raw: str
+
+
 class AssistantChatMetaOut(BaseModel):
     """串流的第一個 meta 事件。"""
 
@@ -84,6 +98,8 @@ class AssistantChatMetaOut(BaseModel):
     prompt: str
     sources: list[AssistantSourceOut]
     tool_contract: AssistantToolContractOut
+    # 偵測到對話中的長期條件時帶出（否則 None）；前端據此渲染確認 chip。
+    preference_suggestion: PreferenceSuggestionOut | None = None
 
 
 class AssistantChatDeltaOut(BaseModel):

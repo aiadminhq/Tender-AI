@@ -19,6 +19,8 @@ export type EventType =
   | "apply_filter"
   | "search"
   | "sort"
+  // 對話中「確認後才記」的長期條件（後端 EventType 已涵蓋）；按確認才送。
+  | "state_preference"
   | "card_note_added"
   | "card_note_removed"
   | "card_forwarded";

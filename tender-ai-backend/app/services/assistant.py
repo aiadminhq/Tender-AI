@@ -34,8 +34,10 @@ from app.schemas.assistant import (
     AssistantChatRequest,
     AssistantSourceOut,
     AssistantToolContractOut,
+    PreferenceSuggestionOut,
 )
 from app.schemas.tender import TenderQuery
+from app.services.preference_capture import detect_standing_preference
 from app.services import llm
 from app.services import query as query_svc
 from app.services import search as search_svc
@@ -106,6 +108,30 @@ def _extract_requested_tender_id(prompt: str) -> int | None:
     return None
 
 
+def _focus_tender_id(payload: AssistantChatRequest) -> int | None:
+    """從 ``request.context`` 取出使用者「目前正在檢視」的標案 id（情境感知接線）。
+
+    前端浮窗／指揮中心右欄已知道當前 tenderId，經 ``context`` 帶上來；接受
+    ``focus_tender_id`` / ``tender_id`` 兩種鍵、容忍字串數字。缺值或非正整數回 None
+    （退回純文字檢索，向後相容）。這條路讓「這案我們適合嗎」這種沒打編號的問題，
+    也能對到使用者眼前那一案，消弭「視覺感知、對話卻不感知」的斷裂。
+    """
+    ctx = payload.context
+    if not isinstance(ctx, dict):
+        return None
+    for key in ("focus_tender_id", "tender_id"):
+        raw = ctx.get(key)
+        if raw is None:
+            continue
+        try:
+            tid = int(str(raw).strip())
+        except (TypeError, ValueError):
+            continue
+        if tid > 0:
+            return tid
+    return None
+
+
 def _split_query(prompt: str) -> list[str]:
     return [part for part in _SPLIT_RE.split(prompt.strip()) if part]
 
@@ -155,7 +181,7 @@ def _source_payload(item, *, kind: str, score: float | None = None) -> Assistant
 
 
 async def _collect_candidates(
-    session: AsyncSession, prompt: str
+    session: AsyncSession, prompt: str, focus_tender_id: int | None = None
 ) -> list[AssistantEvidence]:
     candidates: list[AssistantEvidence] = []
     seen: set[int] = set()
@@ -165,6 +191,26 @@ async def _collect_candidates(
             return
         seen.add(item.tender_id)
         candidates.append(item)
+
+    # 情境感知：使用者正在檢視的標案釘選為「第一筆」證據，並一併帶出其相似案，
+    # 讓沒打編號的指代（「這案」「它」）也對得到眼前那一案。查無此案就靜默略過，
+    # 退回純文字檢索（向後相容）。
+    if focus_tender_id is not None:
+        try:
+            focus = await query_svc.get_tender_detail(
+                session, focus_tender_id, user_id=None
+            )
+            add(_source_payload(focus, kind="tender"))
+        except Exception:  # noqa: BLE001 — 查無/異常都不阻斷其餘檢索
+            pass
+        try:
+            similar_hits = await search_svc.similar_tenders(
+                session, focus_tender_id, limit=5
+            )
+        except Exception:  # noqa: BLE001
+            similar_hits = []
+        for hit in similar_hits:
+            add(_source_payload(hit, kind="similar", score=hit.score))
 
     query = TenderQuery(
         q=prompt or None,
@@ -312,11 +358,13 @@ def _build_chat_messages(
     prompt: str,
     evidence: list[AssistantEvidence],
     knowledge: list[KnowledgeEvidence],
+    focus_note: str = "",
 ) -> list[dict[str, str]]:
     """組裝餵給 Ollama 的訊息：grounding system + 既有對話歷史（純文字）。"""
     system = (
         f"{_GROUNDING_SYSTEM}\n\n"
-        f"[候選標案清單]\n{_evidence_block(evidence)}\n\n"
+        + (f"[目前檢視情境]\n{focus_note}\n\n" if focus_note else "")
+        + f"[候選標案清單]\n{_evidence_block(evidence)}\n\n"
         f"[知識庫片段]\n{_knowledge_block(knowledge)}"
     )
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
@@ -343,8 +391,24 @@ async def stream_chat_events(
     session: AsyncSession, payload: AssistantChatRequest
 ) -> AsyncIterator[str]:
     prompt = _latest_user_prompt(payload)
-    evidence = await _collect_candidates(session, prompt)
+    focus_id = _focus_tender_id(payload)
+    evidence = await _collect_candidates(session, prompt, focus_tender_id=focus_id)
     knowledge = await _collect_knowledge(session, prompt)
+
+    # 情境提示：把「正在檢視的那一案」明說給 LLM，讓未帶編號的指代預設指向它。
+    focus_note = ""
+    if focus_id is not None:
+        focus_item = next(
+            (e for e in evidence if e.kind == "tender" and e.tender_id == focus_id),
+            None,
+        )
+        if focus_item is not None:
+            focus_note = (
+                f"使用者目前正在檢視 標案 #{focus_id}「{focus_item.title}」。"
+                "若提問用「這案／這個標案／這標／它」等指稱而未明確給編號，"
+                "預設就是指這一案；請優先針對它回答（是否值得投標、可行度、"
+                "截止急迫性），需要時再以清單中的相似案做比較。"
+            )
 
     sources: list[AssistantSourceOut] = [
         AssistantSourceOut(
@@ -373,17 +437,34 @@ async def stream_chat_events(
         for k in knowledge
     )
 
+    # 對話中的「長期條件」偵測（confirm-to-remember）：只當建議帶給前端，
+    # 不在此寫入、不碰評分；使用者按確認後前端才 POST state_preference 事件。
+    pref = detect_standing_preference(prompt)
+    preference_suggestion = (
+        PreferenceSuggestionOut(
+            kind=pref.kind,  # type: ignore[arg-type]
+            op=pref.op,  # type: ignore[arg-type]
+            value=pref.value,
+            raw=pref.raw,
+        )
+        if pref is not None
+        else None
+    )
+
     meta = AssistantChatMetaOut(
         scope="tender_sql + semantic_search + knowledge_base",
         prompt=prompt,
         sources=sources,
         tool_contract=AssistantToolContractOut(),
+        preference_suggestion=preference_suggestion,
     )
     yield _json_line(meta.model_dump())
 
     used_llm = False
     if settings.assistant_use_llm:
-        messages = _build_chat_messages(payload, prompt, evidence, knowledge)
+        messages = _build_chat_messages(
+            payload, prompt, evidence, knowledge, focus_note
+        )
         acc: list[str] = []
         since_flush = 0
         start = time.monotonic()

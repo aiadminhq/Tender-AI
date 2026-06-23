@@ -1,6 +1,7 @@
 // 指揮中心右欄「情境工作區」：帶出當前正在檢視的標案（概況 / 可行性 / 相似案 / 快速動作）。
-// 純前端、免 migration——只讀前端既有的 Tender 物件與既有 fetchSimilarTenders API，
-// 不改後端、也不把 tender_id 接進對話檢索（那是 Phase 3）。重用 detail-bits 的
+// 純前端視覺——只讀前端既有的 Tender 物件與既有 fetchSimilarTenders API。當前 tenderId
+// 已另經 <AssistantRuntime focusTenderId> → context.focus_tender_id 接進對話檢索，左欄
+// 對話也知道「正在看哪一案」（情境感知接線）。重用 detail-bits 的
 // Fact / MeterRow / SectionLabel / SimilarCasesList，與標案詳情頁同一套視覺語彙。
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";

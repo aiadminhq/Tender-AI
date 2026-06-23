@@ -14,7 +14,7 @@ export function AssistantLauncher() {
   const tenderId = tenderMatch?.params.id ?? null;
 
   return (
-    <AssistantRuntime scope="assistant">
+    <AssistantRuntime scope="assistant" focusTenderId={tenderId}>
       <AssistantOnboarding onOpenAssistant={() => setOpen(true)} />
       <AssistantModal open={open} onOpenChange={setOpen} tenderId={tenderId} />
     </AssistantRuntime>

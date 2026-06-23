@@ -16,7 +16,17 @@ from pydantic import BaseModel, ConfigDict, Field
 Feasible = Literal["可行", "不可行", "待議"]
 TenderStatus = Literal["觀望", "備標中", "已投", "得標", "放棄"]
 EventType = Literal[
-    "view", "open_detail", "click_link", "dwell", "apply_filter", "search", "sort"
+    "view",
+    "open_detail",
+    "click_link",
+    "dwell",
+    "apply_filter",
+    "search",
+    "sort",
+    # 對話中「確認後才記」的長期條件（confirm-to-remember）。payload 帶
+    # {kind, op, value, raw, via}；為具名 Layer B 訊號，不就地改評分權重，
+    # 由 learn_keywords 之後依真實 lift 自然推導（見 CLAUDE.md AI 大腦鐵則）。
+    "state_preference",
 ]
 
 

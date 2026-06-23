@@ -25,7 +25,7 @@ export function AssistantPage() {
       <PageHeader title={t("navAssistant")} subtitle={t("assistantPageSub")} />
 
       {/* 有界高度的指揮中心：左對話自捲、右情境工作區自捲；窄螢幕僅顯示對話。 */}
-      <AssistantRuntime scope="assistant_page">
+      <AssistantRuntime scope="assistant_page" focusTenderId={tenderId}>
         <div className="grid h-[calc(100svh-13rem)] min-h-[460px] grid-cols-1 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-[minmax(0,1.45fr)_minmax(340px,1fr)]">
           <div className="flex min-h-0 flex-col lg:border-r lg:border-border">
             <AssistantUIThread />

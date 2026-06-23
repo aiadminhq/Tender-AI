@@ -13,18 +13,25 @@ import {
   type AppendMessage,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
-import type { AssistantSource } from "@/lib/assistant";
+import type { AssistantSource, PreferenceSuggestion } from "@/lib/assistant";
 import { useAssistantChat, type Turn } from "./use-assistant-chat";
 
-// 我們塞進 message.metadata.custom 的形狀；Thread 自訂渲染器讀回來組來源清單／錯誤態。
+// 我們塞進 message.metadata.custom 的形狀；Thread 自訂渲染器讀回來組來源清單／錯誤態／偏好確認 chip。
 export interface AssistantCustomMeta {
   sources: AssistantSource[] | null;
   error: boolean;
+  preference: PreferenceSuggestion | null;
+  preferenceState: "pending" | "confirmed" | "dismissed" | null;
 }
 
 interface AssistantBridge {
   scope: string;
   onSourceClick: (s: AssistantSource) => void;
+  /** 偏好確認 chip：使用者按「好」記住／「不用」忽略。 */
+  resolvePreference: (
+    pref: PreferenceSuggestion,
+    action: "confirm" | "dismiss",
+  ) => void;
   clear: () => void;
   hasTurns: boolean;
   suggestions: string[];
@@ -47,6 +54,8 @@ const convertMessage = (turn: Turn): ThreadMessageLike => ({
     custom: {
       sources: turn.sources ?? null,
       error: turn.error ?? false,
+      preference: turn.preference ?? null,
+      preferenceState: turn.preferenceState ?? null,
     } satisfies AssistantCustomMeta,
   },
 });
@@ -54,13 +63,24 @@ const convertMessage = (turn: Turn): ThreadMessageLike => ({
 /** 包住一段 UI，提供 assistant-ui runtime（串接後端串流）與橋接情境。 */
 export function AssistantRuntime({
   scope,
+  focusTenderId = null,
   children,
 }: {
   scope: string;
+  /** 使用者目前正在檢視的標案 id（情境感知接線）；浮窗/指揮中心由路由帶入。 */
+  focusTenderId?: string | null;
   children: ReactNode;
 }) {
-  const { turns, streaming, send, stop, clear, onSourceClick, suggestions } =
-    useAssistantChat(scope);
+  const {
+    turns,
+    streaming,
+    send,
+    stop,
+    clear,
+    onSourceClick,
+    resolvePreference,
+    suggestions,
+  } = useAssistantChat(scope, focusTenderId);
 
   const runtime = useExternalStoreRuntime({
     messages: turns,
@@ -81,11 +101,12 @@ export function AssistantRuntime({
     () => ({
       scope,
       onSourceClick,
+      resolvePreference,
       clear,
       hasTurns: turns.length > 0,
       suggestions,
     }),
-    [scope, onSourceClick, clear, turns.length, suggestions],
+    [scope, onSourceClick, resolvePreference, clear, turns.length, suggestions],
   );
 
   return (

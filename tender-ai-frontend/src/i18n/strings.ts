@@ -115,6 +115,13 @@ export const STRINGS = {
     assistantSuggest2: "幫我找與空調汰換相似的案",
     assistantSuggest3: "最近即將截止的有哪些?",
     assistantSuggest4: "標案分級的標準是什麼?高潛力怎麼判定?",
+    // 偏好確認 chip（confirm-to-remember）。{region} 由前端代入地區名。
+    assistantPrefAskOnly: "要我之後都以「{region}」為主、少推其他地區的標案嗎?",
+    assistantPrefAskExclude: "要我之後少推「{region}」的標案嗎?",
+    assistantPrefConfirm: "好,記住",
+    assistantPrefDismiss: "不用",
+    assistantPrefSaved: "已記住,會逐步調整推播(全隊共享)。",
+    assistantPrefHint: "這會成為共享偏好,幫大家一起把小助手帶得更準。",
     // assistant onboarding（首次聚光導覽）
     onboardAria: "小助手首次使用導覽",
     onboardStep1Title: "隨時呼叫小助手",
@@ -199,10 +206,15 @@ export const STRINGS = {
     colSource: "來源",
     colBudget: "預算",
     colDeadline: "截止",
+    colDeadlineDate: "截止日期",
+    colDaysLeft: "剩餘天數",
     colCoverage: "供應商覆蓋",
     colFeasibility: "可行性",
     colNext: "下一步",
     colOwner: "負責人",
+    sortAscHint: "目前升冪，點擊改降冪",
+    sortDescHint: "目前降冪，點擊改升冪",
+    sortInactiveHint: "點擊以此欄排序",
     // tender / actions
     accept: "承接",
     skip: "略過",
@@ -552,6 +564,17 @@ export const STRINGS = {
     assistantSuggest3: "Which ones are closing soon?",
     assistantSuggest4:
       "What are the tiering criteria? How is high-potential decided?",
+    // preference confirm chip (confirm-to-remember). {region} interpolated in-component.
+    assistantPrefAskOnly:
+      "Want me to focus on “{region}” from now on and surface fewer tenders elsewhere?",
+    assistantPrefAskExclude:
+      "Want me to surface fewer “{region}” tenders from now on?",
+    assistantPrefConfirm: "OK, remember",
+    assistantPrefDismiss: "No thanks",
+    assistantPrefSaved:
+      "Saved — I'll adjust gradually (shared across the team).",
+    assistantPrefHint:
+      "This becomes a shared preference that helps everyone tune the assistant.",
     // assistant onboarding
     onboardAria: "First-time assistant tour",
     onboardStep1Title: "Call the assistant anytime",
@@ -631,10 +654,15 @@ export const STRINGS = {
     colSource: "Source",
     colBudget: "Budget",
     colDeadline: "Due",
+    colDeadlineDate: "Due date",
+    colDaysLeft: "Days left",
     colCoverage: "Coverage",
     colFeasibility: "Feasibility",
     colNext: "Next step",
     colOwner: "Owner",
+    sortAscHint: "Ascending — click for descending",
+    sortDescHint: "Descending — click for ascending",
+    sortInactiveHint: "Click to sort by this column",
     accept: "Accept",
     skip: "Skip",
     forward: "Forward",
