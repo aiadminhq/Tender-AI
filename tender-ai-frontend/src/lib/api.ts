@@ -299,6 +299,145 @@ export async function fetchSimilarTenders(
     .map((h) => ({ tender: adapt(h), score: h.score }));
 }
 
+/** 語意搜尋結果：原始查詢回放 + 命中（標案 + 相似度分數，已依分數遞減排序）。 */
+export interface SemanticSearchResult {
+  query: string;
+  items: SimilarTender[];
+}
+
+/**
+ * 自然語言語意搜尋（Layer C 向量檢索）。後端 GET /search/semantic?q=&limit=。
+ * 以查詢字串向量化後比對 tender_snapshots.embedding，回傳語意最相近的標案。
+ * 失敗時 throw（需後端與 Ollama 向量庫），由呼叫端顯示錯誤。
+ */
+export async function searchSemantic(
+  q: string,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<SemanticSearchResult> {
+  const url = `${API_BASE}/search/semantic?q=${encodeURIComponent(q)}&limit=${limit}`;
+  const res = await fetch(url, { headers: authHeaders(), signal });
+  if (!res.ok) throw new Error(`semantic search API ${res.status}`);
+  const data = (await res.json()) as {
+    items: SemanticHit[];
+    count: number;
+    query: string;
+  };
+  return {
+    query: data.query,
+    items: (data.items ?? []).map((h) => ({
+      tender: adapt(h),
+      score: h.score,
+    })),
+  };
+}
+
+// ── SL6 自我進化（Layer A 聚合，唯讀＋手動觸發；後端 app/api/v1/learning.py） ──
+// status/run 對外只回聚合統計與公開衍生詞彙，不含人名／email／個別評語原文。
+interface TermWeightRaw {
+  term: string;
+  weight: number;
+  support: number;
+}
+interface EvolutionLogRaw {
+  id: number;
+  batch: string;
+  trigger: string;
+  feasible_samples: number;
+  infeasible_samples: number;
+  keywords_added: number;
+  keywords_updated: number;
+  revision_rows: number;
+  top_positive: TermWeightRaw[];
+  top_negative: TermWeightRaw[];
+  created_at: string | null;
+}
+interface EvolutionStatusRaw {
+  total_runs: number;
+  latest: EvolutionLogRaw | null;
+  history: EvolutionLogRaw[];
+  active_positive: TermWeightRaw[];
+  active_negative: TermWeightRaw[];
+}
+
+/** 判準詞彙（重點詞／避免詞）：詞 + 權重 + 支持樣本數。 */
+export interface EvoTermWeight {
+  term: string;
+  weight: number;
+  support: number;
+}
+/** 一次進化迭代的稽核摘要（camelCase 前端契約）。 */
+export interface EvolutionLog {
+  id: number;
+  batch: string;
+  trigger: string;
+  feasibleSamples: number;
+  infeasibleSamples: number;
+  keywordsAdded: number;
+  keywordsUpdated: number;
+  revisionRows: number;
+  topPositive: EvoTermWeight[];
+  topNegative: EvoTermWeight[];
+  createdAt: string | null;
+}
+/** 進化現況：總次數 + 最新日誌 + 歷史時間軸 + 當前生效權重。 */
+export interface EvolutionStatus {
+  totalRuns: number;
+  latest: EvolutionLog | null;
+  history: EvolutionLog[];
+  activePositive: EvoTermWeight[];
+  activeNegative: EvoTermWeight[];
+}
+
+function adaptEvolutionLog(l: EvolutionLogRaw): EvolutionLog {
+  return {
+    id: l.id,
+    batch: l.batch,
+    trigger: l.trigger,
+    feasibleSamples: l.feasible_samples,
+    infeasibleSamples: l.infeasible_samples,
+    keywordsAdded: l.keywords_added,
+    keywordsUpdated: l.keywords_updated,
+    revisionRows: l.revision_rows,
+    topPositive: l.top_positive ?? [],
+    topNegative: l.top_negative ?? [],
+    createdAt: l.created_at,
+  };
+}
+
+/** 讀取自我進化現況（GET /evolution/status）。失敗時 throw（需後端）。 */
+export async function fetchEvolutionStatus(
+  historyLimit = 10,
+  signal?: AbortSignal,
+): Promise<EvolutionStatus> {
+  const url = `${API_BASE}/evolution/status?history_limit=${historyLimit}`;
+  const res = await fetch(url, { headers: authHeaders(), signal });
+  if (!res.ok) throw new Error(`evolution status API ${res.status}`);
+  const d = (await res.json()) as EvolutionStatusRaw;
+  return {
+    totalRuns: d.total_runs,
+    latest: d.latest ? adaptEvolutionLog(d.latest) : null,
+    history: (d.history ?? []).map(adaptEvolutionLog),
+    activePositive: d.active_positive ?? [],
+    activeNegative: d.active_negative ?? [],
+  };
+}
+
+/** 手動跑一輪自我進化（POST /evolution/run，trigger=manual）。回傳該筆稽核日誌；失敗時 throw。 */
+export async function runEvolution(
+  minSupport = 2,
+  signal?: AbortSignal,
+): Promise<EvolutionLog> {
+  const res = await fetch(`${API_BASE}/evolution/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ trigger: "manual", min_support: minSupport }),
+    signal,
+  });
+  if (!res.ok) throw new Error(`evolution run API ${res.status}`);
+  return adaptEvolutionLog((await res.json()) as EvolutionLogRaw);
+}
+
 // ── SL3 意圖與推理（Layer A 唯讀；後端 app/api/v1/reasoning.py） ──────
 // 後端回傳 snake_case，這裡映射成前端 camelCase 契約（見 types/domain.ts）。
 interface ReasonCodeRaw {

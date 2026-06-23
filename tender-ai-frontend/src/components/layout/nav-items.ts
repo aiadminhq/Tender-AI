@@ -1,10 +1,12 @@
 import {
   BarChart3,
   Bell,
+  Brain,
   KanbanSquare,
   Layers,
   LayoutDashboard,
   ListChecks,
+  Search,
   Settings,
   SlidersHorizontal,
   Sparkles,
@@ -27,8 +29,10 @@ export const NAV: NavItem[] = [
   { to: "/swipe", key: "navSwipe", icon: Layers, primary: true },
   { to: "/kanban", key: "navKanban", icon: KanbanSquare, primary: true },
   { to: "/insights", key: "navInsights", icon: BarChart3, primary: true },
+  { to: "/search", key: "navSearch", icon: Search },
   { to: "/push", key: "navPush", icon: Bell },
   { to: "/assistant", key: "navAssistant", icon: Sparkles },
+  { to: "/evolution", key: "navEvolution", icon: Brain },
   { to: "/rules", key: "navRules", icon: SlidersHorizontal },
   { to: "/settings", key: "settings", icon: Settings },
 ];

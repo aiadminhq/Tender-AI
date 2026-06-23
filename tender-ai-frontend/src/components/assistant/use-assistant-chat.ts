@@ -74,13 +74,22 @@ export function useAssistantChat(scope: string) {
           ctrl.signal,
         );
       } catch {
-        patchLastAssistant({ text: t("assistantError"), error: true });
+        // 使用者主動中止（stop/clear）不算錯誤，不覆寫已串流內容。
+        if (!ctrl.signal.aborted) {
+          patchLastAssistant({ text: t("assistantError"), error: true });
+        }
       } finally {
         setStreaming(false);
       }
     },
     [turns, streaming, patchLastAssistant, t, scope],
   );
+
+  // 中止進行中的串流但保留已產生的對話（供 assistant-ui onCancel 串接）。
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+    setStreaming(false);
+  }, []);
 
   const clear = useCallback(() => {
     abortRef.current?.abort();
@@ -120,6 +129,7 @@ export function useAssistantChat(scope: string) {
     setDraft,
     streaming,
     send,
+    stop,
     clear,
     onSourceClick,
     suggestions,

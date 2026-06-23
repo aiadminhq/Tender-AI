@@ -12,6 +12,8 @@ import { SwipePage } from "@/pages/swipe-page";
 import { InsightsPage } from "@/pages/insights-page";
 import { PushPage } from "@/pages/push-page";
 import { AssistantPage } from "@/pages/assistant-page";
+import { SearchPage } from "@/pages/search-page";
+import { EvolutionPage } from "@/pages/evolution-page";
 
 export default function App() {
   const { status } = useAuth();
@@ -37,8 +39,10 @@ export default function App() {
           <Route path="tenders/:id" element={<TenderDetailPage />} />
           <Route path="swipe" element={<SwipePage />} />
           <Route path="insights" element={<InsightsPage />} />
+          <Route path="search" element={<SearchPage />} />
           <Route path="push" element={<PushPage />} />
           <Route path="assistant" element={<AssistantPage />} />
+          <Route path="evolution" element={<EvolutionPage />} />
           <Route path="kanban" element={<KanbanPage />} />
           <Route path="rules" element={<RulesPage />} />
           <Route path="settings" element={<SettingsPage />} />
