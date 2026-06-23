@@ -18,6 +18,8 @@ dependencies = [
     "requests>=2.32",
     "jieba>=0.42.1",
     "pypdf>=4.2",  # PDF 投標須知純文字抽取（純 Python、本機、不外送 LLM）
+    "mcp[cli]>=1.2",  # DB 大腦對外 MCP 介面（stdio；見 app/mcp_server.py、MCP_BRIDGE.md）
+    "cryptography<49",  # 經 mcp→pyjwt[crypto] 引入；鎖在有預編 wheel 的 48.x，避免 uv sync 觸發 Rust 源碼編譯失敗
 ]
 
 [dependency-groups]
