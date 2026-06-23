@@ -7,6 +7,8 @@ import { useApp } from "@/store/app-context";
 import { trackEvent } from "@/lib/events";
 import {
   streamAssistantChat,
+  fetchAssistantThreads,
+  fetchAssistantThread,
   type AssistantSource,
   type ChatMessage,
   type PreferenceSuggestion,
@@ -31,6 +33,10 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // 對話留存：本次 session 的對話串 id。首次提問由後端於 meta 回傳並記下，
+  // 後續同串提問帶回去續接；clear() 視為開新串而清空。
+  const threadIdRef = useRef<string | null>(null);
+
   // 「目前正在檢視的標案」放 ref：使用者可能在對話途中切換標案，send 時讀最新值即可，
   // 不必把它列入 send 的依賴而頻繁重建 callback。
   const focusRef = useRef<string | null>(focusTenderId ?? null);
@@ -38,6 +44,34 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
 
   // 卸載 / 關閉時中止進行中的串流。
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  // 掛載時 hydrate 最近一串對話，讓使用者回到上次對話脈絡。純 mock 模式
+  // （fetchAssistantThreads 回 []）或尚無對話時不動作，維持空白起始。
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const threads = await fetchAssistantThreads();
+        const latest = threads[0];
+        if (!latest || cancelled) return;
+        const detail = await fetchAssistantThread(latest.id);
+        if (!detail || cancelled) return;
+        threadIdRef.current = detail.id;
+        setTurns(
+          detail.turns.map((tn) => ({
+            role: tn.role,
+            text: tn.text,
+            sources: tn.sources,
+          })),
+        );
+      } catch {
+        // hydrate 失敗不影響使用：維持空白、可正常開新對話。
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const patchLastAssistant = useCallback((patch: Partial<Turn>) => {
     setTurns((prev) => {
@@ -77,7 +111,10 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
         await streamAssistantChat(
           history,
           {
-            onMeta: (_scope, sources) => patchLastAssistant({ sources }),
+            onMeta: (_scope, sources, threadId) => {
+              if (threadId) threadIdRef.current = threadId;
+              patchLastAssistant({ sources });
+            },
             onText: (full) => patchLastAssistant({ text: full }),
             onPreferenceSuggestion: (suggestion) =>
               patchLastAssistant(
@@ -89,6 +126,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
           },
           ctrl.signal,
           focusRef.current,
+          { threadId: threadIdRef.current, scope },
         );
       } catch {
         // 使用者主動中止（stop/clear）不算錯誤，不覆寫已串流內容。
@@ -113,6 +151,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
     setStreaming(false);
     setTurns([]);
     setDraft("");
+    threadIdRef.current = null; // 清空＝開新對話串，下次提問由後端產生新 thread_id。
     inputRef.current?.focus();
   }, []);
 

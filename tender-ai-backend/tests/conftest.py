@@ -42,6 +42,8 @@ TEST_URL = _BASE_URL.set(database=_TEST_DB)
 
 # TRUNCATE 用的完整表清單（CASCADE 處理 FK 次序）
 _ALL_TABLES = [
+    "assistant_messages",
+    "assistant_threads",
     "events",
     "annotations",
     "evaluations",

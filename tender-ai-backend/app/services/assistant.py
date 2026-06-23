@@ -23,6 +23,7 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +39,7 @@ from app.schemas.assistant import (
 )
 from app.schemas.tender import TenderQuery
 from app.services.preference_capture import detect_standing_preference
+from app.services import assistant_store
 from app.services import llm
 from app.services import query as query_svc
 from app.services import search as search_svc
@@ -130,6 +132,20 @@ def _focus_tender_id(payload: AssistantChatRequest) -> int | None:
         if tid > 0:
             return tid
     return None
+
+
+def _store_scope(payload: AssistantChatRequest) -> str:
+    """留存用的 scope：浮窗 assistant ｜ 指揮中心整頁 assistant_page。
+
+    前端經 ``context.scope`` 帶上來；缺值預設 "assistant"。此值僅供 thread 顯示分流，
+    與 meta 內描述檢索範圍的 ``scope`` 字串不同。
+    """
+    ctx = payload.context
+    if isinstance(ctx, dict):
+        raw = ctx.get("scope")
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip()[:32]
+    return "assistant"
 
 
 def _split_query(prompt: str) -> list[str]:
@@ -392,6 +408,9 @@ async def stream_chat_events(
 ) -> AsyncIterator[str]:
     prompt = _latest_user_prompt(payload)
     focus_id = _focus_tender_id(payload)
+    # thread id：前端帶上來就沿用，缺值由後端產生（uuid hex）並於 meta 回傳。
+    thread_id = (payload.thread_id or "").strip() or uuid4().hex
+    store_scope = _store_scope(payload)
     evidence = await _collect_candidates(session, prompt, focus_tender_id=focus_id)
     knowledge = await _collect_knowledge(session, prompt)
 
@@ -451,8 +470,21 @@ async def stream_chat_events(
         else None
     )
 
+    # 對話留存（Phase 4）：建串（冪等）＋寫入使用者提問，立即 commit 讓 GET 取得。
+    # 留存失敗只 rollback、不阻斷對話（HTTP 仍正常串流）。Layer B 預設不具名/不共享。
+    try:
+        await assistant_store.ensure_thread(session, thread_id, scope=store_scope)
+        if prompt:
+            await assistant_store.append_message(
+                session, thread_id, role="user", content=prompt
+            )
+        await session.commit()
+    except Exception:  # noqa: BLE001 — 留存非關鍵路徑，失敗不影響回答
+        await session.rollback()
+
     meta = AssistantChatMetaOut(
         scope="tender_sql + semantic_search + knowledge_base",
+        thread_id=thread_id,
         prompt=prompt,
         sources=sources,
         tool_contract=AssistantToolContractOut(),
@@ -460,6 +492,7 @@ async def stream_chat_events(
     )
     yield _json_line(meta.model_dump())
 
+    answer_text = ""
     used_llm = False
     if settings.assistant_use_llm:
         messages = _build_chat_messages(
@@ -487,6 +520,7 @@ async def stream_chat_events(
                 yield _json_line(
                     AssistantChatDeltaOut(text="".join(acc)).model_dump()
                 )
+                answer_text = final_text
                 used_llm = True
         except llm.LlmError:
             used_llm = False
@@ -497,6 +531,7 @@ async def stream_chat_events(
         # Fallback：Ollama 不可用／逾時／空輸出 → 退回既有模板（HTTP 仍 200）。
         # delta 為 replace 語意，故即便前面已串出部分 LLM 文字，這裡會整段覆蓋。
         answer = _format_answer(prompt, evidence, knowledge)
+        answer_text = answer
         paragraphs = [chunk.strip() for chunk in answer.split("\n\n") if chunk.strip()]
         running: list[str] = []
         for paragraph in paragraphs:
@@ -505,5 +540,19 @@ async def stream_chat_events(
             yield _json_line(
                 AssistantChatDeltaOut(text="\n\n".join(running)).model_dump()
             )
+
+    # 留存助手回答（含來源卡，僅公開 A 層欄位）；失敗只 rollback、不影響已串出的回應。
+    try:
+        if answer_text:
+            await assistant_store.append_message(
+                session,
+                thread_id,
+                role="assistant",
+                content=answer_text,
+                sources=[s.model_dump(mode="json") for s in sources],
+            )
+            await session.commit()
+    except Exception:  # noqa: BLE001
+        await session.rollback()
 
     yield _json_line(AssistantChatDoneOut().model_dump())

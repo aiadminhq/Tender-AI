@@ -95,6 +95,8 @@ class AssistantChatMetaOut(BaseModel):
 
     type: Literal["meta"] = "meta"
     scope: str
+    # 本串對話 id（前端帶上來就沿用，缺值由後端產生並回傳）；前端據此 hydrate／寫回。
+    thread_id: str
     prompt: str
     sources: list[AssistantSourceOut]
     tool_contract: AssistantToolContractOut
@@ -113,4 +115,45 @@ class AssistantChatDoneOut(BaseModel):
     """串流結束事件。"""
 
     type: Literal["done"] = "done"
+
+
+# ── 對話留存（Phase 4）讀取用 schemas ──────────────────────────────────────
+# Layer B 紅線：登入未落地前 owner 一律 "default"、consent_state="pending-consent"、
+# layer_b_opt_in=False；不具名、不共享、對外永不揭露（見 CLAUDE.md）。
+
+
+class AssistantThreadMessageOut(BaseModel):
+    """thread 內單則訊息（含助手來源卡）。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    content: str
+    sources: list[AssistantSourceOut] | None = None
+
+
+class AssistantThreadOut(BaseModel):
+    """thread 列表項（不含訊息明細）。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    owner_user_id: str
+    scope: str
+    title: str | None = None
+    consent_state: str
+    layer_b_opt_in: bool
+
+
+class AssistantThreadDetailOut(AssistantThreadOut):
+    """thread 詳情：thread 欄位 + 依序訊息。"""
+
+    messages: list[AssistantThreadMessageOut] = Field(default_factory=list)
+
+
+class AssistantThreadListOut(BaseModel):
+    """GET /assistant/threads 的回應。"""
+
+    threads: list[AssistantThreadOut] = Field(default_factory=list)
 

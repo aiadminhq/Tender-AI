@@ -45,6 +45,7 @@ export interface PreferenceSuggestion {
 interface MetaEvent {
   type: "meta";
   scope: string;
+  thread_id?: string;
   prompt: string;
   sources: {
     kind: AssistantSource["kind"];
@@ -69,7 +70,12 @@ interface DoneEvent {
 type StreamEvent = MetaEvent | DeltaEvent | DoneEvent;
 
 export interface StreamHandlers {
-  onMeta?: (scope: string, sources: AssistantSource[]) => void;
+  /** threadId 為後端回傳的對話串 id（缺 thread_id 時由後端產生）；前端據此續接同串。 */
+  onMeta?: (
+    scope: string,
+    sources: AssistantSource[],
+    threadId?: string,
+  ) => void;
   /** delta.text 為累積全文 → 直接 replace 當前助手訊息內容。 */
   onText?: (fullText: string) => void;
   /** 偵測到對話中的長期條件時回呼（否則帶 null）；UI 據此顯示確認 chip。 */
@@ -101,19 +107,27 @@ export async function streamAssistantChat(
   signal?: AbortSignal,
   /** 使用者「目前正在檢視」的標案 id（情境感知接線）；後端 context.focus_tender_id 消費。 */
   focusTenderId?: string | number | null,
+  /** 對話留存接線：threadId 續接同串（缺則後端產生並於 meta 回傳）；scope 寫入 context 供留存分類。 */
+  opts?: { threadId?: string | null; scope?: string },
 ): Promise<void> {
   const body: {
     messages: { role: string; content: { type: "text"; text: string }[] }[];
-    context?: { focus_tender_id: string | number };
+    thread_id?: string;
+    context?: { focus_tender_id?: string | number; scope?: string };
   } = {
     messages: messages.map((m) => ({
       role: m.role,
       content: [{ type: "text", text: m.text }],
     })),
   };
+  const threadId = opts?.threadId?.trim?.() || opts?.threadId;
+  if (threadId) body.thread_id = String(threadId);
+  const context: { focus_tender_id?: string | number; scope?: string } = {};
   if (focusTenderId != null && String(focusTenderId).trim() !== "") {
-    body.context = { focus_tender_id: focusTenderId };
+    context.focus_tender_id = focusTenderId;
   }
+  if (opts?.scope) context.scope = opts.scope;
+  if (Object.keys(context).length > 0) body.context = context;
 
   const res = await fetch(`${API_BASE}/assistant/chat`, {
     method: "POST",
@@ -137,7 +151,7 @@ export async function streamAssistantChat(
       return; // 半行/雜訊：略過
     }
     if (evt.type === "meta") {
-      handlers.onMeta?.(evt.scope, evt.sources.map(adaptSource));
+      handlers.onMeta?.(evt.scope, evt.sources.map(adaptSource), evt.thread_id);
       handlers.onPreferenceSuggestion?.(evt.preference_suggestion ?? null);
     } else if (evt.type === "delta") {
       handlers.onText?.(evt.text);
@@ -157,4 +171,85 @@ export async function streamAssistantChat(
     }
   }
   if (buf) handleLine(buf); // 收尾未換行的最後一段
+}
+
+// ── 對話留存：列表／詳情（hydrate 用） ──────────────────────────────
+// 對齊後端 GET /assistant/threads(/{id})。Layer B 紅線：留存只含對話文字與公開
+// A 層來源卡，owner 一律 default、未具名、對外永不揭露（見 CLAUDE.md）。
+
+/** 對話串摘要（清單顯示用）。 */
+export interface AssistantThreadSummary {
+  id: string;
+  scope: string;
+  title: string | null;
+}
+
+/** 對話串歷史一則（hydrate 成 Turn 用）。 */
+export interface AssistantThreadTurn {
+  role: "user" | "assistant";
+  text: string;
+  sources?: AssistantSource[];
+}
+
+/** 對話串詳情（含完整訊息）。 */
+export interface AssistantThreadDetail extends AssistantThreadSummary {
+  turns: AssistantThreadTurn[];
+}
+
+interface ThreadSummaryDto {
+  id: string;
+  scope: string;
+  title: string | null;
+}
+interface ThreadMessageDto {
+  id: number;
+  role: string;
+  content: string;
+  sources: MetaEvent["sources"] | null;
+}
+interface ThreadDetailDto extends ThreadSummaryDto {
+  messages: ThreadMessageDto[];
+}
+
+/** 列出近期對話串；純 mock 模式（VITE_USE_API=false）不外連，回空陣列。 */
+export async function fetchAssistantThreads(
+  signal?: AbortSignal,
+): Promise<AssistantThreadSummary[]> {
+  if (import.meta.env.VITE_USE_API === "false") return [];
+  const res = await fetch(`${API_BASE}/assistant/threads`, {
+    headers: authHeaders(),
+    signal,
+  });
+  if (!res.ok) throw new Error(`assistant threads API ${res.status}`);
+  const data = (await res.json()) as { threads: ThreadSummaryDto[] };
+  return data.threads.map((t) => ({
+    id: t.id,
+    scope: t.scope,
+    title: t.title,
+  }));
+}
+
+/** 取單一對話串詳情；找不到（404）或純 mock 模式回 null。 */
+export async function fetchAssistantThread(
+  threadId: string,
+  signal?: AbortSignal,
+): Promise<AssistantThreadDetail | null> {
+  if (import.meta.env.VITE_USE_API === "false") return null;
+  const res = await fetch(
+    `${API_BASE}/assistant/threads/${encodeURIComponent(threadId)}`,
+    { headers: authHeaders(), signal },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`assistant thread API ${res.status}`);
+  const data = (await res.json()) as ThreadDetailDto;
+  return {
+    id: data.id,
+    scope: data.scope,
+    title: data.title,
+    turns: data.messages.map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      text: m.content,
+      sources: m.sources ? m.sources.map(adaptSource) : undefined,
+    })),
+  };
 }
