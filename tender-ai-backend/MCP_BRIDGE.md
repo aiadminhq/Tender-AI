@@ -42,14 +42,20 @@ uv run python -m app.mcp_server      # stdio，等待 client 連入
 
 ## 各 CLI 設定
 
-> 將 `<ABS>` 換成 `tender-ai-backend` 的絕對路徑。
+> 絕對路徑：`/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend`（含空格，命令列需加引號）。
+> 本機四個 CLI 的注入現況：
+>
+> - **Claude Code**：已注入（`~/.claude.json` user scope，`claude mcp list` 顯示 ✔ Connected）。
+> - **Codex**：已注入（`~/.codex/config.toml` → `[mcp_servers.tender-ai-brain]`）。
+> - **Hermes**：已注入（`~/.hermes/config.yaml` → `mcp_servers.tender_ai_brain`，`hermes mcp list` ✓ enabled）。
+> - **opencli**：**不支援** —— 它是針對特定 app 的 adapter meta-CLI（`~/.opencli/clis/` 僅 interview、mobbin），非通用 MCP host，無 stdio MCP 設定入口，故未注入。
 
 ### Claude Code
 
 ```bash
-claude mcp add tender-ai-brain \
+claude mcp add -s user tender-ai-brain \
   --env TENDER_MCP_USER=alex@hqdesign.tw \
-  -- uv --directory <ABS> run python -m app.mcp_server
+  -- uv --directory "/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend" run python -m app.mcp_server
 ```
 
 或寫進專案 `.mcp.json`：
@@ -59,7 +65,14 @@ claude mcp add tender-ai-brain \
   "mcpServers": {
     "tender-ai-brain": {
       "command": "uv",
-      "args": ["--directory", "<ABS>", "run", "python", "-m", "app.mcp_server"],
+      "args": [
+        "--directory",
+        "/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend",
+        "run",
+        "python",
+        "-m",
+        "app.mcp_server"
+      ],
       "env": { "TENDER_MCP_USER": "alex@hqdesign.tw" }
     }
   }
@@ -71,21 +84,38 @@ claude mcp add tender-ai-brain \
 ```toml
 [mcp_servers.tender-ai-brain]
 command = "uv"
-args = ["--directory", "<ABS>", "run", "python", "-m", "app.mcp_server"]
+args = ["--directory", "/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend", "run", "python", "-m", "app.mcp_server"]
 env = { TENDER_MCP_USER = "alex@hqdesign.tw" }
 ```
 
-### Hermes / opencli / 其他支援 MCP 的 CLI
+### Hermes（`~/.hermes/config.yaml`）
+
+```yaml
+mcp_servers:
+  tender_ai_brain:
+    command: /Users/christianwu/.local/bin/uv
+    args:
+      - --directory
+      - /Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend
+      - run
+      - python
+      - -m
+      - app.mcp_server
+    env:
+      TENDER_MCP_USER: alex@hqdesign.tw
+```
+
+### 其他支援 MCP 的 CLI（通用 stdio）
 
 任何吃「stdio MCP server」設定的 client 都用同一組：
 
 - **command**：`uv`
-- **args**：`["--directory", "<ABS>", "run", "python", "-m", "app.mcp_server"]`
+- **args**：`["--directory", "/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend", "run", "python", "-m", "app.mcp_server"]`
 - **env**：`{ "TENDER_MCP_USER": "<你的帳號>" }`
 - **transport**：stdio
 
-（沒有 `uv` 時，改用該環境的 venv：`command` = `<ABS>/.venv/bin/python`，
-`args` = `["-m", "app.mcp_server"]`，並設 `cwd` = `<ABS>`。）
+（沒有 `uv` 時，改用該環境的 venv：`command` = `/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/.venv/bin/python`，
+`args` = `["-m", "app.mcp_server"]`，並設 `cwd` = `/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend`。）
 
 ---
 
