@@ -192,9 +192,12 @@ async def test_run_evolution_writes_log(evo_seed, db_session):
 
     # top 判準詞為系統推斷的承標判準（公開衍生詞彙）
     pos_terms = {w["term"] for w in log["top_positive"]}
-    neg_terms = {w["term"] for w in log["top_negative"]}
     assert "工程" in pos_terms
-    assert "勞務" in neg_terms
+    # 紅線：系統不得自動產生負分 → top_negative 無自動負向（本案未人工給負分）。
+    assert log["top_negative"] == []
+    # 偏負向詞改列為「候選建議」（附理由），供人工審核是否列為迴避詞。
+    cand_terms = {c["term"] for c in log["negative_candidates"]}
+    assert "勞務" in cand_terms
 
     # 行為信號為預設使用者的 Layer A 聚合
     assert log["signals"]["events_total"] == 5
@@ -271,7 +274,8 @@ async def test_get_evolution_status(evo_seed, db_session):
     assert status["history"][0]["id"] >= status["history"][1]["id"]
     # 當前生效權重（即時驅動排序）
     assert any(w["term"] == "工程" for w in status["active_positive"])
-    assert any(w["term"] == "勞務" for w in status["active_negative"])
+    # 紅線：無自動負分 → 當前生效負向為空（除非有人工給定的負分詞）。
+    assert status["active_negative"] == []
 
     _assert_no_pii(status)
 

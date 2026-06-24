@@ -173,20 +173,18 @@ async def build_criteria_profile(
         profile.budget_max = max(feas_budgets)
         profile.budget_median = int(statistics.median(feas_budgets))
 
-    # SL2 學習關鍵字 top 正/負
-    kws = list((await session.execute(select(KeywordWeight))).scalars())
-    pos = sorted(
-        (k for k in kws if k.polarity != "negative"),
-        key=lambda k: k.weight or 0.0,
-        reverse=True,
+    # SL2 學習關鍵字：只取正向 top（負向避免詞一律人工專屬，學習詞不得帶出負向）。
+    pos_rows = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(KeywordWeight.polarity != "negative")
+            )
+        ).scalars()
     )
-    neg = sorted(
-        (k for k in kws if k.polarity == "negative"),
-        key=lambda k: k.weight or 0.0,
-        reverse=True,
-    )
+    pos = sorted(pos_rows, key=lambda k: k.weight or 0.0, reverse=True)
     profile.kw_positive = [k.term for k in pos[:6]]
-    profile.kw_negative = [k.term for k in neg[:6]]
+    # 避免詞預設空；本人「手動」迴避詞由下方 apply_overrides 併入（負分人工專屬紅線）。
+    profile.kw_negative = []
 
     # 行為訊號：你「點開／點連結／停留」最多的類別/城市
     ev_stmt = (
@@ -211,7 +209,9 @@ async def build_criteria_profile(
     profile.engaged_cities = [c for c, _ in city_ctr.most_common(3)]
 
     # Phase 2：套上本人在推理卡上的「手動」關鍵字覆寫（add／remove）。
-    # 只影響顯示輪廓；per-tender 計分仍讀 KeywordWeight（負分人工專屬紅線）。
+    # 手動「迴避」詞（kind=negative）即唯一合規負分來源：合併後既進顯示輪廓
+    # （kw_negative），也由 explain_tender 取用驅動 per-tender 計分（負分人工專屬
+    # 紅線）；系統學習詞只供正向，永不帶出負分。
     if user_id is not None:
         overrides = await manual_keywords.list_overrides(session, user_id)
         if overrides:
@@ -300,23 +300,33 @@ def _haystack(t: Tender) -> str:
 
 
 def _keyword_reason(
-    t: Tender, kws: list[KeywordWeight]
+    t: Tender,
+    positive_kws: list[KeywordWeight],
+    manual_negatives: list[str],
 ) -> tuple[float, ReasonCode | None]:
-    """掃描 SL2 學習關鍵字命中，回傳 (impact, reason_code|None)。"""
+    """掃描關鍵字命中，回傳 (impact, reason_code|None)。
+
+    - 正向來自 SL2 閉合學習（``positive_kws``，可由資料自動學）。
+    - 負向**僅**來自本人「手動」指定的迴避詞（``manual_negatives``）——負分人工
+      專屬紅線：系統學習絕不自動產生負分（見 CLAUDE.md P4/P5）。
+    """
     hay = _haystack(t)
     pos: list[str] = []
     neg: list[str] = []
     signed = 0.0
-    for k in kws:
+    for k in positive_kws:
         term = (k.term or "").strip()
         if not term or term not in hay:
             continue
-        if k.polarity == "negative":
-            signed -= float(k.weight or 0.0)
-            neg.append(term)
-        else:
-            signed += float(k.weight or 0.0)
-            pos.append(term)
+        signed += float(k.weight or 0.0)
+        pos.append(term)
+    for term in manual_negatives:
+        term = (term or "").strip()
+        if not term or term not in hay:
+            continue
+        # 人工迴避詞以全強度（1.0）計負，貫徹「人說要避開就避開」。
+        signed -= 1.0
+        neg.append(term)
     if not pos and not neg:
         return 0.0, None
     impact = max(-_W_KEYWORD_CAP, min(_W_KEYWORD_CAP, signed * _W_KEYWORD))
@@ -324,14 +334,18 @@ def _keyword_reason(
     if pos:
         bits.append(f"命中正向關鍵字「{'、'.join(pos[:4])}」")
     if neg:
-        bits.append(f"命中負向關鍵字「{'、'.join(neg[:4])}」")
+        bits.append(f"命中你設定的迴避關鍵字「{'、'.join(neg[:4])}」")
+    evidence_tail = (
+        "（正向來自 SL2 閉合學習；負向為你人工指定的迴避詞）"
+        if neg else "（來自 SL2 閉合學習）"
+    )
     return impact, ReasonCode(
         factor="keyword",
         label="學習關鍵字",
         value="、".join((pos + neg)[:4]),
         direction=_direction(impact),
         impact=round(impact, 4),
-        evidence="；".join(bits) + "（來自 SL2 閉合學習）",
+        evidence="；".join(bits) + evidence_tail,
     )
 
 
@@ -357,7 +371,16 @@ async def explain_tender(
 
     profile = await build_criteria_profile(session, user_id)
     tier, days_left = await _latest_snapshot(session, tender_id)
-    kws = list((await session.execute(select(KeywordWeight))).scalars())
+    # 計分只吃正向學習詞；負向「僅」用本人手動迴避詞（build_criteria_profile 已把
+    # kw_negative 清空後併入 manual overrides，故此處即等於本人的人工迴避清單）。
+    positive_kws = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(KeywordWeight.polarity != "negative")
+            )
+        ).scalars()
+    )
+    manual_negatives = list(profile.kw_negative)
 
     weighted: list[tuple[float, ReasonCode]] = []
     neutral: list[ReasonCode] = []
@@ -505,7 +528,7 @@ async def explain_tender(
             ))
 
     # 4) SL2 學習關鍵字
-    kw_impact, kw_reason = _keyword_reason(t, kws)
+    kw_impact, kw_reason = _keyword_reason(t, positive_kws, manual_negatives)
     if kw_reason is not None:
         fit += kw_impact
         weighted.append((kw_impact, kw_reason))

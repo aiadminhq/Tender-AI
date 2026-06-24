@@ -15,9 +15,10 @@
 唯一合規路徑（系統不得自動產生負分，見記憶 negative-keywords-human-only）。
 個人化線只用本人資料、不需共享同意（CLAUDE.md Layer B）。離線、只讀寫本機 DB。
 
-注意（顯示 vs 計分）：本合併目前只影響**判準輪廓的顯示**；per-tender 計分的
-``reasoning._keyword_reason`` 仍直接讀 ``KeywordWeight``，把覆寫注入計分為後續
-工作（須維持「負分人工專屬」紅線）。
+計分注入（顯示＋計分皆已接通）：``reasoning.build_criteria_profile`` 先把
+``kw_negative`` 清空再併入本人手動迴避詞，``reasoning.explain_tender`` 即以該清單
+（＝本人人工迴避詞）作為 per-tender 計分的**唯一**負分來源；系統學習詞只供正向、
+永不帶出負分（負分人工專屬紅線，見記憶 negative-keywords-human-only）。
 """
 from __future__ import annotations
 

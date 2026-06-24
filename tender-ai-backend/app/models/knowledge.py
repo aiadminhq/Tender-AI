@@ -203,6 +203,11 @@ class EvolutionLog(Base):
     - ``batch`` 連回 ``keyword_weight_revisions.batch``，可下鑽該批每個詞。
     - ``top_positive`` / ``top_negative``：當批最具代表性的重點詞／避免詞
       （[{term, weight, support}, ...]），即「系統推斷的承標判準詞彙」。
+      注意 ``top_negative`` 僅反映**人工**給定的負分詞（系統絕不自動產生負分）。
+    - ``negative_candidates``：當批由資料浮現、偏「不可行」的**疑似**迴避詞
+      候選（[{term, feasible_count, infeasible_count, lift, support, reason}, ...]）。
+      **僅為附理由的建議**，供管理者審核是否手動列為迴避詞；系統**不得**據此
+      自動寫入負權重（負分人工專屬紅線，見 CLAUDE.md P4/P5）。
     - ``signals``：行為信號聚合（top 類別／城市／來源、事件型別計數、
       評估可行/不可行樣本數等），即「使用者實際在關注什麼」的量化快照。
 
@@ -227,6 +232,8 @@ class EvolutionLog(Base):
     # 當批 top 重點詞／避免詞（[{term, weight, support}, ...]，Layer A 公開詞彙）
     top_positive: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     top_negative: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    # 疑似迴避詞「候選」（附理由的建議，供人工審核；系統不得自動寫入負權重）
+    negative_candidates: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     # 行為信號聚合快照（Layer A 聚合統計，無 PII）
     signals: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

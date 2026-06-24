@@ -2,7 +2,8 @@
 """SL6 自我進化 schema（對外只回傳 Layer A 聚合統計與公開衍生詞彙）。
 
 - 進化日誌（EvolutionLogOut）= 一次學習迭代的稽核摘要：樣本脈絡、詞彙增刪量、
-  當批 top 重點詞／避免詞（系統推斷的承標判準），與行為信號聚合快照。
+  當批 top 重點詞／避免詞（系統推斷的承標判準）、疑似迴避詞「候選」（附理由的
+  建議，供人工審核——系統不得自動寫入負權重），與行為信號聚合快照。
 - 行為信號（BehaviorSignals）皆為計數與公開衍生詞彙（標案類別／城市／來源、
   事件型別、評估判準鍵），**不含人名／email 或個別評語原文**；user_id 嚴格隔離。
 """
@@ -17,6 +18,21 @@ class TermWeight(BaseModel):
     term: str
     weight: float
     support: int
+
+
+class NegativeCandidate(BaseModel):
+    """疑似迴避詞「候選」（附理由的建議，供人工審核）。
+
+    由資料浮現、偏「不可行」的詞；**僅為建議**，系統不得據此自動寫入負權重——
+    負分一律由人手動給出（負分人工專屬紅線，見 CLAUDE.md P4/P5）。
+    """
+
+    term: str
+    feasible_count: int = 0
+    infeasible_count: int = 0
+    lift: float = 0.0
+    support: int = 0
+    reason: str = ""
 
 
 class DimensionCount(BaseModel):
@@ -59,6 +75,8 @@ class EvolutionLogOut(BaseModel):
     revision_rows: int
     top_positive: list[TermWeight] = Field(default_factory=list)
     top_negative: list[TermWeight] = Field(default_factory=list)
+    # 疑似迴避詞候選（附理由的建議，供人工審核；非自動負權重）
+    negative_candidates: list[NegativeCandidate] = Field(default_factory=list)
     signals: BehaviorSignals = Field(default_factory=BehaviorSignals)
     created_at: str | None = None
 

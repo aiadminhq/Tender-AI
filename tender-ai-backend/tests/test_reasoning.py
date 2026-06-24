@@ -18,6 +18,7 @@ from sqlalchemy import select  # noqa: F401  保留與其他測試一致的匯�
 from app.core.errors import EntityNotFound
 from app.models.behavior import Evaluation, Event, User
 from app.models.knowledge import KeywordWeight
+from app.models.preference import UserManualKeyword
 from app.models.tender import DailyTender, Source, Tender
 from app.services import reasoning as svc
 from tests.conftest import TestSessionLocal
@@ -88,7 +89,8 @@ async def reasoning_data(db_session):
         Evaluation(user_id=user.id, tender_id=t_goods.id, feasible="不可行", created_at=now),
     ])
 
-    # SL2 學習關鍵字（正：工程；負：勞務）。
+    # SL2 學習關鍵字（正：工程）。另存一筆 legacy 自動負權重（勞務）作為紅線探針：
+    # 系統負權重一律不得進入判準輪廓或 per-tender 計分（負分人工專屬，見 CLAUDE.md P4/P5）。
     db_session.add_all([
         KeywordWeight(term="工程", polarity="positive", weight=0.8),
         KeywordWeight(term="勞務", polarity="negative", weight=0.7),
@@ -134,12 +136,17 @@ async def test_profile_lift_direction(reasoning_data, db_session):
 
 @pytest.mark.asyncio
 async def test_profile_budget_and_keywords(reasoning_data, db_session):
-    """可行案預算區間取自可行標案；top 關鍵字依極性分流。"""
+    """可行案預算區間取自可行標案；正向學習詞進輪廓，系統負權重一律不帶出。
+
+    紅線：``kw_negative`` 只收本人「手動」迴避詞；無人工覆寫時即為空，
+    legacy 自動負權重（勞務）不得外洩到輪廓（見 CLAUDE.md P4/P5）。
+    """
     p = await svc.build_criteria_profile(db_session)
     assert p.budget_min == 150
     assert p.budget_max == 900
     assert "工程" in p.kw_positive
-    assert "勞務" in p.kw_negative
+    assert "勞務" not in p.kw_positive  # 負權重不得混進正向
+    assert p.kw_negative == []  # 無人工迴避詞 → 空（負分人工專屬）
 
 
 @pytest.mark.asyncio
@@ -180,12 +187,48 @@ async def test_explain_engineering_is_strong(reasoning_data, db_session):
 
 @pytest.mark.asyncio
 async def test_explain_labour_is_weak(reasoning_data, db_session):
-    """勞務案 → weak，類別為負向、關鍵字命中負向。"""
+    """勞務案 → weak，類別為負向；無人工迴避詞時不靠關鍵字負分（紅線）。
+
+    負向方向應由「類別 lift」（資料驅動）帶出，而非系統自動負權重關鍵字；
+    未給人工迴避詞時，計分不得出現任何負向 keyword 因子。
+    """
     out = await svc.explain_tender(db_session, reasoning_data["lab"])
     assert out.verdict == "weak"
     assert out.criteria_fit < 42
     factors = {r.factor: r for r in out.reasons}
     assert factors["category"].direction == "negative"
+    # 紅線：legacy 自動負權重（勞務）不得在計分產生負向關鍵字因子
+    assert "keyword" not in factors or factors["keyword"].direction != "negative"
+
+
+@pytest.mark.asyncio
+async def test_manual_negative_applies_in_scoring(reasoning_data, db_session):
+    """負分人工專屬紅線：唯有本人「手動」迴避詞才在 per-tender 計分產生負向關鍵字因子。
+
+    勞務案不命中任何正向學習詞——未給人工迴避詞時無 keyword 因子（即便 DB 內存有
+    legacy 自動負權重「勞務」也不得計分）；本人手動把「勞務」列為迴避詞後，計分才
+    出現 direction=negative 的 keyword 因子，且證據點明是「你設定的迴避關鍵字」。
+    """
+    uid = reasoning_data["user"]
+    lab = reasoning_data["lab"]
+
+    # before：未給人工迴避詞 → 無 keyword 因子（系統負權重不得自動計分）
+    before = await svc.explain_tender(db_session, lab, user_id=uid)
+    assert "keyword" not in {r.factor for r in before.reasons}
+
+    # 本人手動指定迴避詞「勞務」（唯一合規負分來源）
+    db_session.add(
+        UserManualKeyword(user_id=uid, term="勞務", kind="negative", excluded=False)
+    )
+    await db_session.commit()
+
+    # after：計分出現負向 keyword 因子，且證據點明來自本人設定的迴避詞
+    after = await svc.explain_tender(db_session, lab, user_id=uid)
+    factors = {r.factor: r for r in after.reasons}
+    assert "keyword" in factors
+    assert factors["keyword"].direction == "negative"
+    assert factors["keyword"].impact < 0
+    assert "迴避關鍵字" in factors["keyword"].evidence
 
 
 @pytest.mark.asyncio
