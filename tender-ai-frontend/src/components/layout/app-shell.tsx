@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
+import { SelectionMenu } from "@/components/selection/selection-menu";
 
 export function AppShell() {
   return (
@@ -14,6 +15,8 @@ export function AppShell() {
         </main>
       </div>
       <BottomNav />
+      {/* 全局選區浮動選單：框選任意文字 → 加入關鍵字／相似搜尋／問 AI。 */}
+      <SelectionMenu />
     </div>
   );
 }

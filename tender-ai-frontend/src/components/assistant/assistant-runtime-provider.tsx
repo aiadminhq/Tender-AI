@@ -26,6 +26,8 @@ export interface AssistantCustomMeta {
 
 interface AssistantBridge {
   scope: string;
+  /** 直接送出一則提問（供外部入口如選區選單「傳送給 AI」呼叫）。 */
+  send: (text: string) => void;
   onSourceClick: (s: AssistantSource) => void;
   /** 偏好確認 chip：使用者按「好」記住／「不用」忽略。 */
   resolvePreference: (
@@ -103,6 +105,7 @@ export function AssistantRuntime({
   const bridge = useMemo<AssistantBridge>(
     () => ({
       scope,
+      send,
       onSourceClick,
       resolvePreference,
       clear,
@@ -112,6 +115,7 @@ export function AssistantRuntime({
     }),
     [
       scope,
+      send,
       onSourceClick,
       resolvePreference,
       clear,

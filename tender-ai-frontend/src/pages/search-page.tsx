@@ -1,4 +1,11 @@
-import { useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { STRINGS } from "@/i18n/strings";
@@ -13,16 +20,16 @@ type Status = "idle" | "loading" | "done" | "error";
 
 export function SearchPage() {
   const { t, lang } = useApp();
-  const [query, setQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
   const [status, setStatus] = useState<Status>("idle");
   const [hits, setHits] = useState<SimilarTender[]>([]);
   // 競態保護：只認最後一次送出的查詢結果。
   const reqId = useRef(0);
 
-  async function runSearch(e: FormEvent) {
-    e.preventDefault();
-    const q = query.trim();
-    if (!q || status === "loading") return;
+  const doSearch = useCallback(async (raw: string) => {
+    const q = raw.trim();
+    if (!q) return;
 
     const id = ++reqId.current;
     setStatus("loading");
@@ -39,6 +46,21 @@ export function SearchPage() {
       if (id !== reqId.current) return;
       setStatus("error");
     }
+  }, []);
+
+  // 由選區選單「相似搜尋」帶入的 ?q=：掛載／URL 變動時自動跑一次。
+  const urlQuery = searchParams.get("q") ?? "";
+  useEffect(() => {
+    if (urlQuery.trim()) {
+      setQuery(urlQuery);
+      void doSearch(urlQuery);
+    }
+  }, [urlQuery, doSearch]);
+
+  function runSearch(e: FormEvent) {
+    e.preventDefault();
+    if (status === "loading") return;
+    void doSearch(query);
   }
 
   const topScore = hits.length > 0 ? Math.round((hits[0].score ?? 0) * 100) : 0;
