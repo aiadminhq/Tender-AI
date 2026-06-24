@@ -82,8 +82,9 @@ function hashString(s: string): number {
   return Math.abs(h);
 }
 
-/** 由登入身分推導頭像顯示（縮寫取名稱前兩個字／英文首字母，底色依信箱穩定取色）。 */
-export function authDisplay(u: AuthUser): AuthDisplay {
+/** 由登入身分推導頭像顯示（縮寫取名稱前兩個字／英文首字母，底色依信箱穩定取色）。
+ *  參數放寬為 `Pick<AuthUser,"name"|"email">`：本就只讀這兩欄，供 Member 等衍生頭像。 */
+export function authDisplay(u: Pick<AuthUser, "name" | "email">): AuthDisplay {
   const name = u.name || u.email || "?";
   const ascii = /^[\x00-\x7F]+$/.test(name.trim());
   let initials: string;
@@ -253,6 +254,29 @@ export async function fetchAccounts(): Promise<AccountRow[] | null> {
     }));
   } catch {
     return null;
+  }
+}
+
+/** POST /admin/whitelist：管理員開通／關閉某帳號白名單（best-effort，暫以 X-User-Role 把關）。
+ *  成功回 true；非 admin（403）／查無／後端不可達皆回 false。前端優先：本地 members 仍為事實來源，
+ *  此呼叫僅在 live+admin 時盡力同步後端，失敗不阻塞本地切換。 */
+export async function setWhitelist(
+  email: string,
+  whitelistActive: boolean,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/whitelist`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Role": "admin",
+        ...authHeaders(),
+      },
+      body: JSON.stringify({ email, whitelist_active: whitelistActive }),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
