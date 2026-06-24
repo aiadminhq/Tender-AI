@@ -8,12 +8,13 @@ import { PersonalData } from "@/components/settings/personal-data";
 import { AdminUserPasswords } from "@/components/settings/admin-user-passwords";
 import { MemberManagement } from "@/components/settings/member-management";
 import { BrainPicker } from "@/components/settings/brain-picker";
+import { DetailFieldSettings } from "@/components/settings/detail-field-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // /settings：系統設定載體。本波含「來源管理」「關鍵字管理」「帳號安全（改密）」，
 // 管理員另見「成員密碼管理」；仍用預設密碼時於頁首提示建議修改。
 export function SettingsPage() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const { user, isAdmin, isMock } = useAuth();
   const showPwDefault = !isMock && !!user?.passwordIsDefault;
 
@@ -59,6 +60,17 @@ export function SettingsPage() {
         <CardContent>
           <p className="mb-4 text-[12px] text-ink-muted">{t("brainSub")}</p>
           <BrainPicker />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>
+            {lang === "en" ? "Tender detail fields" : "標案詳情欄位"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DetailFieldSettings />
         </CardContent>
       </Card>
 

@@ -49,3 +49,25 @@ class BrainConfigUpdate(BaseModel):
     byok_protocol: ByokProtocol | None = None
     byok_base_url: str | None = None
     byok_model: str | None = None
+
+
+# ── 標案詳情規格表：欄位顯示設定（團隊共用，單列 id=1）────────────────────────────
+
+
+class DetailFieldVisibilityOut(BaseModel):
+    """GET /settings/detail-fields 的回應：目前被隱藏的詳情欄位鍵清單。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    # 被隱藏的欄位鍵（前端欄位註冊表 key）；空陣列＝全部顯示。
+    hidden_fields: list[str] = []
+    updated_at: datetime | None = None
+
+
+class DetailFieldVisibilityUpdate(BaseModel):
+    """PUT /settings/detail-fields 的請求：整批覆蓋被隱藏的欄位鍵清單。
+
+    未送 ``hidden_fields`` 則不動；送出時整批覆蓋（service 端會去重正規化）。
+    """
+
+    hidden_fields: list[str] | None = None

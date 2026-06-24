@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/category-badge";
 import { sourceByKey } from "@/data/sources";
 import { formatBudget, formatDateLong } from "@/lib/format";
+import { DETAIL_FIELDS, useHiddenDetailFields } from "@/lib/detail-fields";
 import { cn } from "@/lib/utils";
 
 // 標案詳情的共用小元件：drawer（peek）與詳情頁共用，避免兩處複製。
@@ -228,11 +229,14 @@ export function AttachmentList({
   );
 }
 
-/** 資格要求摘要表格：把長文結構化條目（屬性／標籤／內文）照標案頁面以表格呈現。
+/** 資格要求摘要（無外框）：把長文結構化條目（屬性／標籤／內文）照標案頁面以表格呈現。
  *
  * 條目來自後端 qualification_items（離線結構化或即時投影）。kind 區分：
  * note＝小標（如「符合下列任一」，跨欄呈現）、code＝資格代碼（label mono、content 名稱）、
- * requirement＝要求項（label 項次、content 內文）。資料源為 Layer A 公開、可重算。 */
+ * requirement＝要求項（label 項次、content 內文）。資料源為 Layer A 公開、可重算。
+ *
+ * 此元件無外框：嵌在「常態性規格表」的資格列儲存格內，由外層統一表格提供邊框，
+ * 避免巢狀框（impeccable：nested cards 為反模式）。 */
 function QualificationTable({
   items,
   t,
@@ -241,57 +245,152 @@ function QualificationTable({
   t: (k: TextKey) => string;
 }) {
   return (
-    <div className="mt-1.5 overflow-hidden rounded-2xl border border-hairline">
-      <table className="w-full border-collapse text-[13px]">
-        <thead>
-          <tr className="bg-surface-2 text-left text-[11px] text-ink-dim">
-            <th className="w-[28%] px-3 py-2 font-medium">
-              {t("qualColItem")}
-            </th>
-            <th className="px-3 py-2 font-medium">{t("qualColContent")}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-hairline">
-          {items.map((it, i) => {
-            const key = `${it.kind}-${it.label ?? ""}-${i}`;
-            if (it.kind === "note") {
-              return (
-                <tr key={key} className="bg-card">
-                  <td
-                    colSpan={2}
-                    className="px-3 py-2 text-[12px] font-medium text-ink-muted"
-                  >
-                    {it.content}
-                  </td>
-                </tr>
-              );
-            }
-            const isCode = it.kind === "code";
+    <table className="w-full border-collapse text-[13px]">
+      <thead>
+        <tr className="text-left text-[11px] text-ink-dim">
+          <th className="w-[28%] pb-1.5 pr-3 font-medium">
+            {t("qualColItem")}
+          </th>
+          <th className="pb-1.5 font-medium">{t("qualColContent")}</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-hairline">
+        {items.map((it, i) => {
+          const key = `${it.kind}-${it.label ?? ""}-${i}`;
+          if (it.kind === "note") {
             return (
               <tr key={key}>
-                <td className="whitespace-nowrap px-3 py-2 align-top">
-                  {it.label ? (
-                    <span className={isCode ? "tnum text-ink" : "text-ink-dim"}>
-                      {it.label}
-                    </span>
-                  ) : (
-                    <span className="text-ink-dim">·</span>
-                  )}
-                </td>
-                <td className="px-3 py-2 align-top leading-relaxed text-ink">
+                <td
+                  colSpan={2}
+                  className="py-1.5 text-[12px] font-medium text-ink-muted"
+                >
                   {it.content}
                 </td>
               </tr>
             );
-          })}
-        </tbody>
-      </table>
-    </div>
+          }
+          const isCode = it.kind === "code";
+          return (
+            <tr key={key}>
+              <td className="whitespace-nowrap py-1.5 pr-3 align-top">
+                {it.label ? (
+                  <span className={isCode ? "tnum text-ink" : "text-ink-dim"}>
+                    {it.label}
+                  </span>
+                ) : (
+                  <span className="text-ink-dim">·</span>
+                )}
+              </td>
+              <td className="py-1.5 align-top leading-relaxed text-ink">
+                {it.content}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
-/** 標案詳情版本：有 revision 時呈現履約/資格/押標金/類別/附件；
- * 未 enrich（revision 為 null）時優雅退化為空狀態提示。 */
+// 規格表中跨兩欄整列呈現的「寬內容」欄位（資格／附件／附註）；其餘為純量（標籤＋單值）。
+const RICH_DETAIL_FIELDS = new Set([
+  "qualification",
+  "attachments",
+  "extraNote",
+]);
+
+/** 純量欄位值：取對應 revision 欄位，空則回 null（規格表該列顯示「—」）。 */
+function scalarDetailValue(
+  key: string,
+  revision: TenderRevisionDetail,
+  lang: Lang,
+  t: (k: TextKey) => string,
+): string | null {
+  switch (key) {
+    case "performanceLocation":
+      return revision.performanceLocation || null;
+    case "performancePeriod":
+      return revision.performancePeriod || null;
+    case "awardMethod":
+      return revision.awardMethod || null;
+    case "deposit":
+      return depositText(revision, lang, t);
+    case "category":
+      return (
+        revision.categoryName ??
+        revision.categoryRaw ??
+        revision.categoryMain ??
+        null
+      );
+    case "subsidySource":
+      return revision.subsidySource || null;
+    default:
+      return null;
+  }
+}
+
+/** 資格列內容：結構化條目（無框表）優先，否則長文＋資格代碼；皆無回 null。 */
+function qualificationContent(
+  revision: TenderRevisionDetail,
+  t: (k: TextKey) => string,
+): ReactNode {
+  const qualItems = revision.qualificationItems ?? [];
+  if (qualItems.length > 0) {
+    return <QualificationTable items={qualItems} t={t} />;
+  }
+  const hasText = Boolean(revision.qualificationText);
+  const hasCodes = revision.qualificationCodes.length > 0;
+  if (!hasText && !hasCodes) return null;
+  return (
+    <>
+      {hasText && (
+        <p className="text-[13px] leading-relaxed text-ink">
+          {revision.qualificationText}
+        </p>
+      )}
+      {hasCodes && (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {revision.qualificationCodes.map((c) => (
+            <Badge key={c} variant="outline">
+              {c}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** 寬欄位內容：資格／附件／附註。附件由 AttachmentList 自處理空狀態；其餘空則回 null。 */
+function richDetailValue(
+  key: string,
+  revision: TenderRevisionDetail,
+  t: (k: TextKey) => string,
+): ReactNode {
+  switch (key) {
+    case "qualification":
+      return qualificationContent(revision, t);
+    case "attachments":
+      return <AttachmentList attachments={revision.attachments} t={t} />;
+    case "extraNote":
+      return revision.extraNote ? (
+        <p className="text-[13px] leading-relaxed text-ink">
+          {revision.extraNote}
+        </p>
+      ) : null;
+    default:
+      return null;
+  }
+}
+
+/** 「—」佔位：欄位未被隱藏但無值時顯示，維持規格表每列齊整。 */
+function EmptyValue() {
+  return <span className="text-ink-dim">—</span>;
+}
+
+/** 標案詳情版本：把履約/資格/押標金/類別/附件/附註整合為「一張常態性規格表」。
+ *  顯示哪些欄位由團隊共用設定（後台 /settings/detail-fields）決定；被隱藏的欄位整列不出。
+ *  未 enrich（revision 為 null）時優雅退化為空狀態提示。 */
 export function RevisionDetailBlock({
   revision,
   lang,
@@ -301,6 +400,8 @@ export function RevisionDetailBlock({
   lang: Lang;
   t: (k: TextKey) => string;
 }) {
+  const hidden = useHiddenDetailFields();
+
   if (!revision) {
     return (
       <div>
@@ -312,36 +413,7 @@ export function RevisionDetailBlock({
     );
   }
 
-  const deposit = depositText(revision, lang, t);
-  const category =
-    revision.categoryName ??
-    revision.categoryRaw ??
-    revision.categoryMain ??
-    null;
-  const facts: { label: string; value: string }[] = [];
-  if (revision.performanceLocation)
-    facts.push({
-      label: t("deliveryLocation"),
-      value: revision.performanceLocation,
-    });
-  if (revision.performancePeriod)
-    facts.push({
-      label: t("performancePeriod"),
-      value: revision.performancePeriod,
-    });
-  if (revision.awardMethod)
-    facts.push({ label: t("awardMethod"), value: revision.awardMethod });
-  if (deposit) facts.push({ label: t("deposit"), value: deposit });
-  if (category)
-    facts.push({ label: t("procurementCategory"), value: category });
-  if (revision.subsidySource)
-    facts.push({ label: t("subsidySource"), value: revision.subsidySource });
-
-  const qualItems = revision.qualificationItems ?? [];
-  const hasQualification =
-    qualItems.length > 0 ||
-    Boolean(revision.qualificationText) ||
-    revision.qualificationCodes.length > 0;
+  const visible = DETAIL_FIELDS.filter((f) => !hidden.has(f.key));
 
   return (
     <div>
@@ -356,55 +428,41 @@ export function RevisionDetailBlock({
         )}
       </div>
 
-      {facts.length > 0 && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-          {facts.map((f) => (
-            <Fact key={f.label} label={f.label}>
-              {f.value}
-            </Fact>
-          ))}
-        </dl>
-      )}
-
-      {hasQualification && (
-        <div className="mt-3">
-          <div className="text-[11px] text-ink-dim">{t("qualification")}</div>
-          {qualItems.length > 0 ? (
-            <QualificationTable items={qualItems} t={t} />
-          ) : (
-            <>
-              {revision.qualificationText && (
-                <p className="mt-0.5 text-[13px] leading-relaxed text-ink">
-                  {revision.qualificationText}
-                </p>
-              )}
-              {revision.qualificationCodes.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {revision.qualificationCodes.map((c) => (
-                    <Badge key={c} variant="outline">
-                      {c}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+      {visible.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border bg-surface-1 px-3 py-2 text-[12px] text-ink-dim">
+          {t("revisionEmpty")}
         </div>
-      )}
-
-      <div className="mt-3">
-        <div className="text-[11px] text-ink-dim">{t("attachments")}</div>
-        <div className="mt-1">
-          <AttachmentList attachments={revision.attachments} t={t} />
-        </div>
-      </div>
-
-      {revision.extraNote && (
-        <div className="mt-3">
-          <div className="text-[11px] text-ink-dim">{t("extraNote")}</div>
-          <p className="mt-0.5 text-[13px] leading-relaxed text-ink">
-            {revision.extraNote}
-          </p>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-hairline">
+          <table className="w-full border-collapse text-[13px]">
+            <tbody className="divide-y divide-hairline">
+              {visible.map((f) => {
+                const label = t(f.labelKey);
+                if (RICH_DETAIL_FIELDS.has(f.key)) {
+                  const value = richDetailValue(f.key, revision, t);
+                  return (
+                    <tr key={f.key}>
+                      <td colSpan={2} className="px-3 py-2.5 align-top">
+                        <div className="text-[11px] text-ink-dim">{label}</div>
+                        <div className="mt-1">{value ?? <EmptyValue />}</div>
+                      </td>
+                    </tr>
+                  );
+                }
+                const value = scalarDetailValue(f.key, revision, lang, t);
+                return (
+                  <tr key={f.key}>
+                    <td className="w-[32%] px-3 py-2.5 align-top text-[11px] text-ink-dim">
+                      {label}
+                    </td>
+                    <td className="px-3 py-2.5 align-top leading-relaxed text-ink">
+                      {value ?? <EmptyValue />}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

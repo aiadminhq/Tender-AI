@@ -30,6 +30,7 @@ from app.models.knowledge import (
 )
 from app.models.preference import PreferenceProfile, UserManualKeyword
 from app.models.push import PushLog
+from app.models.settings import DetailFieldVisibilityConfig
 from app.models.revision import (
     CrawlFailure,
     CrawlRun,
@@ -63,6 +64,8 @@ __all__ = [
     "AssistantMessage",
     # 小助手「大腦」全域設定
     "AssistantBrainConfig",
+    # 標案詳情規格表欄位顯示設定（團隊共用）
+    "DetailFieldVisibilityConfig",
     # Layer C
     "TenderVector",
     "KnowledgeChunk",
