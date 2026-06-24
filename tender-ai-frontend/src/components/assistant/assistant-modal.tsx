@@ -1,15 +1,23 @@
-// 非阻擋式小助手浮窗：以 @assistant-ui 的 AssistantModalPrimitive（Radix Popover 底層、
-// modal=false → 無遮罩、不鎖背景）搭出右下角 FAB ＋ 彈出對話框。改造重點：
-//   1. 全程無半透明遮罩，主畫面照常可操作；點外面不自動關閉（dissmissOnInteractOutside=false），
-//      由 FAB 或關閉鈕收合。
-//   2. 房屋風格 tokens（bg-popover / border-border / rounded-2xl / 輕陰影 / animate-in）。
-//   3. 標題列「指揮中心」入口 → 導去 /assistant 全頁工作台（在標案頁時帶 ?tender=<id>），不覆蓋主畫面。
-// 內容即為共用的 AssistantUIThread；對話狀態由外層 <AssistantRuntime> 提供。
-import { forwardRef } from "react";
+// 非阻擋式小助手浮窗（自管 position:fixed 面板，取代原 Radix Popover 容器）：
+//   1. 兩種型態：floating（右下角浮窗，預設高度 = fit content）與 sidebar（貼右側、滿版高度）；
+//      標題列右側「切換側邊欄」鈕互切。型態 + 尺寸記在 localStorage，跨 session 還原。
+//   2. floating 錨定右下角，左上角有縮放把手 → 往左上長、右下角固定；寬高即時記憶。
+//      sidebar 左緣有縮放把手 → 調整寬度。皆以 pointer capture 拖曳，min/max 夾住不破版。
+//   3. 全程無遮罩、不鎖背景；點外面不關閉，由 FAB 或關閉鈕收合（與原行為一致）。
+//   4. 房屋風格 tokens（bg-popover / border-border / rounded-2xl / 輕陰影 / animate-in）。
+// 內容即共用的 AssistantUIThread；對話狀態由外層 <AssistantRuntime> 提供（不依賴 Popover context）。
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { Bot, ChevronDown, PanelsTopLeft, Trash2, X } from "lucide-react";
-import { AssistantModalPrimitive } from "@assistant-ui/react";
+import {
+  Bot,
+  ChevronDown,
+  Minimize2,
+  PanelRight,
+  PanelsTopLeft,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { cn } from "@/lib/utils";
 import { AssistantUIThread } from "./assistant-ui-thread";
@@ -22,59 +30,243 @@ interface AssistantModalProps {
   tenderId: string | null;
 }
 
+type PanelMode = "floating" | "sidebar";
+
+interface PanelState {
+  mode: PanelMode;
+  /** floating 寬度（px）。 */
+  floatW: number;
+  /** floating 高度（px）；null = fit content（預設）。 */
+  floatH: number | null;
+  /** sidebar 寬度（px）。 */
+  sidebarW: number;
+}
+
+const STORAGE_KEY = "tender-assistant-panel";
+const DEFAULT_STATE: PanelState = {
+  mode: "floating",
+  floatW: 400,
+  floatH: null,
+  sidebarW: 420,
+};
+const MIN_W = 320;
+const MIN_H = 280;
+
+function loadState(): PanelState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_STATE;
+    const parsed = JSON.parse(raw) as Partial<PanelState>;
+    return {
+      mode: parsed.mode === "sidebar" ? "sidebar" : "floating",
+      floatW:
+        typeof parsed.floatW === "number"
+          ? parsed.floatW
+          : DEFAULT_STATE.floatW,
+      floatH: typeof parsed.floatH === "number" ? parsed.floatH : null,
+      sidebarW:
+        typeof parsed.sidebarW === "number"
+          ? parsed.sidebarW
+          : DEFAULT_STATE.sidebarW,
+    };
+  } catch {
+    return DEFAULT_STATE;
+  }
+}
+
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(Math.max(v, lo), hi);
+
 export function AssistantModal({
   open,
   onOpenChange,
   tenderId,
 }: AssistantModalProps) {
-  return (
-    <AssistantModalPrimitive.Root
-      open={open}
-      onOpenChange={onOpenChange}
-      unstable_openOnRunStart={false}
-    >
-      {/* Anchor＋FAB 以 portal 送到 body：launcher 掛在 sticky topbar 內，header（h-14）
-          成了 fixed 定位的包含塊，會把 bottom-6 黏在 header 底（top≈-17px 跑出畫面）。
-          送到 body 後 fixed 才對齊 viewport；Radix context 穿透 portal，Content 定位仍以 Anchor rect 為準。 */}
-      {createPortal(
-        <AssistantModalPrimitive.Anchor className="fixed bottom-20 right-4 z-40 md:bottom-6 md:right-6">
-          <AssistantModalPrimitive.Trigger asChild>
-            <FabButton />
-          </AssistantModalPrimitive.Trigger>
-        </AssistantModalPrimitive.Anchor>,
-        document.body,
-      )}
+  const [state, setState] = useState<PanelState>(loadState);
+  const isSidebar = state.mode === "sidebar";
 
-      <AssistantModalPrimitive.Content
-        side="top"
-        align="end"
-        sideOffset={14}
-        dissmissOnInteractOutside={false}
-        className={cn(
-          "z-40 flex h-[min(560px,calc(100svh-7rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden",
-          "rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg",
-          "data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-bottom-2",
-          "data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95",
+  // 尺寸／型態變更即落地 localStorage（跨 session 還原）。
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      /* 忽略隱私模式等寫入失敗 */
+    }
+  }, [state]);
+
+  return (
+    <>
+      {/* FAB：closed 或 floating 時顯示（sidebar 開啟時面板已佔右緣，改由標題列關閉）。
+          以 portal 送到 body：launcher 掛在 sticky topbar 內，固定定位需以 viewport 為準。 */}
+      {(!open || !isSidebar) &&
+        createPortal(
+          <div className="fixed bottom-20 right-4 z-40 md:bottom-6 md:right-6">
+            <FabButton open={open} onClick={() => onOpenChange(!open)} />
+          </div>,
+          document.body,
         )}
-      >
-        <ModalHeader tenderId={tenderId} onClose={() => onOpenChange(false)} />
-        <div className="min-h-0 flex-1">
-          <AssistantUIThread />
-        </div>
-      </AssistantModalPrimitive.Content>
-    </AssistantModalPrimitive.Root>
+
+      {open &&
+        createPortal(
+          <AssistantPanel
+            state={state}
+            setState={setState}
+            tenderId={tenderId}
+            onClose={() => onOpenChange(false)}
+          />,
+          document.body,
+        )}
+    </>
   );
 }
 
-// FAB：開啟時 Bot 縮小淡出、ChevronDown 浮現（提示「收合」），純 CSS 依 data-state 切換。
+// ── 面板本體 ──────────────────────────────────────────────────────────────────
+
+function AssistantPanel({
+  state,
+  setState,
+  tenderId,
+  onClose,
+}: {
+  state: PanelState;
+  setState: React.Dispatch<React.SetStateAction<PanelState>>;
+  tenderId: string | null;
+  onClose: () => void;
+}) {
+  const { t } = useApp();
+  const isSidebar = state.mode === "sidebar";
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    w: number;
+    h: number;
+  } | null>(null);
+
+  // 左上角（floating）／左緣（sidebar）縮放：pointer capture 拖曳，min/max 夾住。
+  const onResizePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    const startW = isSidebar ? state.sidebarW : state.floatW;
+    const startH =
+      state.floatH ??
+      // fit-content 起手：以實際面板高度為基準，縮放才連續不跳。
+      el.closest("[data-assistant-panel]")?.getBoundingClientRect().height ??
+      DEFAULT_STATE.floatH ??
+      MIN_H;
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      w: startW,
+      h: startH,
+    };
+  };
+
+  const onResizePointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = d.startX - e.clientX; // 往左拖 → 變大
+    if (isSidebar) {
+      const maxW = window.innerWidth - 48;
+      setState((s) => ({ ...s, sidebarW: clamp(d.w + dx, MIN_W, maxW) }));
+    } else {
+      const dy = d.startY - e.clientY; // 往上拖 → 變高
+      const maxW = window.innerWidth - 32;
+      const maxH = window.innerHeight - 96;
+      setState((s) => ({
+        ...s,
+        floatW: clamp(d.w + dx, MIN_W, maxW),
+        floatH: clamp(d.h + dy, MIN_H, maxH),
+      }));
+    }
+  };
+
+  const onResizePointerUp = (e: React.PointerEvent) => {
+    dragRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const toggleMode = () =>
+    setState((s) => ({
+      ...s,
+      mode: s.mode === "sidebar" ? "floating" : "sidebar",
+    }));
+
+  // 容器定位／尺寸。
+  const style: React.CSSProperties = isSidebar
+    ? { width: state.sidebarW }
+    : {
+        width: `min(${state.floatW}px, calc(100vw - 2rem))`,
+        ...(state.floatH != null
+          ? { height: state.floatH }
+          : { maxHeight: "calc(100svh - 7rem)" }),
+      };
+
+  return (
+    <div
+      data-assistant-panel
+      style={style}
+      className={cn(
+        "fixed z-40 flex flex-col overflow-hidden bg-popover text-popover-foreground",
+        "animate-in fade-in",
+        isSidebar
+          ? "right-0 top-0 bottom-0 h-svh border-l border-border shadow-[-8px_0_24px_-12px_rgba(0,0,0,.18)] slide-in-from-right-4"
+          : "bottom-20 right-4 rounded-2xl border border-border shadow-lg zoom-in-95 slide-in-from-bottom-2 md:bottom-6 md:right-6",
+      )}
+    >
+      {/* 縮放把手：floating → 左上角；sidebar → 左緣整條。 */}
+      {isSidebar ? (
+        <div
+          role="separator"
+          aria-label={t("assistantResize")}
+          title={t("assistantResize")}
+          onPointerDown={onResizePointerDown}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+          className="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize touch-none hover:bg-signal/30"
+        />
+      ) : (
+        <div
+          role="separator"
+          aria-label={t("assistantResize")}
+          title={t("assistantResize")}
+          onPointerDown={onResizePointerDown}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+          className="group absolute left-0 top-0 z-10 grid h-5 w-5 cursor-nwse-resize touch-none place-items-center"
+        >
+          <span className="h-2 w-2 rounded-br-sm border-l-2 border-t-2 border-ink-dim/50 transition-colors group-hover:border-signal" />
+        </div>
+      )}
+
+      <ModalHeader
+        tenderId={tenderId}
+        isSidebar={isSidebar}
+        onToggleMode={toggleMode}
+        onClose={onClose}
+      />
+      <div className="min-h-0 flex-1">
+        <AssistantUIThread />
+      </div>
+    </div>
+  );
+}
+
+// FAB：開啟時 Bot 淡出、ChevronDown 浮現（提示「收合」）。
 const FabButton = forwardRef<
   HTMLButtonElement,
-  React.ComponentPropsWithoutRef<"button">
->(function FabButton(props, ref) {
+  React.ComponentPropsWithoutRef<"button"> & { open: boolean }
+>(function FabButton({ open, ...props }, ref) {
   const { t } = useApp();
   return (
     <button
       {...props}
+      type="button"
       ref={ref}
       aria-label={t("assistantOpen")}
       title={t("assistantOpen")}
@@ -82,11 +274,21 @@ const FabButton = forwardRef<
     >
       <Bot
         size={23}
-        className="absolute transition-all data-[state=open]:scale-0 group-data-[state=open]:rotate-90 group-data-[state=open]:scale-0 group-data-[state=open]:opacity-0"
+        className={cn(
+          "absolute transition-all",
+          open
+            ? "rotate-90 scale-0 opacity-0"
+            : "rotate-0 scale-100 opacity-100",
+        )}
       />
       <ChevronDown
         size={24}
-        className="absolute scale-0 rotate-[-90deg] opacity-0 transition-all group-data-[state=open]:scale-100 group-data-[state=open]:rotate-0 group-data-[state=open]:opacity-100"
+        className={cn(
+          "absolute transition-all",
+          open
+            ? "rotate-0 scale-100 opacity-100"
+            : "rotate-[-90deg] scale-0 opacity-0",
+        )}
       />
     </button>
   );
@@ -94,9 +296,13 @@ const FabButton = forwardRef<
 
 function ModalHeader({
   tenderId,
+  isSidebar,
+  onToggleMode,
   onClose,
 }: {
   tenderId: string | null;
+  isSidebar: boolean;
+  onToggleMode: () => void;
   onClose: () => void;
 }) {
   const { t } = useApp();
@@ -104,6 +310,9 @@ function ModalHeader({
   const commandCenterTo = tenderId
     ? `/assistant?tender=${tenderId}`
     : "/assistant";
+
+  const iconBtn =
+    "grid h-7 w-7 place-items-center rounded-lg text-ink-dim transition-colors hover:bg-accent hover:text-foreground";
 
   return (
     <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
@@ -115,10 +324,11 @@ function ModalHeader({
       </span>
       {hasTurns && (
         <button
+          type="button"
           onClick={clear}
           title={t("assistantClear")}
           aria-label={t("assistantClear")}
-          className="grid h-7 w-7 place-items-center rounded-lg text-ink-dim transition-colors hover:bg-accent hover:text-foreground"
+          className={iconBtn}
         >
           <Trash2 size={14} />
         </button>
@@ -133,11 +343,22 @@ function ModalHeader({
         <PanelsTopLeft size={14} />
         <span className="hidden sm:inline">{t("assistantCommandCenter")}</span>
       </Link>
+      {/* 浮窗 ↔ 側邊欄切換（請求的「右邊變成 sidebar 按鈕」）。 */}
       <button
+        type="button"
+        onClick={onToggleMode}
+        title={isSidebar ? t("assistantUndock") : t("assistantDock")}
+        aria-label={isSidebar ? t("assistantUndock") : t("assistantDock")}
+        className={iconBtn}
+      >
+        {isSidebar ? <Minimize2 size={14} /> : <PanelRight size={14} />}
+      </button>
+      <button
+        type="button"
         onClick={onClose}
         title={t("close")}
         aria-label={t("close")}
-        className="grid h-7 w-7 place-items-center rounded-lg text-ink-dim transition-colors hover:bg-accent hover:text-foreground"
+        className={iconBtn}
       >
         <X size={15} />
       </button>
