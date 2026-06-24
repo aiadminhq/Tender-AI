@@ -7,6 +7,7 @@ import type {
   KanbanCard,
   Member,
   TaskStatus,
+  Tender,
   TenderProject,
 } from "@/types/domain";
 
@@ -119,4 +120,17 @@ export function filterVisibleProjects(
   currentMemberId: number | null,
 ): TenderProject[] {
   return projects.filter((p) => isProjectVisible(p, view, currentMemberId));
+}
+
+// Issue #2 看板卡點擊 → 解析要開的標案。優先用目前清單（連線時已被換成後端標案，
+// id 為數字字串如 "3556"），查無則回退 mock 種子清單（id 為 t-001…）。
+// 種子專案的 tenderId 來自 mock，與連線後的真實 id 不同 id 空間，故必須回退，
+// 否則連線時 live.find 永遠 undefined、抽屜開不起來（本次回歸的根因）。
+export function resolveTender(
+  id: string | null,
+  live: Tender[],
+  mock: Tender[],
+): Tender | null {
+  if (!id) return null;
+  return live.find((x) => x.id === id) ?? mock.find((x) => x.id === id) ?? null;
 }

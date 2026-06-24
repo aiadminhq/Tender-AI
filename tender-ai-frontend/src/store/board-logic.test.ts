@@ -5,12 +5,15 @@ import {
   filterAssignableMembers,
   isProjectVisible,
   filterVisibleProjects,
+  resolveTender,
 } from "./board-logic";
+import { TENDERS } from "@/data/tenders";
 import type {
   BoardView,
   KanbanCard,
   Member,
   Subtask,
+  Tender,
   TenderProject,
 } from "@/types/domain";
 
@@ -169,5 +172,24 @@ describe("filterVisibleProjects / isProjectVisible", () => {
     };
     expect(isProjectVisible(projects[0], view, null)).toBe(false); // own-2 階段不符
     expect(isProjectVisible(projects[1], view, null)).toBe(true); // sub-2 階段+成員皆符
+  });
+});
+
+describe("resolveTender（Issue #2 點擊開抽屜的 id 解析）", () => {
+  // 模擬「連線後」：tenders 被換成後端標案（id 為數字字串），不含 mock 種子 id。
+  const live: Tender[] = [{ ...TENDERS[0], id: "3556" }];
+
+  it("優先回傳目前清單（live）命中者", () => {
+    expect(resolveTender("3556", live, TENDERS)?.id).toBe("3556");
+  });
+
+  it("live 查無時回退 mock 種子清單 — 連線時種子卡 t-001 仍能開（本次回歸根因）", () => {
+    // 種子專案 tenderId 為 t-001；live 清單沒有它，舊版 tenders.find 會回 undefined → 抽屜不開。
+    expect(resolveTender("t-001", live, TENDERS)?.id).toBe("t-001");
+  });
+
+  it("id 為 null 或兩邊皆無 → null", () => {
+    expect(resolveTender(null, live, TENDERS)).toBeNull();
+    expect(resolveTender("does-not-exist", live, TENDERS)).toBeNull();
   });
 });
