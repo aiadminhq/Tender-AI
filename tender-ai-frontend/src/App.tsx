@@ -7,6 +7,7 @@ import { TendersPage } from "@/pages/tenders-page";
 import { TenderDetailPage } from "@/pages/tender-detail-page";
 import { KanbanPage } from "@/pages/kanban-page";
 import { RulesPage } from "@/pages/rules-page";
+import { DecisionReviewPage } from "@/pages/decision-review-page";
 import { SettingsPage } from "@/pages/settings-page";
 import { SwipePage } from "@/pages/swipe-page";
 import { InsightsPage } from "@/pages/insights-page";
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="evolution" element={<EvolutionPage />} />
           <Route path="kanban" element={<KanbanPage />} />
           <Route path="rules" element={<RulesPage />} />
+          <Route path="decisions" element={<DecisionReviewPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<DashboardPage />} />
         </Route>

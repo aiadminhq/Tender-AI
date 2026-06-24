@@ -3,6 +3,7 @@ import {
   Check,
   Download,
   MessageSquare,
+  Scale,
   SlidersHorizontal,
   X,
   type LucideIcon,
@@ -29,6 +30,7 @@ const kindMap: Record<
     zh: "更新",
     en: "tuned",
   },
+  judge: { icon: Scale, cls: "text-signal", zh: "判斷", en: "judged" },
 };
 
 export function ActivityStream({ limit = 8 }: { limit?: number }) {
