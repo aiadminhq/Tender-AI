@@ -71,8 +71,11 @@ export function SwipeDecisionDialog({
   action: SwipeDecisionAction;
   tenderId: string;
   title: string;
-  /** 確認成功／一鍵略過後皆呼叫；由呼叫端負責關閉對話框並執行滑卡副作用。 */
-  onResolved: () => void;
+  /**
+   * 確認成功／一鍵略過後皆呼叫；由呼叫端負責關閉對話框並執行滑卡副作用。
+   * 「確認並記錄」會帶回 { reason }（pass 時供呼叫端寫入淘汰理由）；一鍵略過為 undefined。
+   */
+  onResolved: (result?: { reason?: string }) => void;
 }) {
   const { t } = useApp();
   const negative = action === "pass";
@@ -163,7 +166,8 @@ export function SwipeDecisionDialog({
       });
       if (!ok) throw new Error("event not recorded");
       setStatus("saved");
-      window.setTimeout(onResolved, 420);
+      // 帶回理由：pass 時呼叫端據此 reclassify→skipped 並寫入淘汰理由（接入決策回顧）。
+      window.setTimeout(() => onResolved({ reason: reason.trim() }), 420);
     } catch {
       setStatus("error");
     }

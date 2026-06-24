@@ -298,10 +298,12 @@ export function SwipePage() {
     accept,
     toggleStar,
     isStarred,
+    reclassify,
     tendersLoading,
     resetFilter,
   } = useAppData();
-  // 注意：刻意不取用 store.skip()。左滑＝略過只發訊號，永不刪除/隱藏標案。
+  // 註：左滑/✗＝淘汰(pass)。會把標案標記為 skipped 並接進「決策回顧」，但「永不刪除/隱藏」——
+  // skipped 僅 /decisions 在讀，deck 與標案清單都不依它過濾，故卡片不會中途消失（可在回顧頁復原）。
 
   const deck = filteredTenders;
   const total = deck.length;
@@ -380,15 +382,19 @@ export function SwipePage() {
   }, []);
 
   // 對話框解析後才執行的副作用＋飛出動畫（行為事件已由對話框送出，這裡不再埋點）。
+  // reason：對話框「確認並記錄」時帶回的淘汰理由（一鍵略過為 undefined）。
   const runDecisionEffect = useCallback(
-    (action: CommitAction, dir: Direction) => {
+    (action: CommitAction, dir: Direction, reason?: string) => {
       const tender = deckRef.current[cursorRef.current];
       if (!tender || exitRef.current) return;
 
       // 1) 副作用（依方向動 store）：
-      //    accept→承接(建看板卡)；save→收藏；pass→不動 store。
+      //    accept→承接(建看板卡)；save→收藏；
+      //    pass→標記 skipped 並接進決策回顧（附理由，可在 /decisions 復原），但不刪除/隱藏標案。
       if (action === "accept") accept(tender.id);
       else if (action === "save") toggleStar(tender.id);
+      else if (action === "pass")
+        reclassify(tender.id, "skipped", reason ? { reason } : undefined);
 
       // 2) 單步復原：僅 pass / save 可逆；accept 已建看板卡，不偽裝可復原。
       if (action === "pass" || action === "save") {
@@ -417,15 +423,19 @@ export function SwipePage() {
       setExit({ transform });
       exitTimerRef.current = window.setTimeout(advance, EXIT_MS + 60);
     },
-    [accept, toggleStar, advance],
+    [accept, toggleStar, reclassify, advance],
   );
 
   // 對話框收尾：先關閉，再執行原本的滑卡副作用（卡片此時仍在，可正常飛出）。
-  const resolvePending = useCallback(() => {
-    const p = pendingRef.current;
-    setPending(null);
-    if (p) runDecisionEffect(p.action, p.dir);
-  }, [runDecisionEffect]);
+  // result：對話框「確認並記錄」帶回的淘汰理由（一鍵略過為 undefined）。
+  const resolvePending = useCallback(
+    (result?: { reason?: string }) => {
+      const p = pendingRef.current;
+      setPending(null);
+      if (p) runDecisionEffect(p.action, p.dir, result?.reason);
+    },
+    [runDecisionEffect],
+  );
 
   const peek = useCallback(() => {
     const tender = deckRef.current[cursorRef.current];
@@ -437,10 +447,12 @@ export function SwipePage() {
   const undo = useCallback(() => {
     const u = undoableRef.current;
     if (!u) return;
-    if (u.action === "save") toggleStar(u.tenderId); // 還原收藏；pass 的訊號不收回（誠實）
+    if (u.action === "save")
+      toggleStar(u.tenderId); // 還原收藏
+    else if (u.action === "pass") reclassify(u.tenderId, "none"); // 還原淘汰：移出 skipped
     setCursor(u.prevCursor);
     setUndoable(null);
-  }, [toggleStar]);
+  }, [toggleStar, reclassify]);
 
   const restart = useCallback(() => {
     setCursor(0);
