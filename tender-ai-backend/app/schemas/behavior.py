@@ -27,6 +27,9 @@ EventType = Literal[
     # {kind, op, value, raw, via}；為具名 Layer B 訊號，不就地改評分權重，
     # 由 learn_keywords 之後依真實 lift 自然推導（見 CLAUDE.md AI 大腦鐵則）。
     "state_preference",
+    # 標案判斷行為（✓ 可行／✗ 不可行／⭐ 精選）。payload 帶 {feasible, featured,
+    # chips, has_rationale}；隨後即時觸發 Layer B→C 學習（見 realtime_learn）。
+    "judgment",
 ]
 
 
@@ -63,6 +66,21 @@ class EventRequest(BaseModel):
     type: EventType
     tender_id: int | None = None
     payload: dict | None = None
+
+
+class EvaluateRequest(BaseModel):
+    """標案判斷寫入（Layer B）。
+
+    - ``feasible``：✓ 可行 / ✗ 不可行（⭐ 精選＝可行＋criteria.featured=true）。
+    - ``rationale``：一行選填自由文字（大致原因）。
+    - ``criteria``：選中的原因 chips 與旗標（含 ``featured``）；存 JSONB。
+    判斷送出後由服務層同步觸發即時學習（個人線＋consent-aware 團隊線）。
+    """
+
+    user_id: int | None = None
+    feasible: Literal["可行", "不可行"]
+    rationale: str | None = None
+    criteria: dict | None = None
 
 
 class SavedSearchCreate(BaseModel):
@@ -115,6 +133,26 @@ class EventOut(BaseModel):
     tender_id: int | None
     payload: dict | None
     ts: datetime
+
+
+class EvaluationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    tender_id: int
+    feasible: str | None
+    criteria: dict | None
+    rationale: str | None
+    created_at: datetime
+
+
+class EvaluateResult(BaseModel):
+    """判斷寫入結果 ＋ 即時學習摘要（供前端 toast／樂觀更新）。"""
+
+    evaluation: EvaluationOut
+    # 即時學習摘要：本次重算後團隊／個人線的關鍵字統計（無大腦或無變動時為 None）。
+    learning: dict | None = None
 
 
 class SavedSearchOut(BaseModel):

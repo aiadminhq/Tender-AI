@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
-from app.models.behavior import Annotation, Event, Share
+from app.models.behavior import Annotation, Evaluation, Event, Share
 
 TENDERS = "/api/v1/tenders"
 EVENTS = "/api/v1/events"
@@ -136,6 +136,73 @@ async def test_event_without_tender(client, seeded):
 async def test_event_invalid_type_422(client, seeded):
     r = await client.post(EVENTS, json={"type": "bogus"})
     assert r.status_code == 422
+
+
+# --------------------------------------------------------------------------- #
+# evaluate（標案判斷 ✓/✗/⭐ → Layer B + 即時學習）
+# --------------------------------------------------------------------------- #
+async def test_evaluate_persists_and_emits_judgment(client, seeded, db_session):
+    tid = seeded["high"]
+    r = await client.post(
+        f"{TENDERS}/{tid}/evaluate",
+        json={
+            "feasible": "可行",
+            "rationale": "預算與類別契合",
+            "criteria": {"chips": ["預算契合"], "featured": True},
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["evaluation"]["feasible"] == "可行"
+    assert body["evaluation"]["criteria"]["featured"] is True
+    assert body["evaluation"]["rationale"] == "預算與類別契合"
+
+    # Evaluation 落地
+    ev = (
+        await db_session.execute(select(Evaluation).where(Evaluation.tender_id == tid))
+    ).scalars().all()
+    assert len(ev) == 1
+
+    # 同步發 judgment 事件，payload 記極性/精選/有無原因
+    jev = (
+        await db_session.execute(select(Event).where(Event.type == "judgment"))
+    ).scalars().all()
+    assert len(jev) == 1
+    assert jev[0].payload["feasible"] == "可行"
+    assert jev[0].payload["featured"] is True
+    assert jev[0].payload["has_rationale"] is True
+
+
+async def test_evaluate_upsert_no_duplicate(client, seeded, db_session):
+    tid = seeded["high"]
+    await client.post(f"{TENDERS}/{tid}/evaluate", json={"feasible": "可行"})
+    r = await client.post(f"{TENDERS}/{tid}/evaluate", json={"feasible": "不可行"})
+    assert r.status_code == 200
+    assert r.json()["evaluation"]["feasible"] == "不可行"
+
+    ev = (
+        await db_session.execute(select(Evaluation).where(Evaluation.tender_id == tid))
+    ).scalars().all()
+    assert len(ev) == 1  # 同人同案只留一筆（手動 upsert）
+    assert ev[0].feasible == "不可行"
+
+
+async def test_evaluate_invalid_feasible_422(client, seeded):
+    tid = seeded["high"]
+    r = await client.post(f"{TENDERS}/{tid}/evaluate", json={"feasible": "也許"})
+    assert r.status_code == 422
+
+
+async def test_evaluate_unknown_tender_404(client, seeded):
+    r = await client.post(f"{TENDERS}/999999/evaluate", json={"feasible": "可行"})
+    assert r.status_code == 404
+
+
+async def test_evaluate_rationale_optional(client, seeded):
+    tid = seeded["mid"]
+    r = await client.post(f"{TENDERS}/{tid}/evaluate", json={"feasible": "可行"})
+    assert r.status_code == 200
+    assert r.json()["evaluation"]["rationale"] is None
 
 
 # --------------------------------------------------------------------------- #

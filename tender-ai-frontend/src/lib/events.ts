@@ -70,3 +70,39 @@ export function trackEvent(type: EventType, opts: TrackOptions = {}): void {
     /* fetch 同步拋錯（極少）也吞掉 */
   }
 }
+
+/**
+ * awaitable 變體（D）：送出一筆行為事件並回報成功與否，供需要「確實入庫＋成敗
+ * 回饋」的呼叫端（如速覽判斷原因對話框）等待。與 fire-and-forget 的 trackEvent
+ * 不同，本函式 **不吞錯**：HTTP 非 2xx 或網路錯誤回 false，由呼叫端決定 toast。
+ * 埋點關閉（mock／VITE_TRACK=false）時回 true（視為「不需入庫即算成功」）。
+ */
+export async function trackEventAwait(
+  type: EventType,
+  opts: TrackOptions = {},
+): Promise<boolean> {
+  if (!trackingEnabled()) return true;
+
+  const body: {
+    type: EventType;
+    tender_id?: number;
+    payload?: Record<string, unknown>;
+  } = { type };
+
+  if (opts.tenderId != null) {
+    const n = Number(opts.tenderId);
+    if (!Number.isNaN(n)) body.tender_id = n;
+  }
+  if (opts.payload) body.payload = opts.payload;
+
+  try {
+    const res = await fetch(`${API_BASE}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

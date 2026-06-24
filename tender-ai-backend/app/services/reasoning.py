@@ -303,16 +303,21 @@ def _keyword_reason(
     t: Tender,
     positive_kws: list[KeywordWeight],
     manual_negatives: list[str],
+    learned_negatives: list[KeywordWeight] | None = None,
 ) -> tuple[float, ReasonCode | None]:
     """掃描關鍵字命中，回傳 (impact, reason_code|None)。
 
     - 正向來自 SL2 閉合學習（``positive_kws``，可由資料自動學）。
-    - 負向**僅**來自本人「手動」指定的迴避詞（``manual_negatives``）——負分人工
-      專屬紅線：系統學習絕不自動產生負分（見 CLAUDE.md P4/P5）。
+    - 負向有兩源：
+      1. ``manual_negatives``：本人手動指定的迴避詞，全強度（1.0）計負。
+      2. ``learned_negatives``：即時判斷學習派生的團隊負權（帶 NEG_LEARN_NOTE
+         標記、consent-aware），以「權重幅度」柔性計負。此為 2026-06-24 本人
+         明確覆寫「負分人工專屬」紅線後的路徑（見設計規格 §2.1）。
     """
     hay = _haystack(t)
     pos: list[str] = []
-    neg: list[str] = []
+    neg: list[str] = []  # 人工迴避詞
+    learned_neg: list[str] = []  # 學習派生負權
     signed = 0.0
     for k in positive_kws:
         term = (k.term or "").strip()
@@ -327,7 +332,14 @@ def _keyword_reason(
         # 人工迴避詞以全強度（1.0）計負，貫徹「人說要避開就避開」。
         signed -= 1.0
         neg.append(term)
-    if not pos and not neg:
+    for k in (learned_negatives or []):
+        term = (k.term or "").strip()
+        if not term or term not in hay:
+            continue
+        # 學習負權以幅度（lift）柔性計負（weight 存正幅度，此處施加負號）。
+        signed -= float(k.weight or 0.0)
+        learned_neg.append(term)
+    if not pos and not neg and not learned_neg:
         return 0.0, None
     impact = max(-_W_KEYWORD_CAP, min(_W_KEYWORD_CAP, signed * _W_KEYWORD))
     bits: list[str] = []
@@ -335,14 +347,20 @@ def _keyword_reason(
         bits.append(f"命中正向關鍵字「{'、'.join(pos[:4])}」")
     if neg:
         bits.append(f"命中你設定的迴避關鍵字「{'、'.join(neg[:4])}」")
-    evidence_tail = (
-        "（正向來自 SL2 閉合學習；負向為你人工指定的迴避詞）"
-        if neg else "（來自 SL2 閉合學習）"
-    )
+    if learned_neg:
+        bits.append(f"命中團隊判斷學到的負向關鍵字「{'、'.join(learned_neg[:4])}」")
+    if neg and learned_neg:
+        evidence_tail = "（正向來自 SL2 閉合學習；負向含你的人工迴避詞與團隊判斷學習）"
+    elif neg:
+        evidence_tail = "（正向來自 SL2 閉合學習；負向為你人工指定的迴避詞）"
+    elif learned_neg:
+        evidence_tail = "（正向來自 SL2 閉合學習；負向為團隊判斷即時學習所得）"
+    else:
+        evidence_tail = "（來自 SL2 閉合學習）"
     return impact, ReasonCode(
         factor="keyword",
         label="學習關鍵字",
-        value="、".join((pos + neg)[:4]),
+        value="、".join((pos + neg + learned_neg)[:4]),
         direction=_direction(impact),
         impact=round(impact, 4),
         evidence="；".join(bits) + evidence_tail,
@@ -371,8 +389,7 @@ async def explain_tender(
 
     profile = await build_criteria_profile(session, user_id)
     tier, days_left = await _latest_snapshot(session, tender_id)
-    # 計分只吃正向學習詞；負向「僅」用本人手動迴避詞（build_criteria_profile 已把
-    # kw_negative 清空後併入 manual overrides，故此處即等於本人的人工迴避清單）。
+    # 正向學習詞：所有非負極性。
     positive_kws = list(
         (
             await session.execute(
@@ -380,7 +397,20 @@ async def explain_tender(
             )
         ).scalars()
     )
+    # 負向兩源：①本人手動迴避詞（profile.kw_negative）。②即時判斷學習派生的團隊
+    # 負權——只取帶標記（notes 非空）者；遺留的「自動」負向（notes 為 NULL）仍被
+    # 忽略並由 learn_keywords 清除，維持紅線測試與向後相容。
     manual_negatives = list(profile.kw_negative)
+    learned_negatives = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(
+                    KeywordWeight.polarity == "negative",
+                    KeywordWeight.notes.is_not(None),
+                )
+            )
+        ).scalars()
+    )
 
     weighted: list[tuple[float, ReasonCode]] = []
     neutral: list[ReasonCode] = []
@@ -528,7 +558,9 @@ async def explain_tender(
             ))
 
     # 4) SL2 學習關鍵字
-    kw_impact, kw_reason = _keyword_reason(t, positive_kws, manual_negatives)
+    kw_impact, kw_reason = _keyword_reason(
+        t, positive_kws, manual_negatives, learned_negatives
+    )
     if kw_reason is not None:
         fit += kw_impact
         weighted.append((kw_impact, kw_reason))

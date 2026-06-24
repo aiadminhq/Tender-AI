@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { Fact, CAT_KEY } from "@/components/tenders/detail-bits";
+import { SwipeDecisionDialog } from "@/components/swipe/swipe-decision-dialog";
 import { cn } from "@/lib/utils";
 
 type Direction = "left" | "right" | "up";
@@ -68,7 +69,7 @@ function SwipeCardFace({
   const { t, lang } = useApp();
   const { feasOf, keywordHitsOf, isStarred } = useAppData();
   const source = sourceByKey(tender.source).shortName;
-  const hits = keywordHitsOf(tender).slice(0, 4);
+  const hits = keywordHitsOf(tender).slice(0, 6);
   const starred = isStarred(tender.id);
 
   // 比照 DeadlineCell：無效日期以「—」呈現，避免 Invalid Date 崩潰。
@@ -123,12 +124,22 @@ function SwipeCardFace({
       )}
 
       {/* 中段事實格：填補卡片中央留白並輔助滑卡決策。category／公告日／供應商覆蓋
-          皆為 Tender 必填欄位（mock 與 live 皆有值），沿用詳情頁的 Fact 語彙。 */}
+          皆為 Tender 必填欄位（mock 與 live 皆有值），沿用詳情頁的 Fact 語彙。
+          招標方式／縣市／案號為選填，有值才補上，讓未展開卡片就盡量多帶決策資訊。 */}
       <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3.5 border-t border-border pt-4">
         <Fact label={t("category")}>{t(CAT_KEY[tender.category])}</Fact>
         <Fact label={t("publishedAt")} num>
           {formatDate(tender.publishedAt, lang)}
         </Fact>
+        {tender.tenderMethod && (
+          <Fact label={t("tenderMethod")}>{tender.tenderMethod}</Fact>
+        )}
+        {tender.city && <Fact label={t("city")}>{tender.city}</Fact>}
+        {tender.caseNo && (
+          <Fact label={t("caseNo")} num>
+            {tender.caseNo}
+          </Fact>
+        )}
         <Fact label={t("supplierCoverage")} num>
           {tender.supplierCoverage}
         </Fact>
@@ -311,6 +322,14 @@ export function SwipePage() {
     tenderId: string;
     prevCursor: number;
   } | null>(null);
+  // 判斷原因對話框（需求 B）：按下 ✓/⭐/✗ 先開此對話框收原因＋關鍵字，
+  // 對話框解析（確認／一鍵略過）後才真正執行滑卡副作用與飛出動畫。
+  const [pending, setPending] = useState<{
+    action: CommitAction;
+    dir: Direction;
+    tenderId: string;
+    title: string;
+  } | null>(null);
 
   const hasCard = cursor < total;
   const ended = total > 0 && cursor >= total;
@@ -322,11 +341,13 @@ export function SwipePage() {
   const exitRef = useRef(exit);
   const reduceRef = useRef(reduce);
   const undoableRef = useRef(undoable);
+  const pendingRef = useRef(pending);
   cursorRef.current = cursor;
   deckRef.current = deck;
   exitRef.current = exit;
   reduceRef.current = reduce;
   undoableRef.current = undoable;
+  pendingRef.current = pending;
 
   // 手勢決策用 ref（不觸發 render）。
   const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -351,16 +372,23 @@ export function SwipePage() {
     setCursor((c) => c + 1);
   }, []);
 
-  const commit = useCallback(
+  // 按下 ✓/⭐/✗：不立即執行，先開判斷原因對話框（需求 B）。重複按或飛出中皆忽略。
+  const commit = useCallback((action: CommitAction, dir: Direction) => {
+    const tender = deckRef.current[cursorRef.current];
+    if (!tender || exitRef.current || pendingRef.current) return;
+    setPending({ action, dir, tenderId: tender.id, title: tender.title });
+  }, []);
+
+  // 對話框解析後才執行的副作用＋飛出動畫（行為事件已由對話框送出，這裡不再埋點）。
+  const runDecisionEffect = useCallback(
     (action: CommitAction, dir: Direction) => {
       const tender = deckRef.current[cursorRef.current];
-      if (!tender || exitRef.current) return; // 飛出中或無卡：忽略
+      if (!tender || exitRef.current) return;
 
       // 1) 副作用（依方向動 store）：
-      //    accept→承接(建看板卡)；save→收藏；pass→不動 store，只發訊號。
+      //    accept→承接(建看板卡)；save→收藏；pass→不動 store。
       if (action === "accept") accept(tender.id);
       else if (action === "save") toggleStar(tender.id);
-      trackSwipe(action, tender.id);
 
       // 2) 單步復原：僅 pass / save 可逆；accept 已建看板卡，不偽裝可復原。
       if (action === "pass" || action === "save") {
@@ -391,6 +419,13 @@ export function SwipePage() {
     },
     [accept, toggleStar, advance],
   );
+
+  // 對話框收尾：先關閉，再執行原本的滑卡副作用（卡片此時仍在，可正常飛出）。
+  const resolvePending = useCallback(() => {
+    const p = pendingRef.current;
+    setPending(null);
+    if (p) runDecisionEffect(p.action, p.dir);
+  }, [runDecisionEffect]);
 
   const peek = useCallback(() => {
     const tender = deckRef.current[cursorRef.current];
@@ -433,6 +468,8 @@ export function SwipePage() {
     function onKey(e: KeyboardEvent) {
       const s = kbdRef.current;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // 判斷原因對話框開啟時，鍵盤交給對話框（Esc＝略過），頁面不攔截。
+      if (pendingRef.current) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (e.key === "Escape" && s.fullscreen) {
@@ -752,6 +789,16 @@ export function SwipePage() {
             ? t("swipeEmptyTitle")
             : t("swipeNoData")}
       </div>
+
+      {/* 判斷原因對話框（需求 B/C/D）：開啟時收原因＋可選關鍵字，解析後執行滑卡。 */}
+      {pending && (
+        <SwipeDecisionDialog
+          action={pending.action}
+          tenderId={pending.tenderId}
+          title={pending.title}
+          onResolved={resolvePending}
+        />
+      )}
     </div>
   );
 

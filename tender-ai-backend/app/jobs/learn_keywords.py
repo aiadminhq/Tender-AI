@@ -55,6 +55,12 @@ _CATEGORY_POLARITY = {
 # preference_profiles 每欄取前 N 名（避免輪廓卡片爆量）
 _PROFILE_TOP_N = 10
 
+# 即時判斷學習所寫「團隊負權重」的 notes 標記（區隔 legacy 自動負向）。
+# 帶此標記的負權重：①不被 notes-IS-NULL 的紅線 purge 清除；②由 reasoning 計分採納
+# （見 reasoning._learned_negative_kws）。對應本人 2026-06-24 對 negative-keywords-human-only
+# 的明確覆寫——負向判斷即時寫團隊負權，仍保 append-only／consent-aware／具名／可回退。
+NEG_LEARN_NOTE = "判斷學習：即時團隊負權（可回退）"
+
 
 def _tokenize_cn(text: str) -> list[str]:
     """以 jieba 斷詞（離線 bundled dict、不連網）。
@@ -260,10 +266,30 @@ async def _learn_personal_line(
     }
 
 
+def _negatives_from_candidates(negative_candidates: list[dict]) -> list[dict]:
+    """把「疑似迴避詞候選」轉成可寫入的團隊負權重列（即時判斷學習路徑專用）。
+
+    weight 存「正向量值」(lift)、polarity=negative；符號由消費端（query 排序減分、
+    reasoning 計分減分）施加，與既有慣例一致。帶 ``NEG_LEARN_NOTE`` 標記以：
+    避開 notes-IS-NULL 的紅線 purge、且讓 reasoning 採納計分。
+    """
+    return [
+        {
+            "term": c["term"],
+            "polarity": "negative",
+            "weight": c["lift"],  # 正向量值；消費端負號
+            "support": c["support"],
+            "notes": NEG_LEARN_NOTE,
+        }
+        for c in negative_candidates
+    ]
+
+
 async def learn_keywords(
     session_factory=None,
     min_support: int = 2,  # 最少出現次數，才列入 keyword_weights
     include_category_features: bool = True,  # 是否加入分類直接映射
+    allow_auto_negative: bool = False,  # 即時判斷學習覆寫：負向也寫團隊負權
 ) -> dict:
     """推導關鍵字權重與多維特徵（團隊線＋個人線）。
 
@@ -342,8 +368,17 @@ async def learn_keywords(
             feasible_vocab, infeasible_vocab, min_support, category_terms
         )
 
-        # 5. 合併分類特徵與「正向」詞彙數據（負向只列候選、不寫權重，見紅線）
-        all_keywords = category_features + positives
+        # 5. 合併分類特徵與「正向」詞彙數據。
+        #    預設（批次／self-evolve）：負向只列候選、不寫權重（紅線）。
+        #    allow_auto_negative（即時判斷學習，本人明確覆寫）：負向候選即時轉成
+        #    團隊負權重一併寫入（帶 NEG_LEARN_NOTE 標記，append-only／consent-aware
+        #    已於上游強制；見 NEG_LEARN_NOTE 與 docs/governance/04）。
+        learned_negatives = (
+            _negatives_from_candidates(negative_candidates)
+            if allow_auto_negative
+            else []
+        )
+        all_keywords = category_features + positives + learned_negatives
 
         # 6. 寫入/更新 keyword_weights（團隊線）
         stats = {
@@ -361,6 +396,9 @@ async def learn_keywords(
                 existing.polarity = kw["polarity"]
                 existing.weight = kw["weight"]
                 existing.support = kw["support"]
+                # notes：即時學習負權帶 NEG_LEARN_NOTE 標記（免遭 notes-IS-NULL 清除、
+                # 並供 reasoning 消費）；正向/分類特徵為 None。
+                existing.notes = kw.get("notes")
                 existing.updated_at = now
                 stats["keywords_updated"] += 1
             else:
@@ -369,6 +407,7 @@ async def learn_keywords(
                     polarity=kw["polarity"],
                     weight=kw["weight"],
                     support=kw["support"],
+                    notes=kw.get("notes"),
                     updated_at=now,
                 ))
                 if kw.get("tier") == "Tier-1 分類":

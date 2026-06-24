@@ -649,6 +649,71 @@ export async function fetchReasoningProfile(
   }
 }
 
+// ── 速覽配對判斷原因表單：關鍵字候選（唯讀；後端 GET /tenders/{id}/keyword-candidates） ──
+// C 需求：把相關關鍵字拆「字（CJK 單字）／詞（jieba 斷詞）」供本人選取，標註「因哪些
+// 關鍵字而做此判斷」。recommended_negative 僅為系統建議（附 lift／reason），真正歸負分
+// 唯有本人在表單按確認後走 postKeywordOverride(kind="negative")（負分人工專屬紅線）。
+export interface KeywordToken {
+  term: string;
+  inTitle: boolean; // 出現在標案名稱（vs 僅出現在機關）
+}
+export interface NegativeCandidate {
+  term: string;
+  lift: number;
+  reason: string;
+}
+export interface KeywordCandidates {
+  tenderId: number;
+  title: string;
+  org: string | null;
+  words: KeywordToken[]; // jieba 斷詞（詞）
+  chars: KeywordToken[]; // CJK 單字（字）
+  positiveHits: string[]; // ✓/⭐ 預選：本人學習正向詞 ∩ 本標案文字
+  recommendedNegative: NegativeCandidate[]; // ✗ 預選但需人確認：系統建議
+}
+interface KeywordTokenRaw {
+  term: string;
+  in_title: boolean;
+}
+interface KeywordCandidatesRaw {
+  tender_id: number;
+  title: string;
+  org: string | null;
+  words: KeywordTokenRaw[];
+  chars: KeywordTokenRaw[];
+  positive_hits: string[];
+  recommended_negative: { term: string; lift: number; reason: string }[];
+}
+
+/**
+ * 抓取某標案的字／詞候選＋正向命中＋系統負向建議（速覽判斷原因表單用）。
+ * 後端唯讀、離線、不寫任何權重。404（標案不存在）回 null；其餘錯誤 throw。
+ */
+export async function fetchKeywordCandidates(
+  id: string,
+  signal?: AbortSignal,
+): Promise<KeywordCandidates | null> {
+  const q = currentUserId == null ? "" : `?user_id=${currentUserId}`;
+  const url = `${API_BASE}/tenders/${encodeURIComponent(id)}/keyword-candidates${q}`;
+  const res = await fetch(url, { headers: authHeaders(), signal });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`keyword-candidates API ${res.status}`);
+  const d = (await res.json()) as KeywordCandidatesRaw;
+  return {
+    tenderId: d.tender_id,
+    title: d.title,
+    org: d.org,
+    words: (d.words ?? []).map((w) => ({ term: w.term, inTitle: w.in_title })),
+    chars: (d.chars ?? []).map((c) => ({ term: c.term, inTitle: c.in_title })),
+    positiveHits: d.positive_hits ?? [],
+    recommendedNegative: (d.recommended_negative ?? []).map((c) => ({
+      term: c.term,
+      lift: c.lift,
+      reason: c.reason,
+    })),
+  };
+}
+
 // 後端 PreferenceProfileOut（app/schemas/user.py）：AI 從本人行為學到的個人化偏好。
 interface PreferenceProfileRaw {
   top_keywords: string[] | null;

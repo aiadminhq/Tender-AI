@@ -78,6 +78,39 @@ class ManualKeywordIn(BaseModel):
     action: Literal["add", "remove"]
 
 
+class KeywordToken(BaseModel):
+    """速覽判斷原因表單的可選關鍵字（字或詞）。"""
+
+    term: str
+    in_title: bool  # 出現在標案名稱（vs 僅出現在機關）
+
+
+class NegativeCandidate(BaseModel):
+    """系統建議的『疑似迴避』候選（附理由）。
+
+    僅為**建議**：唯有本人在表單中按下確認，才會經 ``POST /me/keywords``
+    寫入 ``kind=negative``（負分人工專屬唯一合規路徑）。此端點本身不寫任何負權重。
+    """
+
+    term: str
+    lift: float
+    reason: str
+
+
+class KeywordCandidatesOut(BaseModel):
+    """速覽配對判斷原因表單的關鍵字候選（唯讀）。"""
+
+    tender_id: int
+    title: str
+    org: str | None = None
+    words: list[KeywordToken] = Field(default_factory=list)  # jieba 斷詞（詞）
+    chars: list[KeywordToken] = Field(default_factory=list)  # CJK 單字（字）
+    # ✓/⭐ 前端預選：本人學習正向詞 ∩ 本標案文字
+    positive_hits: list[str] = Field(default_factory=list)
+    # ✗ 前端預選但需人確認：系統建議的疑似迴避候選（附理由，非自動負分）
+    recommended_negative: list[NegativeCandidate] = Field(default_factory=list)
+
+
 class TenderReasoningOut(BaseModel):
     """單一標案的可中標推理。"""
 

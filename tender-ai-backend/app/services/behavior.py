@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import EntityNotFound
 from app.models.behavior import (
     Annotation,
+    Evaluation,
     Event,
     SavedSearch,
     Share,
@@ -144,6 +145,71 @@ async def add_event(
     session.add(row)
     await session.flush()
     await session.refresh(row)
+    return row
+
+
+# --------------------------------------------------------------------------- #
+# evaluation（標案判斷 ✓/✗/⭐ → 手動 upsert ＋ judgment 事件）
+# --------------------------------------------------------------------------- #
+async def add_evaluation(
+    session: AsyncSession,
+    user_id: int | None,
+    tender_id: int,
+    feasible: str,
+    rationale: str | None,
+    criteria: dict | None,
+) -> Evaluation:
+    """寫入/更新單筆標案判斷（Layer B，具名、consent-aware 由聚合層把關）。
+
+    ``Evaluation`` 無 (user_id, tender_id) 唯一鍵（既有資料可能已有重複），故以
+    「取最新一筆→有則更新、無則新增」的手動 upsert，避免新增 migration。
+    同時發一筆 ``judgment`` 事件（記極性與 chips），供行為時序與後續分析。
+    """
+    uid = await resolve_user_id(session, user_id)
+    await _ensure_tender(session, tender_id)
+
+    existing = (
+        await session.execute(
+            select(Evaluation)
+            .where(Evaluation.user_id == uid, Evaluation.tender_id == tender_id)
+            .order_by(Evaluation.created_at.desc(), Evaluation.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if existing is not None:
+        existing.feasible = feasible
+        existing.rationale = rationale
+        existing.criteria = criteria
+        row = existing
+    else:
+        row = Evaluation(
+            user_id=uid,
+            tender_id=tender_id,
+            feasible=feasible,
+            rationale=rationale,
+            criteria=criteria,
+        )
+        session.add(row)
+    await session.flush()
+    await session.refresh(row)
+
+    # judgment 事件：payload 記極性、是否精選、chips 與是否填了原因（不存自由文字本體，
+    # 自由文字留在 Evaluation.rationale，避免重複落地）。
+    featured = bool((criteria or {}).get("featured"))
+    chips = (criteria or {}).get("chips")
+    await add_event(
+        session,
+        uid,
+        "judgment",
+        tender_id,
+        {
+            "feasible": feasible,
+            "featured": featured,
+            "chips": chips,
+            "has_rationale": bool(rationale),
+        },
+    )
     return row
 
 
