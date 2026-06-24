@@ -14,6 +14,7 @@ import { PushPage } from "@/pages/push-page";
 import { AssistantPage } from "@/pages/assistant-page";
 import { SearchPage } from "@/pages/search-page";
 import { EvolutionPage } from "@/pages/evolution-page";
+import { KnowvioDashboardPage } from "@/pages/knowvio-dashboard-page";
 
 export default function App() {
   const { status } = useAuth();
@@ -33,6 +34,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* 全螢幕獨立路由（不套 AppShell）：Knowvio 風格忠實複刻儀表板 */}
+        <Route path="/knowvio" element={<KnowvioDashboardPage />} />
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="tenders" element={<TendersPage />} />
