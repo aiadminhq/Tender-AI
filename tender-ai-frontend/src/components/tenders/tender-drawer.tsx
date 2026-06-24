@@ -27,7 +27,9 @@ import {
   postShare,
   fetchTenderDetail,
   fetchSimilarTenders,
+  fetchDecisionRecommendation,
   type SimilarTender,
+  type DecisionRecommendation,
 } from "@/lib/api";
 import { load, save } from "@/lib/storage";
 import { Dialog } from "@/components/ui/dialog";
@@ -41,6 +43,7 @@ import {
   LabelTags,
   RevisionDetailBlock,
   SimilarCasesList,
+  DecisionRecommendationBlock,
   RatingStars,
 } from "@/components/tenders/detail-bits";
 import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
@@ -74,6 +77,9 @@ export function TenderDrawer({
   const [revision, setRevision] = useState<TenderRevisionDetail | null>(null);
   const [similar, setSimilar] = useState<SimilarTender[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
+  // 承接傾向決策推薦（P5）；後端／決策向量不可用時 rec=null，區塊優雅退化。
+  const [rec, setRec] = useState<DecisionRecommendation | null>(null);
+  const [recLoading, setRecLoading] = useState(false);
 
   // 切換不同標案時清空草稿：用「prop 變更時於 render 期調整 state」取代 effect。
   const [lastTenderId, setLastTenderId] = useState(tender?.id);
@@ -98,6 +104,8 @@ export function TenderDrawer({
       setRevision(null);
       setSimilar([]);
       setSimilarLoading(false);
+      setRec(null);
+      setRecLoading(false);
       return;
     }
     const controller = new AbortController();
@@ -119,6 +127,18 @@ export function TenderDrawer({
       })
       .finally(() => {
         if (!signal.aborted) setSimilarLoading(false);
+      });
+    setRec(null);
+    setRecLoading(true);
+    fetchDecisionRecommendation(tenderId, 8, signal)
+      .then((d) => {
+        if (!signal.aborted) setRec(d);
+      })
+      .catch(() => {
+        if (!signal.aborted) setRec(null);
+      })
+      .finally(() => {
+        if (!signal.aborted) setRecLoading(false);
       });
     return () => controller.abort();
   }, [tenderId]);
@@ -310,6 +330,17 @@ export function TenderDrawer({
 
               {/* 後端詳情（履約／資格／押標金／附件）；未 enrich 時優雅退化為空狀態 */}
               <RevisionDetailBlock revision={revision} lang={lang} t={t} />
+
+              {/* 承接傾向（P5 決策推薦）：聚合相似已評估案例給可解釋傾向 */}
+              <div>
+                <SectionLabel>{t("decisionLeaning")}</SectionLabel>
+                <DecisionRecommendationBlock
+                  rec={rec}
+                  loading={recLoading}
+                  t={t}
+                  onSelect={onClose}
+                />
+              </div>
 
               {/* 相似案（向量檢索）；點擊後關閉彈窗並導向該案 */}
               <div>

@@ -9,7 +9,11 @@ import type {
   TenderRevisionDetail,
 } from "@/types/domain";
 import type { FeasResult } from "@/lib/feasibility";
-import type { SimilarTender } from "@/lib/api";
+import type {
+  DecisionRecommendation,
+  DecisionVerdict,
+  SimilarTender,
+} from "@/lib/api";
 import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
 import { Star, Clock, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -442,6 +446,116 @@ export function SimilarCasesList({
         </li>
       ))}
     </ul>
+  );
+}
+
+// 承接傾向結論 → 配色（綠＝偏可行、紅＝偏不可行、灰＝資料不足）。
+const VERDICT_META: Record<
+  DecisionVerdict,
+  { key: TextKey; tone: string; dot: string }
+> = {
+  feasible_leaning: {
+    key: "leaningFeasible",
+    tone: "text-tier-high",
+    dot: "bg-tier-high",
+  },
+  infeasible_leaning: {
+    key: "leaningInfeasible",
+    tone: "text-tier-low",
+    dot: "bg-tier-low",
+  },
+  unknown: { key: "leaningUnknown", tone: "text-ink-dim", dot: "bg-ink-dim" },
+};
+
+/** 承接傾向決策推薦（P5）：聚合相似已評估案例給候選標案一個可解釋的傾向。
+ *  載入中／資料不足（後端或決策向量不可用、無鄰居且無傾向）各有提示，優雅退化。
+ *  鄰居僅帶結論標籤（可行／不可行），不外洩 rationale 全文或使用者身分。 */
+export function DecisionRecommendationBlock({
+  rec,
+  loading,
+  t,
+  onSelect,
+}: {
+  rec: DecisionRecommendation | null;
+  loading: boolean;
+  t: (k: TextKey) => string;
+  onSelect?: () => void;
+}) {
+  if (loading) {
+    return <p className="text-[12px] text-ink-dim">{t("decisionLoading")}</p>;
+  }
+  if (!rec || (rec.verdict === "unknown" && rec.neighbors.length === 0)) {
+    return <p className="text-[12px] text-ink-dim">{t("decisionEmpty")}</p>;
+  }
+  const meta = VERDICT_META[rec.verdict];
+  const pct = Math.round(rec.confidence * 100);
+  return (
+    <div className="rounded-md border border-border bg-surface-1 px-4 py-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 text-[13px] font-semibold",
+            meta.tone,
+          )}
+        >
+          <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
+          {t(meta.key)}
+        </span>
+        <span className="tnum text-[12px] text-ink-muted">
+          {t("decisionConfidence")} {pct}%
+        </span>
+      </div>
+      {rec.headline && (
+        <p className="mt-1.5 text-[12px] leading-relaxed text-ink-muted">
+          {rec.headline}
+        </p>
+      )}
+      <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-dim">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-tier-high" />
+          {t("conclFeasible")}{" "}
+          <span className="tnum text-ink">{rec.feasibleCount}</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-tier-low" />
+          {t("conclInfeasible")}{" "}
+          <span className="tnum text-ink">{rec.infeasibleCount}</span>
+        </span>
+      </div>
+      {rec.neighbors.length > 0 && (
+        <ul className="mt-2.5 flex flex-col gap-1.5">
+          {rec.neighbors.map(({ tender, feasible }) => {
+            const ok = !feasible.includes("不");
+            return (
+              <li key={tender.id}>
+                <Link
+                  to={`/tenders/${tender.id}`}
+                  onClick={onSelect}
+                  className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-2 transition-colors hover:bg-accent"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-medium text-ink">
+                      {tender.title}
+                    </span>
+                    <span className="block truncate text-[11px] text-ink-dim">
+                      {tender.org}
+                    </span>
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 text-[11px] font-medium",
+                      ok ? "text-tier-high" : "text-tier-low",
+                    )}
+                  >
+                    {ok ? t("conclFeasible") : t("conclInfeasible")}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

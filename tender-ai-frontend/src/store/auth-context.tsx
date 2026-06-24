@@ -15,7 +15,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { fetchMe, login as apiLogin, type AuthUser } from "@/lib/auth-api";
+import {
+  fetchMe,
+  login as apiLogin,
+  setConsent as apiSetConsent,
+  type AuthUser,
+} from "@/lib/auth-api";
 import { setCurrentUserId } from "@/lib/api";
 import { load, remove, save } from "@/lib/storage";
 
@@ -38,6 +43,8 @@ interface AuthContextValue {
   logout: () => void;
   /** 改密／管理員重置後，以最新帳戶狀態覆寫（含 passwordIsDefault 清除）。 */
   refreshUser: (next: AuthUser) => void;
+  /** 本人設定／撤回 Layer B 共享同意；成功回 true 並同步身分，失敗回 false（不改狀態）。 */
+  updateConsent: (consentShared: boolean) => Promise<boolean>;
 }
 
 const MOCK_USER: AuthUser = {
@@ -132,6 +139,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [status],
   );
 
+  // 本人切換 Layer B 共享同意：僅 authed 真實帳號可改（mock 無後端帳號）。
+  // 成功後以後端回傳的 consentShared/consentAt 覆寫並留存身分。
+  const updateConsent = useCallback(
+    async (consentShared: boolean): Promise<boolean> => {
+      if (status !== "authed" || !user) return false;
+      const res = await apiSetConsent(user.id, consentShared);
+      if (!res) return false;
+      const next: AuthUser = {
+        ...user,
+        consentShared: res.consentShared,
+        consentAt: res.consentAt,
+      };
+      setUser(next);
+      save(STORAGE_KEY, next);
+      return true;
+    },
+    [status, user],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -142,8 +168,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enterMock,
       logout,
       refreshUser,
+      updateConsent,
     }),
-    [status, user, login, enterMock, logout, refreshUser],
+    [status, user, login, enterMock, logout, refreshUser, updateConsent],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

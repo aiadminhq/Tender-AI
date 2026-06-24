@@ -156,6 +156,36 @@ export async function fetchMe(userId: number): Promise<AuthUser | null> {
   }
 }
 
+/** 本人設定／撤回共享同意後的最新狀態（PUT /me/consent 回傳）。 */
+export interface ConsentResult {
+  consentShared: boolean;
+  consentAt: string | null;
+}
+
+/** PUT /me/consent：本人設定／撤回 Layer B 共享同意（第 2 段）。
+ *  成功回最新同意狀態；後端不可達／非 200 回 null（呼叫端不就地改狀態）。
+ *  撤回同意（false）後，後端即停止把本人行為匯入共享庫（對外隔離邊界，見 CLAUDE.md）。 */
+export async function setConsent(
+  userId: number,
+  consentShared: boolean,
+): Promise<ConsentResult | null> {
+  try {
+    const res = await fetch(`${API_BASE}/me/consent`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ user_id: userId, consent_shared: consentShared }),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as {
+      consent_shared: boolean;
+      consent_at: string | null;
+    };
+    return { consentShared: d.consent_shared, consentAt: d.consent_at };
+  } catch {
+    return null;
+  }
+}
+
 /** 改密／重置結果：errors 對應後端 403（舊密碼錯）／422（太短）／404（查無帳號）。 */
 export type PasswordResult =
   | { ok: true; user: AuthUser }

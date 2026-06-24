@@ -317,6 +317,80 @@ export async function fetchSimilarTenders(
     .map((h) => ({ tender: adapt(h), score: h.score }));
 }
 
+// 後端 SimilarDecisionHit / DecisionRecommendation（app/schemas/search.py，P5）。
+// 僅帶結論標籤（可行/不可行），不外洩 rationale 全文或使用者身分（隱私鐵則）。
+interface SimilarDecisionHitRaw extends TenderListItem {
+  distance: number;
+  score: number;
+  feasible: string; // 該相似案結論：可行 | 不可行
+}
+interface DecisionRecommendationRaw {
+  tender_id: number;
+  verdict: string; // feasible_leaning | infeasible_leaning | unknown
+  confidence: number;
+  feasible_count: number;
+  infeasible_count: number;
+  headline: string;
+  neighbors: SimilarDecisionHitRaw[];
+}
+
+/** 承接傾向結論：偏可行／偏不可行／資料不足。 */
+export type DecisionVerdict =
+  | "feasible_leaning"
+  | "infeasible_leaning"
+  | "unknown";
+
+/** 決策推薦的單一相似已評估案例（標案 + 距離/分數 + 結論標籤）。 */
+export interface DecisionNeighbor {
+  tender: Tender;
+  distance: number;
+  score: number;
+  feasible: string; // 可行 | 不可行
+}
+
+/** 決策推薦（P5）：聚合相似已評估案例給候選標案一個可解釋的承接傾向。 */
+export interface DecisionRecommendation {
+  tenderId: number;
+  verdict: DecisionVerdict;
+  confidence: number; // [0,1]
+  feasibleCount: number;
+  infeasibleCount: number;
+  headline: string;
+  neighbors: DecisionNeighbor[];
+}
+
+/**
+ * 抓取候選標案的「承接傾向」決策推薦（P5）。後端 GET /search/recommend/{id}?limit=。
+ * 以相似的已評估案例（決策向量）聚合出偏可行／偏不可行的傾向與可解釋鄰居。
+ * 失敗時 throw（需後端與決策向量庫），由呼叫端優雅退化（不顯示此區塊）。
+ */
+export async function fetchDecisionRecommendation(
+  id: string,
+  limit = 8,
+  signal?: AbortSignal,
+): Promise<DecisionRecommendation> {
+  const url = `${API_BASE}/search/recommend/${encodeURIComponent(id)}?limit=${limit}`;
+  const res = await fetch(url, { headers: authHeaders(), signal });
+  if (!res.ok) throw new Error(`recommend API ${res.status}`);
+  const d = (await res.json()) as DecisionRecommendationRaw;
+  return {
+    tenderId: d.tender_id,
+    verdict: (["feasible_leaning", "infeasible_leaning"].includes(d.verdict)
+      ? d.verdict
+      : "unknown") as DecisionVerdict,
+    confidence: d.confidence,
+    feasibleCount: d.feasible_count,
+    infeasibleCount: d.infeasible_count,
+    headline: d.headline,
+    neighbors: (d.neighbors ?? []).map((n) => ({
+      tender: adapt(n),
+      distance: n.distance,
+      score: n.score,
+      feasible: n.feasible,
+    })),
+  };
+}
+
 /** 語意搜尋結果：原始查詢回放 + 命中（標案 + 相似度分數，已依分數遞減排序）。 */
 export interface SemanticSearchResult {
   query: string;
@@ -572,6 +646,56 @@ export async function fetchReasoningProfile(
     return adaptProfile((await res.json()) as CriteriaProfileRaw);
   } catch {
     return null; // 後端未啟動／網路錯誤 → 退化為無學習訊號
+  }
+}
+
+// 後端 PreferenceProfileOut（app/schemas/user.py）：AI 從本人行為學到的個人化偏好。
+interface PreferenceProfileRaw {
+  top_keywords: string[] | null;
+  avoid_keywords: string[] | null;
+  preferred_categories: string[] | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  updated_at: string | null;
+}
+
+/** 個人化偏好輪廓（Layer B，本人專屬）：學到的重點詞／迴避詞／偏好類別／預算區間。 */
+export interface PreferenceProfile {
+  topKeywords: string[];
+  avoidKeywords: string[];
+  preferredCategories: string[];
+  budgetMin: number | null;
+  budgetMax: number | null;
+  updatedAt: string | null;
+}
+
+/**
+ * 抓取本人的「個人化偏好輪廓」（GET /me/preference-profile?user_id=）。
+ * 後端從本人行為學出（衍生表、只讀），尚未學出時回空輪廓（不 404）。
+ * 非 200（含未啟動／未登入）一律回 null，由呼叫端優雅退化（不顯示偏好卡）。
+ * Layer B：只用本人資料、依登入帳號具名；未登入則省略 user_id，後端落到預設使用者。
+ */
+export async function fetchPreferenceProfile(
+  signal?: AbortSignal,
+): Promise<PreferenceProfile | null> {
+  try {
+    const q = currentUserId == null ? "" : `?user_id=${currentUserId}`;
+    const res = await fetch(`${API_BASE}/me/preference-profile${q}`, {
+      headers: authHeaders(),
+      signal,
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as PreferenceProfileRaw;
+    return {
+      topKeywords: d.top_keywords ?? [],
+      avoidKeywords: d.avoid_keywords ?? [],
+      preferredCategories: d.preferred_categories ?? [],
+      budgetMin: d.budget_min,
+      budgetMax: d.budget_max,
+      updatedAt: d.updated_at,
+    };
+  } catch {
+    return null; // 後端未啟動／網路錯誤 → 退化為無偏好輪廓
   }
 }
 

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SourceStatusList } from "@/components/layout/source-status";
 import { RulesWorkspace } from "@/components/rules/rules-workspace";
 import { AccountSecurity } from "@/components/settings/account-security";
+import { PersonalData } from "@/components/settings/personal-data";
 import { AdminUserPasswords } from "@/components/settings/admin-user-passwords";
 import { MemberManagement } from "@/components/settings/member-management";
 import { BrainPicker } from "@/components/settings/brain-picker";
@@ -71,6 +72,20 @@ export function SettingsPage() {
               {t("accountSecuritySub")}
             </p>
             <AccountSecurity />
+          </CardContent>
+        </Card>
+      )}
+
+      {!isMock && user && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle>{t("personalData")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-[12px] text-ink-muted">
+              {t("personalDataSub")}
+            </p>
+            <PersonalData />
           </CardContent>
         </Card>
       )}
