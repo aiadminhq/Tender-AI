@@ -76,7 +76,7 @@ export function Sidebar() {
                   "flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
                   sidebarCollapsed && "justify-center px-0",
                   isActive
-                    ? "bg-accent text-ink"
+                    ? "bg-signal/12 font-semibold text-signal"
                     : "text-ink-muted hover:bg-accent hover:text-ink",
                 )
               }

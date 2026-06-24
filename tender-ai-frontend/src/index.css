@@ -36,6 +36,8 @@
   --feasibility-from: #22c55e;
   --feasibility-to: #0099ff;
   --on-primary: #000000;
+  /* 卡片陰影（暗色維持近乎全平，僅極輕分層） */
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 
   /* ---- shadcn 語意映射（白 pill 主行動 = primary） ---- */
   --background: var(--canvas);
@@ -60,26 +62,37 @@
   --radius: 10px;
 }
 
+/* 淺色 = Knowvio 設計語彙（暖灰底、白卡、橙 #f97316 主色、軟陰影、較圓角）。
+   為產品預設主題（loadTheme() 預設回傳 light）；暗色經切換鈕保留。 */
 [data-theme="light"] {
-  --canvas: #f7f8fa;
+  --canvas: #eceef1;
   --surface-1: #ffffff;
-  --surface-2: #eef1f5;
-  --hairline: #e2e6ec;
+  --surface-2: #f3f5f8;
+  --hairline: #e7e9ee;
   --hairline-soft: #eef1f5;
-  --ink: #161b22;
-  --ink-muted: #5b6573;
-  --ink-dim: #8a93a3;
-  --signal: #0a6cff;
-  --signal-ring: rgba(10, 108, 255, 0.25);
+  --ink: #111827;
+  --ink-muted: #6b7280;
+  --ink-dim: #9ca3af;
+  /* signal accent = Knowvio 橙（連結 / focus / selected / 主行動） */
+  --signal: #f97316;
+  --signal-ring: rgba(249, 115, 22, 0.28);
   --tier-high: #16a34a;
-  --tier-mid: #c77700;
+  --tier-mid: #d97706;
   --tier-low: #dc2626;
-  --priority: #5b46e0;
+  --priority: #6d5be0;
   --success: #16a34a;
   --danger: #dc2626;
   --feasibility-from: #16a34a;
-  --feasibility-to: #0a6cff;
+  --feasibility-to: #f97316;
   --on-primary: #ffffff;
+  /* 卡片軟陰影（房規：僅些微陰影） */
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+
+  /* Knowvio 主行動 = 橙 pill（淺色覆寫，暗色仍為白 pill） */
+  --primary: var(--signal);
+  --primary-foreground: #ffffff;
+  /* Knowvio 卡片較圓（rounded-lg = 16px、rounded-xl = 22px） */
+  --radius: 12px;
 }
 
 /* =========================================================================
