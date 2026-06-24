@@ -44,8 +44,15 @@ class BrainChunk:
 
 
 # CLI provider 預設命令樣板（可在 settings 覆寫）。{prompt} 由呼叫端帶入。
+# --allowedTools 限縮放行本專案的 tender-ai-brain MCP server：headless `-p` 預設權限模式會
+# 擋下所有 MCP 工具呼叫（實測 search_tenders 會被拒→無內容→BrainError），須明確放行才能讓 CLI
+# 自主 agentic 檢索。只放行此 server（非 --dangerously-skip-permissions），其餘工具仍受管。
 _CLI_COMMANDS: dict[str, list[str]] = {
-    "claude": ["claude", "-p", "{prompt}", "--output-format", "stream-json", "--verbose"],
+    "claude": [
+        "claude", "-p", "{prompt}",
+        "--allowedTools", "mcp__tender-ai-brain",
+        "--output-format", "stream-json", "--verbose",
+    ],
 }
 
 
