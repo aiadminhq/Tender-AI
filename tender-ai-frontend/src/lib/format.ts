@@ -63,3 +63,11 @@ export function daysLeft(iso: string): number {
   const ms = startOfDay(new Date(iso)) - startOfDay(new Date());
   return Math.round(ms / 86_400_000);
 }
+
+/** 距截止天數 → 文字色調 token（與 TenderDrawer 一致：<0 已過灰／≤3 急迫紅／≤7 將近黃／其餘中性）。 */
+export function daysLeftTone(days: number): string {
+  if (days < 0) return "text-ink-dim";
+  if (days <= 3) return "text-tier-low";
+  if (days <= 7) return "text-tier-mid";
+  return "text-ink-muted";
+}

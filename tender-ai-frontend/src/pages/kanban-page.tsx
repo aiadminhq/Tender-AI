@@ -1,6 +1,7 @@
 import { useApp } from "@/store/app-context";
 import { PageHeader } from "@/components/layout/page-header";
-import { KanbanBoard } from "@/components/kanban/kanban-board";
+import { KanbanToolbar } from "@/components/kanban/kanban-toolbar";
+import { BidBoard } from "@/components/kanban/bid-board";
 
 export function KanbanPage() {
   const { t } = useApp();
@@ -8,7 +9,8 @@ export function KanbanPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <PageHeader title={t("navKanban")} subtitle={t("kanbanSub")} />
-      <KanbanBoard />
+      <KanbanToolbar />
+      <BidBoard />
     </div>
   );
 }

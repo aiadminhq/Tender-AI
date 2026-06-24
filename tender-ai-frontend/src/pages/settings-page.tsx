@@ -5,6 +5,7 @@ import { SourceStatusList } from "@/components/layout/source-status";
 import { RulesWorkspace } from "@/components/rules/rules-workspace";
 import { AccountSecurity } from "@/components/settings/account-security";
 import { AdminUserPasswords } from "@/components/settings/admin-user-passwords";
+import { MemberManagement } from "@/components/settings/member-management";
 import { BrainPicker } from "@/components/settings/brain-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -87,6 +88,15 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("memberManage")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MemberManagement />
+        </CardContent>
+      </Card>
     </div>
   );
 }

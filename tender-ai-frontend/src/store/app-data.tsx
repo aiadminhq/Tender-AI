@@ -11,20 +11,30 @@ import {
 import type {
   ActivityItem,
   ActivityKind,
+  BidStage,
+  BoardView,
   Comment,
   FilterState,
   KanbanCard,
   KanbanNote,
+  Member,
   SavedSearch,
   SortDir,
   SortKey,
+  Subtask,
+  SubtaskPriority,
   TaskStatus,
   Tender,
+  TenderProject,
+  Tier,
 } from "@/types/domain";
 import { TENDERS } from "@/data/tenders";
 import { KANBAN_CARDS } from "@/data/kanban";
 import { ACTIVITY } from "@/data/activity";
 import { USERS, userById } from "@/data/users";
+import { SEED_MEMBERS } from "@/data/members";
+import { useAuth } from "@/store/auth-context";
+import { authDisplay, fetchAccounts, setWhitelist } from "@/lib/auth-api";
 import {
   fetchTenders,
   postAccept,
@@ -36,6 +46,11 @@ import {
 import { trackEvent } from "@/lib/events";
 import { load, save } from "@/lib/storage";
 import { daysLeft } from "@/lib/format";
+import {
+  cardsToProjects,
+  filterAssignableMembers,
+  filterVisibleProjects,
+} from "@/store/board-logic";
 import { keywordHits } from "@/lib/keyword-hits";
 import {
   computeFeasibility,
@@ -94,6 +109,19 @@ function uid(): string {
 function nowISO(): string {
   return new Date().toISOString();
 }
+
+// ── 投標看板（Notion 式）：階段標籤 / 狀態→階段遷移 / 成員 email 規則 / 種子 ──
+const STAGE_LABEL_ZH: Record<BidStage, string> = {
+  watching: "觀望",
+  preparing: "備標中",
+  submitted: "已投標",
+  won: "得標",
+  abandoned: "放棄",
+};
+
+// 合作範圍 email：限 @hqdesign.tw（治理紅線；新增成員時驗證）。
+const HQ_EMAIL_RE = /^[^@\s]+@hqdesign\.tw$/;
+
 // 每個排序欄「首次點擊」的預設方向（沿用既有預設行為）：
 // 預算/可行性 大→小（desc）最直覺；截止/分數 小→大（asc）。
 export const SORT_DEFAULT_DIR: Record<SortKey, SortDir> = {
@@ -188,6 +216,84 @@ interface AppDataValue {
   savedSearches: SavedSearch[];
   saveCurrentSearch: (name: string) => void;
   applySavedSearch: (id: number) => void;
+  // ── 投標看板（Notion 式）──────────────────────────────────────
+  /** 當前登入帳號對應的成員 id（mock=0；anonymous=null） */
+  currentMemberId: number | null;
+  projects: TenderProject[];
+  /** 套用 boardView 過濾後、依階段分組（看板欄位用） */
+  projectsByStage: Record<BidStage, TenderProject[]>;
+  /** 套用 boardView 過濾後的專案（未分組） */
+  visibleProjects: TenderProject[];
+  moveProjectStage: (id: string, stage: BidStage) => void;
+  addProject: (input: {
+    title: string;
+    tenderId?: string;
+    tier?: Tier;
+    deadline?: string;
+    stage?: BidStage;
+  }) => void;
+  updateProject: (
+    id: string,
+    patch: Partial<
+      Pick<TenderProject, "title" | "tier" | "deadline" | "stage" | "ownerId">
+    >,
+  ) => void;
+  removeProject: (id: string) => void;
+  addProjectNote: (projectId: string, body: string) => void;
+  removeProjectNote: (projectId: string, noteId: string) => void;
+  addSubtask: (
+    projectId: string,
+    input: {
+      title: string;
+      description?: string;
+      assigneeId?: number | null;
+      priority?: SubtaskPriority;
+      dueDate?: string | null;
+      tags?: string[];
+    },
+  ) => void;
+  updateSubtask: (
+    projectId: string,
+    subtaskId: string,
+    patch: Partial<
+      Pick<
+        Subtask,
+        | "title"
+        | "description"
+        | "status"
+        | "priority"
+        | "dueDate"
+        | "tags"
+        | "assigneeId"
+      >
+    >,
+  ) => void;
+  assignSubtask: (
+    projectId: string,
+    subtaskId: string,
+    memberId: number | null,
+  ) => void;
+  toggleSubtask: (projectId: string, subtaskId: string) => void;
+  removeSubtask: (projectId: string, subtaskId: string) => void;
+  subtaskProgressOf: (project: TenderProject) => {
+    done: number;
+    total: number;
+  };
+  // ── 成員（白名單）────────────────────────────────────────────
+  members: Member[];
+  /** Issue #1 指派名單唯一來源：僅 whitelistActive 成員 */
+  assignableMembers: Member[];
+  memberById: (id: number | null | undefined) => Member | undefined;
+  addMember: (input: { name: string; email: string; role?: string }) => void;
+  updateMember: (
+    id: number,
+    patch: Partial<Pick<Member, "name" | "role" | "email">>,
+  ) => void;
+  toggleMemberWhitelist: (id: number) => void;
+  removeMember: (id: number) => void;
+  // ── 檢視 ──────────────────────────────────────────────────────
+  boardView: BoardView;
+  setBoardView: (patch: Partial<BoardView>) => void;
 }
 
 const AppDataContext = createContext<AppDataValue | null>(null);
@@ -196,6 +302,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // 本地 mock 行為流／看板筆記的作者身分（沿用切換器移除前的預設身分）。
   // 具名的 Layer B 行為事件改由 events.ts 帶入登入帳號（setCurrentUserId）。
   const person = USERS[0];
+
+  // 登入身分（AuthProvider 已包住本 Provider）：供具名擁有／指派與白名單 hydration。
+  const { user, isAdmin } = useAuth();
+  const currentMemberId = user?.id ?? null;
+  const currentMemberName = user?.name ?? person.name;
 
   // 後端對接：初始為 mock，掛載後抓真實標案；失敗則維持 mock，不中斷 UI。
   const [tenders, setTenders] = useState<Tender[]>(TENDERS);
@@ -255,6 +366,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     load("rules:hard", DEFAULT_HARD),
   );
 
+  // 投標看板（Notion 式）：專案 / 成員 / 檢視狀態（前端優先，localStorage 為事實來源）。
+  const [projects, setProjects] = useState<TenderProject[]>(() => {
+    const stored = load<TenderProject[] | null>("projects", null);
+    return stored ?? cardsToProjects(KANBAN_CARDS, nowISO());
+  });
+  const [members, setMembers] = useState<Member[]>(() =>
+    load<Member[]>("members", SEED_MEMBERS),
+  );
+  const [boardView, setBoardViewState] = useState<BoardView>(() =>
+    load<BoardView>("board:view", {
+      mineOnly: false,
+      memberFilter: null,
+      stageFilter: null,
+    }),
+  );
+
   // 持久化
   useEffect(() => save("filter", filter), [filter]);
 
@@ -275,6 +402,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => save("rules:focus", focusKeywords), [focusKeywords]);
   useEffect(() => save("rules:avoid", avoidKeywords), [avoidKeywords]);
   useEffect(() => save("rules:hard", hardExclude), [hardExclude]);
+  useEffect(() => save("projects", projects), [projects]);
+  useEffect(() => save("members", members), [members]);
+  useEffect(() => save("board:view", boardView), [boardView]);
 
   const pushActivity = useCallback(
     (kind: ActivityKind, target: string) => {
@@ -599,11 +729,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         };
         return [card, ...prev];
       });
+      // 新投標看板：承接同時建立 TenderProject（觀望階段、負責人＝當前帳號），依 tenderId 去重。
+      setProjects((prev) => {
+        if (prev.some((p) => p.tenderId === tenderId)) return prev;
+        const ts = nowISO();
+        const proj: TenderProject = {
+          id: `p-${uid()}`,
+          tenderId,
+          title: t.title,
+          stage: "watching",
+          tier: t.tier,
+          deadline: t.deadline,
+          ownerId: currentMemberId,
+          subtasks: [],
+          notes: [],
+          createdAt: ts,
+          updatedAt: ts,
+        };
+        return [proj, ...prev];
+      });
       pushActivity("accept", t.title);
       // 行為回寫（Layer B）：承接 → 後端標記備標中。
       postAccept(tenderId, "備標中");
     },
-    [tenders, person.id, pushActivity],
+    [tenders, person.id, currentMemberId, pushActivity],
   );
 
   const skip = useCallback(
@@ -816,6 +965,413 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [pushActivity],
   );
 
+  // ── 投標看板：成員選擇器 ───────────────────────────────────────
+  // allMembers＝名冊 ∪ 當前登入者（即使其不在名冊，如 mock id=0），供 memberById
+  // 解析 owner／assignee 頭像；不影響 assignableMembers（指派仍嚴格限白名單）。
+  const allMembers = useMemo<Member[]>(() => {
+    if (!user || members.some((m) => m.id === user.id)) return members;
+    const d = authDisplay({ name: user.name, email: user.email });
+    const self: Member = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      whitelistActive: user.whitelistActive,
+      consentShared: user.consentShared,
+      initials: d.initials,
+      color: d.color,
+    };
+    return [self, ...members];
+  }, [members, user]);
+
+  // Issue #1 指派名單唯一來源：僅白名單成員（whitelistActive）。
+  const assignableMembers = useMemo<Member[]>(
+    () => filterAssignableMembers(members),
+    [members],
+  );
+
+  const memberById = useCallback(
+    (id: number | null | undefined): Member | undefined =>
+      id == null ? undefined : allMembers.find((m) => m.id === id),
+    [allMembers],
+  );
+
+  // ── 投標看板：專案選擇器 ───────────────────────────────────────
+  const visibleProjects = useMemo<TenderProject[]>(
+    () => filterVisibleProjects(projects, boardView, currentMemberId),
+    [projects, boardView, currentMemberId],
+  );
+
+  const projectsByStage = useMemo<Record<BidStage, TenderProject[]>>(() => {
+    const acc: Record<BidStage, TenderProject[]> = {
+      watching: [],
+      preparing: [],
+      submitted: [],
+      won: [],
+      abandoned: [],
+    };
+    for (const p of visibleProjects) acc[p.stage].push(p);
+    return acc;
+  }, [visibleProjects]);
+
+  const subtaskProgressOf = useCallback(
+    (project: TenderProject) => ({
+      done: project.subtasks.filter((s) => s.status === "done").length,
+      total: project.subtasks.length,
+    }),
+    [],
+  );
+
+  // ── 投標看板：專案行動 ─────────────────────────────────────────
+  const moveProjectStage = useCallback(
+    (id: string, stage: BidStage) => {
+      let moved: TenderProject | undefined;
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p;
+          moved = p;
+          return { ...p, stage, updatedAt: nowISO() };
+        }),
+      );
+      if (moved && moved.stage !== stage) {
+        pushActivity("move", `${moved.title} → ${STAGE_LABEL_ZH[stage]}`);
+      }
+    },
+    [pushActivity],
+  );
+
+  const addProject = useCallback(
+    (input: {
+      title: string;
+      tenderId?: string;
+      tier?: Tier;
+      deadline?: string;
+      stage?: BidStage;
+    }) => {
+      const title = input.title.trim();
+      if (!title) return;
+      setProjects((prev) => {
+        if (input.tenderId && prev.some((p) => p.tenderId === input.tenderId))
+          return prev;
+        const ts = nowISO();
+        const proj: TenderProject = {
+          id: `p-${uid()}`,
+          tenderId: input.tenderId,
+          title,
+          stage: input.stage ?? "watching",
+          tier: input.tier,
+          deadline: input.deadline,
+          ownerId: currentMemberId,
+          subtasks: [],
+          notes: [],
+          createdAt: ts,
+          updatedAt: ts,
+        };
+        return [proj, ...prev];
+      });
+      pushActivity("accept", title);
+    },
+    [currentMemberId, pushActivity],
+  );
+
+  const updateProject = useCallback(
+    (
+      id: string,
+      patch: Partial<
+        Pick<TenderProject, "title" | "tier" | "deadline" | "stage" | "ownerId">
+      >,
+    ) => {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, ...patch, updatedAt: nowISO() } : p,
+        ),
+      );
+    },
+    [],
+  );
+
+  const removeProject = useCallback((id: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const addProjectNote = useCallback(
+    (projectId: string, body: string) => {
+      const trimmed = body.trim();
+      if (!trimmed) return;
+      const note: KanbanNote = {
+        id: uid(),
+        author: currentMemberName,
+        createdAt: nowISO(),
+        body: trimmed,
+      };
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                notes: [...(p.notes ?? []), note],
+                updatedAt: nowISO(),
+              }
+            : p,
+        ),
+      );
+    },
+    [currentMemberName],
+  );
+
+  const removeProjectNote = useCallback((projectId: string, noteId: string) => {
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              notes: (p.notes ?? []).filter((n) => n.id !== noteId),
+              updatedAt: nowISO(),
+            }
+          : p,
+      ),
+    );
+  }, []);
+
+  // ── 投標看板：子任務行動 ───────────────────────────────────────
+  const addSubtask = useCallback(
+    (
+      projectId: string,
+      input: {
+        title: string;
+        description?: string;
+        assigneeId?: number | null;
+        priority?: SubtaskPriority;
+        dueDate?: string | null;
+        tags?: string[];
+      },
+    ) => {
+      const title = input.title.trim();
+      if (!title) return;
+      const st: Subtask = {
+        id: `st-${uid()}`,
+        title,
+        description: input.description?.trim() || undefined,
+        assigneeId: input.assigneeId ?? null,
+        status: "todo",
+        priority: input.priority,
+        dueDate: input.dueDate ?? null,
+        tags: input.tags,
+        createdBy: currentMemberId,
+        createdAt: nowISO(),
+      };
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? { ...p, subtasks: [...p.subtasks, st], updatedAt: nowISO() }
+            : p,
+        ),
+      );
+    },
+    [currentMemberId],
+  );
+
+  const updateSubtask = useCallback(
+    (
+      projectId: string,
+      subtaskId: string,
+      patch: Partial<
+        Pick<
+          Subtask,
+          | "title"
+          | "description"
+          | "status"
+          | "priority"
+          | "dueDate"
+          | "tags"
+          | "assigneeId"
+        >
+      >,
+    ) => {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                subtasks: p.subtasks.map((s) =>
+                  s.id === subtaskId ? { ...s, ...patch } : s,
+                ),
+                updatedAt: nowISO(),
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
+  const assignSubtask = useCallback(
+    (projectId: string, subtaskId: string, memberId: number | null) => {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                subtasks: p.subtasks.map((s) =>
+                  s.id === subtaskId ? { ...s, assigneeId: memberId } : s,
+                ),
+                updatedAt: nowISO(),
+              }
+            : p,
+        ),
+      );
+    },
+    [],
+  );
+
+  const toggleSubtask = useCallback((projectId: string, subtaskId: string) => {
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              subtasks: p.subtasks.map((s) =>
+                s.id === subtaskId
+                  ? { ...s, status: s.status === "done" ? "todo" : "done" }
+                  : s,
+              ),
+              updatedAt: nowISO(),
+            }
+          : p,
+      ),
+    );
+  }, []);
+
+  const removeSubtask = useCallback((projectId: string, subtaskId: string) => {
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              subtasks: p.subtasks.filter((s) => s.id !== subtaskId),
+              updatedAt: nowISO(),
+            }
+          : p,
+      ),
+    );
+  }, []);
+
+  // ── 投標看板：成員行動（白名單治理）───────────────────────────
+  const addMember = useCallback(
+    (input: { name: string; email: string; role?: string }) => {
+      const name = input.name.trim();
+      const email = input.email.trim().toLowerCase();
+      if (!name || !HQ_EMAIL_RE.test(email)) return; // 治理紅線：限 @hqdesign.tw
+      setMembers((prev) => {
+        if (prev.some((m) => m.email?.toLowerCase() === email)) return prev;
+        const minId = prev.reduce((mn, m) => Math.min(mn, m.id), 0);
+        const d = authDisplay({ name, email });
+        const member: Member = {
+          id: minId - 1, // 本地暫時負 id；live+admin hydration 以 email 併入真實 id
+          name,
+          email,
+          role: input.role ?? "member",
+          whitelistActive: false, // 治理紅線：新成員預設未開通，管理員另行開通
+          consentShared: false,
+          initials: d.initials,
+          color: d.color,
+        };
+        return [...prev, member];
+      });
+    },
+    [],
+  );
+
+  const updateMember = useCallback(
+    (id: number, patch: Partial<Pick<Member, "name" | "role" | "email">>) => {
+      setMembers((prev) =>
+        prev.map((m) => {
+          if (m.id !== id) return m;
+          const next = { ...m, ...patch };
+          if (patch.name || patch.email) {
+            const d = authDisplay({ name: next.name, email: next.email });
+            next.initials = d.initials;
+            next.color = d.color;
+          }
+          return next;
+        }),
+      );
+    },
+    [],
+  );
+
+  const toggleMemberWhitelist = useCallback(
+    (id: number) => {
+      let target: Member | undefined;
+      setMembers((prev) =>
+        prev.map((m) => {
+          if (m.id !== id) return m;
+          target = m;
+          return { ...m, whitelistActive: !m.whitelistActive };
+        }),
+      );
+      // 前端優先：本地已切換；live+admin 再 best-effort 同步後端（失敗不阻塞）。
+      if (
+        target?.email &&
+        isAdmin &&
+        import.meta.env.VITE_USE_API !== "false"
+      ) {
+        void setWhitelist(target.email, !target.whitelistActive);
+      }
+    },
+    [isAdmin],
+  );
+
+  const removeMember = useCallback((id: number) => {
+    setMembers((prev) => prev.filter((m) => m.id !== id));
+  }, []);
+
+  const setBoardView = useCallback((patch: Partial<BoardView>) => {
+    setBoardViewState((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  // 白名單 best-effort hydration：live+admin 時抓真實帳號，依 email 併入 members
+  // （更新真實 id / whitelist / consent，並由 authDisplay 重算頭像）。非 admin／離線
+  // 會 403／不可達 → 維持本地種子＋本地 CRUD（前端優先的退化路徑）。
+  useEffect(() => {
+    if (import.meta.env.VITE_USE_API === "false" || !isAdmin) return;
+    let cancelled = false;
+    fetchAccounts()
+      .then((rows) => {
+        if (cancelled || !rows || !rows.length) return;
+        setMembers((prev) => {
+          const emailless = prev.filter((m) => !m.email);
+          const byEmail = new Map<string, Member>();
+          for (const m of prev) {
+            if (m.email) byEmail.set(m.email.toLowerCase(), m);
+          }
+          for (const r of rows) {
+            if (!r.email) continue;
+            const d = authDisplay({ name: r.name, email: r.email });
+            byEmail.set(r.email.toLowerCase(), {
+              id: r.id,
+              name: r.name,
+              email: r.email,
+              role: r.role,
+              whitelistActive: r.whitelistActive,
+              consentShared: r.consentShared,
+              initials: d.initials,
+              color: d.color,
+            });
+          }
+          const merged = [...emailless, ...byEmail.values()];
+          save("members", merged);
+          return merged;
+        });
+      })
+      .catch(() => {
+        /* 後端不可達或非 admin（403）：維持本地 members */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
   const value = useMemo<AppDataValue>(
     () => ({
       filter,
@@ -857,6 +1413,32 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       savedSearches,
       saveCurrentSearch,
       applySavedSearch,
+      // 投標看板（Notion 式）
+      currentMemberId,
+      projects,
+      projectsByStage,
+      visibleProjects,
+      moveProjectStage,
+      addProject,
+      updateProject,
+      removeProject,
+      addProjectNote,
+      removeProjectNote,
+      addSubtask,
+      updateSubtask,
+      assignSubtask,
+      toggleSubtask,
+      removeSubtask,
+      subtaskProgressOf,
+      members,
+      assignableMembers,
+      memberById,
+      addMember,
+      updateMember,
+      toggleMemberWhitelist,
+      removeMember,
+      boardView,
+      setBoardView,
     }),
     [
       filter,
@@ -897,6 +1479,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       savedSearches,
       saveCurrentSearch,
       applySavedSearch,
+      currentMemberId,
+      projects,
+      projectsByStage,
+      visibleProjects,
+      moveProjectStage,
+      addProject,
+      updateProject,
+      removeProject,
+      addProjectNote,
+      removeProjectNote,
+      addSubtask,
+      updateSubtask,
+      assignSubtask,
+      toggleSubtask,
+      removeSubtask,
+      subtaskProgressOf,
+      members,
+      assignableMembers,
+      memberById,
+      addMember,
+      updateMember,
+      toggleMemberWhitelist,
+      removeMember,
+      boardView,
+      setBoardView,
     ],
   );
 
