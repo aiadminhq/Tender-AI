@@ -30,11 +30,13 @@ from app.schemas.tender import (
     AttachmentItem,
     RevisionDetail,
     SnapshotItem,
+    StructuredItem,
     TenderDetail,
     TenderListItem,
     TenderQuery,
     UserStateOut,
 )
+from app.services.detail_parser import structure_text
 
 # q 斷詞：空白／半形逗號／全形逗號／頓號
 _Q_SPLIT = re.compile(r"[\s,，、]+")
@@ -237,6 +239,25 @@ async def list_tenders(
 def _revision_to_detail(rev: TenderRevision) -> RevisionDetail:
     """TenderRevision ORM → RevisionDetail（附件/資格碼做防呆正規化）。"""
     codes = rev.qualification_codes if isinstance(rev.qualification_codes, list) else []
+    # 資格結構化條目：優先用已落庫值；尚未回填時即時由 qualification_text 重算（純函式、
+    # 冪等），使前端在 migration/backfill 跑完前就能呈現表格。
+    raw_items = rev.qualification_items if isinstance(rev.qualification_items, list) else None
+    if raw_items:
+        qual_items = [
+            StructuredItem(
+                kind=str(it.get("kind", "")),
+                label=it.get("label"),
+                content=str(it.get("content", "")),
+                params=it.get("params") if isinstance(it.get("params"), dict) else {},
+            )
+            for it in raw_items
+            if isinstance(it, dict)
+        ]
+    else:
+        qual_items = [
+            StructuredItem(kind=it.kind, label=it.label, content=it.content, params=it.params)
+            for it in structure_text(rev.qualification_text)
+        ]
     attachments: list[AttachmentItem] = []
     raw_atts = rev.attachments if isinstance(rev.attachments, list) else []
     for a in raw_atts:
@@ -260,6 +281,7 @@ def _revision_to_detail(rev: TenderRevision) -> RevisionDetail:
         deposit_raw_text=rev.deposit_raw_text,
         qualification_codes=[str(c) for c in codes],
         qualification_text=rev.qualification_text,
+        qualification_items=qual_items,
         category_main=rev.category_main,
         category_name=rev.category_name,
         category_raw=rev.category_raw,

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { Lang, TextKey } from "@/i18n/strings";
 import type {
   Category,
+  StructuredItem,
   Tender,
   TenderAttachment,
   TenderRevisionDetail,
@@ -216,6 +217,68 @@ export function AttachmentList({
   );
 }
 
+/** 資格要求摘要表格：把長文結構化條目（屬性／標籤／內文）照標案頁面以表格呈現。
+ *
+ * 條目來自後端 qualification_items（離線結構化或即時投影）。kind 區分：
+ * note＝小標（如「符合下列任一」，跨欄呈現）、code＝資格代碼（label mono、content 名稱）、
+ * requirement＝要求項（label 項次、content 內文）。資料源為 Layer A 公開、可重算。 */
+function QualificationTable({
+  items,
+  t,
+}: {
+  items: StructuredItem[];
+  t: (k: TextKey) => string;
+}) {
+  return (
+    <div className="mt-1.5 overflow-hidden rounded-2xl border border-hairline">
+      <table className="w-full border-collapse text-[13px]">
+        <thead>
+          <tr className="bg-surface-2 text-left text-[11px] text-ink-dim">
+            <th className="w-[28%] px-3 py-2 font-medium">
+              {t("qualColItem")}
+            </th>
+            <th className="px-3 py-2 font-medium">{t("qualColContent")}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-hairline">
+          {items.map((it, i) => {
+            const key = `${it.kind}-${it.label ?? ""}-${i}`;
+            if (it.kind === "note") {
+              return (
+                <tr key={key} className="bg-card">
+                  <td
+                    colSpan={2}
+                    className="px-3 py-2 text-[12px] font-medium text-ink-muted"
+                  >
+                    {it.content}
+                  </td>
+                </tr>
+              );
+            }
+            const isCode = it.kind === "code";
+            return (
+              <tr key={key}>
+                <td className="whitespace-nowrap px-3 py-2 align-top">
+                  {it.label ? (
+                    <span className={isCode ? "tnum text-ink" : "text-ink-dim"}>
+                      {it.label}
+                    </span>
+                  ) : (
+                    <span className="text-ink-dim">·</span>
+                  )}
+                </td>
+                <td className="px-3 py-2 align-top leading-relaxed text-ink">
+                  {it.content}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** 標案詳情版本：有 revision 時呈現履約/資格/押標金/類別/附件；
  * 未 enrich（revision 為 null）時優雅退化為空狀態提示。 */
 export function RevisionDetailBlock({
@@ -263,7 +326,9 @@ export function RevisionDetailBlock({
   if (revision.subsidySource)
     facts.push({ label: t("subsidySource"), value: revision.subsidySource });
 
+  const qualItems = revision.qualificationItems ?? [];
   const hasQualification =
+    qualItems.length > 0 ||
     Boolean(revision.qualificationText) ||
     revision.qualificationCodes.length > 0;
 
@@ -293,19 +358,25 @@ export function RevisionDetailBlock({
       {hasQualification && (
         <div className="mt-3">
           <div className="text-[11px] text-ink-dim">{t("qualification")}</div>
-          {revision.qualificationText && (
-            <p className="mt-0.5 text-[13px] leading-relaxed text-ink">
-              {revision.qualificationText}
-            </p>
-          )}
-          {revision.qualificationCodes.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {revision.qualificationCodes.map((c) => (
-                <Badge key={c} variant="outline">
-                  {c}
-                </Badge>
-              ))}
-            </div>
+          {qualItems.length > 0 ? (
+            <QualificationTable items={qualItems} t={t} />
+          ) : (
+            <>
+              {revision.qualificationText && (
+                <p className="mt-0.5 text-[13px] leading-relaxed text-ink">
+                  {revision.qualificationText}
+                </p>
+              )}
+              {revision.qualificationCodes.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {revision.qualificationCodes.map((c) => (
+                    <Badge key={c} variant="outline">
+                      {c}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

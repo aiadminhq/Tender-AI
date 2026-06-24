@@ -96,6 +96,22 @@ export interface TenderAttachment {
   error?: string | null;
 }
 
+/** 通用「屬性／標籤／內文／參數」結構條目（對應後端 StructuredItem）。
+ *
+ * 由長文欄位（目前為資格要求摘要 qualification_text）離線結構化而來，供表格呈現與後續向量化；
+ * 設計成跨欄位可複用：`kind` 為條目型別（code 資格代碼／requirement 要求項／note 說明），
+ * `label` 為標籤（代碼或項次，可空），`content` 為內文，`params` 為延伸參數。 */
+export interface StructuredItem {
+  /** 條目型別：code（資格代碼）／requirement（要求項）／note（說明）等 */
+  kind: string;
+  /** 標籤：資格代碼或項次（無則為 null） */
+  label?: string | null;
+  /** 內文 */
+  content: string;
+  /** 延伸參數（預設空物件，保留向量化／結構化擴充） */
+  params: Record<string, unknown>;
+}
+
 /** 單案最新詳情版本（對應後端 RevisionDetail，皆 Layer A 公開欄位）。
  *
  * 僅在 enrich job 於「能連到 PCC 招標網」的環境跑過後才有值；未 enrich 時為 null，
@@ -114,8 +130,10 @@ export interface TenderRevisionDetail {
   depositRawText?: string | null;
   /** 廠商資格代碼 */
   qualificationCodes: string[];
-  /** 資格要求摘要 */
+  /** 資格要求摘要（原始長文） */
   qualificationText?: string | null;
+  /** 資格要求摘要的結構化條目（供表格呈現）；後端未落庫時由 qualificationText 即時結構化 */
+  qualificationItems: StructuredItem[];
   /** 採購類別大類（工程/財物/勞務） */
   categoryMain?: string | null;
   /** 採購類別名稱 */

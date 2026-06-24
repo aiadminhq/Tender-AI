@@ -8,6 +8,7 @@ import type {
   ReasonCode,
   SavedSearch,
   SourceKey,
+  StructuredItem,
   Tender,
   TenderAttachment,
   TenderDetail,
@@ -92,6 +93,12 @@ interface AttachmentItemRaw {
   skipped: boolean | null;
   error: string | null;
 }
+interface StructuredItemRaw {
+  kind: string;
+  label: string | null;
+  content: string;
+  params?: Record<string, unknown>;
+}
 interface RevisionDetailRaw {
   revision_no: number;
   fetched_at: string | null;
@@ -101,6 +108,7 @@ interface RevisionDetailRaw {
   deposit_raw_text: string | null;
   qualification_codes: string[];
   qualification_text: string | null;
+  qualification_items?: StructuredItemRaw[];
   category_main: string | null;
   category_name: string | null;
   category_raw: string | null;
@@ -196,6 +204,15 @@ function adaptAttachment(a: AttachmentItemRaw): TenderAttachment {
   };
 }
 
+function adaptStructuredItem(it: StructuredItemRaw): StructuredItem {
+  return {
+    kind: it.kind,
+    label: it.label,
+    content: it.content,
+    params: it.params ?? {},
+  };
+}
+
 function adaptRevision(r: RevisionDetailRaw): TenderRevisionDetail {
   return {
     revisionNo: r.revision_no,
@@ -206,6 +223,7 @@ function adaptRevision(r: RevisionDetailRaw): TenderRevisionDetail {
     depositRawText: r.deposit_raw_text,
     qualificationCodes: r.qualification_codes ?? [],
     qualificationText: r.qualification_text,
+    qualificationItems: (r.qualification_items ?? []).map(adaptStructuredItem),
     categoryMain: r.category_main,
     categoryName: r.category_name,
     categoryRaw: r.category_raw,

@@ -364,6 +364,8 @@ export const STRINGS = {
     pendingDesc: "此欄位待後端 ticket 上線後自動填入",
     deliveryLocation: "履約地點",
     qualification: "資格要求摘要",
+    qualColItem: "項次／代碼",
+    qualColContent: "內容",
     attachments: "已下載檔案",
     // 標案詳情版本（revision）：履約/資格/押標金/類別/補助/附件
     revisionDetail: "標案詳情",
@@ -847,6 +849,8 @@ export const STRINGS = {
     pendingDesc: "Auto-filled once the backend ticket ships",
     deliveryLocation: "Delivery location",
     qualification: "Qualification summary",
+    qualColItem: "Item / Code",
+    qualColContent: "Content",
     attachments: "Downloaded files",
     // Tender detail revision: performance / qualification / bid bond / category
     revisionDetail: "Tender detail",

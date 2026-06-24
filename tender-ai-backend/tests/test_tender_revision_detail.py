@@ -93,6 +93,12 @@ async def test_detail_exposes_revision_fields(client, seeded):
     assert rev["performance_period"] == "自決標日起 120 日曆天"
     assert rev["qualification_codes"] == ["A123456", "B654321"]
     assert "室內裝修" in rev["qualification_text"]
+    # qualification_items 未落庫時，API 由 qualification_text 即時結構化（FE 表格在 backfill 前可用）
+    items = rev["qualification_items"]
+    assert isinstance(items, list) and items
+    assert items[0]["kind"] == "requirement"
+    assert "室內裝修" in items[0]["content"]
+    assert set(items[0]) == {"kind", "label", "content", "params"}
     assert rev["category_name"] == "室內裝修工程"
     assert rev["subsidy_source"] == "教育部補助款"
 

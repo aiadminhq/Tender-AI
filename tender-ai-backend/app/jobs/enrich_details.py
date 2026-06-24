@@ -318,6 +318,7 @@ async def _process_one(
         deposit_raw_text=parsed.deposit_raw_text,
         qualification_codes=parsed.qualification_codes,
         qualification_text=parsed.qualification_text,
+        qualification_items=parsed.qualification_items or None,
         category_main=parsed.category_main,
         category_code=parsed.category_code,
         category_name=parsed.category_name,
