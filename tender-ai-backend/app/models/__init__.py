@@ -28,7 +28,7 @@ from app.models.knowledge import (
     TenderVector,
     UserKeywordWeight,
 )
-from app.models.preference import PreferenceProfile
+from app.models.preference import PreferenceProfile, UserManualKeyword
 from app.models.push import PushLog
 from app.models.revision import (
     CrawlFailure,
@@ -70,6 +70,7 @@ __all__ = [
     "KeywordWeightRevision",
     "UserKeywordWeight",
     "PreferenceProfile",
+    "UserManualKeyword",
     "EvolutionLog",
     "DocSummary",
     "DecisionVector",

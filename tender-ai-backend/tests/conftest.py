@@ -63,6 +63,7 @@ _ALL_TABLES = [
     "keyword_weights",
     "user_keyword_weights",
     "preference_profiles",
+    "user_manual_keywords",
     "crawl_failures",
     "tender_revisions",
     "tender_snapshots",

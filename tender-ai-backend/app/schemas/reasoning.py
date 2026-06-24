@@ -65,6 +65,19 @@ class CriteriaProfileOut(BaseModel):
     confidence: Literal["low", "medium", "high"]  # 依樣本量推導的可信度
 
 
+class ManualKeywordIn(BaseModel):
+    """推理卡手動關鍵字覆寫輸入（Phase 2）。
+
+    ``action=add`` 把詞加入該清單；``action=remove`` 把詞移出（隱藏學習詞，
+    或撤回先前的手動新增）。``kind=negative`` 即「人工迴避」合規路徑。
+    """
+
+    user_id: int | None = None  # Phase 1：未驗證；Phase 2 改由 session 推導
+    term: str = Field(min_length=1, max_length=128)
+    kind: Literal["positive", "negative", "engaged"]
+    action: Literal["add", "remove"]
+
+
 class TenderReasoningOut(BaseModel):
     """單一標案的可中標推理。"""
 

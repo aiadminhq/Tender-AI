@@ -4,6 +4,7 @@
   GET  /api/v1/me                     帳戶＋白名單＋同意狀態
   PUT  /api/v1/me/consent             本人設定／撤回共享同意（第 2 段）
   GET  /api/v1/me/preference-profile  AI 從本人行為學到的個人化偏好
+  POST /api/v1/me/keywords            推理卡手動關鍵字覆寫（add／remove）
 
 信任邊界：Phase 1 身分由 body／query 帶入、未驗證；Phase 2 改由 session 推導。
 """
@@ -13,6 +14,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.schemas.reasoning import CriteriaProfileOut, ManualKeywordIn
 from app.schemas.user import (
     ConsentIn,
     ConsentOut,
@@ -21,6 +23,8 @@ from app.schemas.user import (
     PreferenceProfileOut,
 )
 from app.services import account as asvc
+from app.services import manual_keywords as mksvc
+from app.services import reasoning as reasoning_svc
 
 router = APIRouter(tags=["me"])
 
@@ -72,3 +76,22 @@ async def get_preference_profile(
         # 尚未學出輪廓：回空輪廓（不 404）
         return PreferenceProfileOut()
     return PreferenceProfileOut.model_validate(profile)
+
+
+@router.post("/me/keywords", response_model=CriteriaProfileOut)
+async def post_keyword_override(
+    body: ManualKeywordIn,
+    session: AsyncSession = Depends(get_session),
+) -> CriteriaProfileOut:
+    """推理卡手動關鍵字覆寫：add／remove 一個偏好／迴避／常點開的詞。
+
+    action=add → excluded=False（新增）；remove → excluded=True（隱藏／撤回）。
+    回傳合併覆寫後的最新判準輪廓。kind=negative 為「負分人工專屬」合規路徑。
+    """
+    user = await asvc.get_me(session, body.user_id)
+    await mksvc.upsert_manual_keyword(
+        session, user.id, body.term, body.kind, excluded=(body.action == "remove")
+    )
+    await session.commit()
+    profile = await reasoning_svc.build_criteria_profile(session, user.id)
+    return reasoning_svc.profile_to_out(profile)

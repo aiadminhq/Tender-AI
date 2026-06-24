@@ -29,6 +29,7 @@ from app.core.errors import EntityNotFound
 from app.models.behavior import Event, Evaluation
 from app.models.knowledge import KeywordWeight
 from app.models.tender import DailyTender, Source, Tender
+from app.services import manual_keywords
 from app.schemas.reasoning import (
     CategorySignal,
     CriteriaProfileOut,
@@ -208,6 +209,20 @@ async def build_criteria_profile(
             city_ctr[city] += 1
     profile.engaged_categories = [c for c, _ in cat_ctr.most_common(3)]
     profile.engaged_cities = [c for c, _ in city_ctr.most_common(3)]
+
+    # Phase 2：套上本人在推理卡上的「手動」關鍵字覆寫（add／remove）。
+    # 只影響顯示輪廓；per-tender 計分仍讀 KeywordWeight（負分人工專屬紅線）。
+    if user_id is not None:
+        overrides = await manual_keywords.list_overrides(session, user_id)
+        if overrides:
+            profile.kw_positive, profile.kw_negative, profile.engaged_categories = (
+                manual_keywords.apply_overrides(
+                    profile.kw_positive,
+                    profile.kw_negative,
+                    profile.engaged_categories,
+                    overrides,
+                )
+            )
     return profile
 
 
