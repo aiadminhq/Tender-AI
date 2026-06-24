@@ -105,7 +105,7 @@ export function TenderTable({
         {/* 表頭（桌機） */}
         <div
           className={cn(
-            "hidden gap-3 border-b border-border px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-ink-dim lg:grid",
+            "hidden gap-3 border-b border-border px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-ink-dim lg:grid",
             ROW_GRID,
           )}
         >

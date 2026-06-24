@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { Lang, TextKey } from "@/i18n/strings";
 import type {
-  Category,
   StructuredItem,
   Tender,
   TenderAttachment,
@@ -15,18 +14,15 @@ import type {
   SimilarTender,
 } from "@/lib/api";
 import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
-import {
-  Star,
-  Clock,
-  FileText,
-  HardHat,
-  Package,
-  Briefcase,
-  type LucideIcon,
-} from "lucide-react";
+import { Star, Clock, FileText } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { TierBadge } from "@/components/ui/tier-badge";
+import {
+  CategoryBadge,
+  CAT_KEY,
+  CAT_META,
+} from "@/components/ui/category-badge";
 import { sourceByKey } from "@/data/sources";
 import { formatBudget, formatDateLong } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -77,25 +73,18 @@ export function SectionLabel({ children }: { children: ReactNode }) {
 
 // —— 下方為 Task 6 新增的展示元件 ——
 
-export const CAT_KEY: Record<Category, TextKey> = {
-  works: "catWorks",
-  goods: "catGoods",
-  services: "catServices",
-};
-const CAT_VARIANT: Record<Category, "signal" | "muted" | "outline"> = {
-  works: "signal",
-  goods: "muted",
-  services: "outline",
+// 類別 key／icon／顏色的單一事實來源已移至 @/components/ui/category-badge；
+// 此處 re-export CAT_KEY，並由 CAT_META 衍生向後相容的 CAT_ICON（純 icon map），
+// 維持既有匯入路徑（focus-row／decision-review-page／assistant-context-panel 仍從本檔取用）。
+export { CAT_KEY };
+
+export const CAT_ICON = {
+  works: CAT_META.works.icon,
+  goods: CAT_META.goods.icon,
+  services: CAT_META.services.icon,
 };
 
-/** 類別圖示：以「形狀」區分類別（房屋風格：類別差異靠 icon 形狀，不疊加第二彩色 accent）。 */
-export const CAT_ICON: Record<Category, LucideIcon> = {
-  works: HardHat,
-  goods: Package,
-  services: Briefcase,
-};
-
-/** 來源 + 類別色標 + 城市 Badge 列。 */
+/** 來源 + 類別色標（icon＋顏色）+ 城市 Badge 列。 */
 export function LabelTags({
   tender,
   lang,
@@ -109,9 +98,7 @@ export function LabelTags({
     <div className="flex flex-wrap items-center gap-2">
       <TierBadge tier={tender.tier} lang={lang} />
       <Badge variant="muted">{sourceByKey(tender.source).shortName}</Badge>
-      <Badge variant={CAT_VARIANT[tender.category]}>
-        {t(CAT_KEY[tender.category])}
-      </Badge>
+      <CategoryBadge category={tender.category} t={t} />
       {tender.city && <Badge variant="outline">{tender.city}</Badge>}
     </div>
   );

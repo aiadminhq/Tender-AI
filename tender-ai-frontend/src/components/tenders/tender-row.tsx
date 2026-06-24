@@ -7,6 +7,7 @@ import { sourceByKey } from "@/data/sources";
 import { userById } from "@/data/users";
 import { formatBudget, formatDate, daysLeft } from "@/lib/format";
 import { TierBadge } from "@/components/ui/tier-badge";
+import { CategoryIcon } from "@/components/ui/category-badge";
 import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -200,7 +201,7 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "hidden cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:grid",
+          "hidden cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:grid",
           ROW_GRID,
           excluded && "opacity-60",
         )}
@@ -208,13 +209,16 @@ export function TenderRow({
         <div>
           <TierBadge tier={tender.tier} lang={lang} />
         </div>
-        <div className="min-w-0">
-          <div className="truncate text-[13px] font-medium text-ink">
-            {tender.title}
-          </div>
-          <div className="truncate text-[11px] text-ink-dim">
-            {tender.org} · {source}
-            {reason ? ` · ${reason}` : ""}
+        <div className="flex min-w-0 items-center gap-2.5">
+          <CategoryIcon category={tender.category} />
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium text-ink">
+              {tender.title}
+            </div>
+            <div className="truncate text-[11px] text-ink-dim">
+              {tender.org} · {source}
+              {reason ? ` · ${reason}` : ""}
+            </div>
           </div>
         </div>
         <div className="tnum text-right text-[12px] text-ink">
@@ -241,12 +245,15 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "cursor-pointer p-3 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:hidden",
+          "cursor-pointer p-4 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:hidden",
           excluded && "opacity-60",
         )}
       >
         <div className="flex items-start justify-between gap-2">
-          <TierBadge tier={tender.tier} lang={lang} />
+          <div className="flex items-center gap-2">
+            <TierBadge tier={tender.tier} lang={lang} />
+            <CategoryIcon category={tender.category} />
+          </div>
           <span className="tnum shrink-0 text-[12px] text-ink-muted">
             {formatBudget(tender.budget, lang)}
           </span>

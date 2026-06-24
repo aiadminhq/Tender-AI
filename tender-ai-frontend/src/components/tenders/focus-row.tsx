@@ -13,6 +13,7 @@ import {
 } from "@/components/tenders/detail-bits";
 import { FocusDeadline } from "@/components/tenders/focus-deadline";
 import { JudgmentActions } from "@/components/tenders/tender-row";
+import { CategoryIcon } from "@/components/ui/category-badge";
 import { daysLeft } from "@/lib/format";
 
 // 今日焦點單列：精簡 header（密度收斂）＋ 同一張卡內可展開的初步比對面板。
@@ -39,7 +40,7 @@ export function FocusRow({
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
       {/* 精簡 header：左側可點切換展開（R1/R2）；右側三分判斷鈕（收合即顯，需求 b）。 */}
-      <div className="flex items-center gap-2 px-3 py-1.5">
+      <div className="flex items-center gap-2 px-4 py-2.5">
         <button
           type="button"
           onClick={onToggle}
@@ -50,6 +51,7 @@ export function FocusRow({
           <span className="grid size-5 shrink-0 place-items-center text-ink-dim">
             {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </span>
+          <CategoryIcon category={tender.category} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] text-ink">
               {tender.title}
