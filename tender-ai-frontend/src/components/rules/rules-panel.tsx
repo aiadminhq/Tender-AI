@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Ban, CircleSlash, Settings2, Sparkles, Target } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { KeywordEditor } from "./keyword-editor";
@@ -15,10 +16,13 @@ export function RulesPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <p className="flex flex-1 items-start gap-2 rounded-lg border border-signal/30 bg-signal/8 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-muted">
-          <Sparkles size={15} className="mt-px shrink-0 text-signal" />
+        <Alert
+          variant="info"
+          className="flex-1 rounded-lg px-3.5 py-2.5 text-ink-muted"
+          icon={<Sparkles size={15} className="mt-px text-signal" />}
+        >
           {t("rulesHint")}
-        </p>
+        </Alert>
         <Button
           variant="secondary"
           size="sm"

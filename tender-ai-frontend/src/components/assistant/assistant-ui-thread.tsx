@@ -37,6 +37,7 @@ import { useApp } from "@/store/app-context";
 import type { TextKey } from "@/i18n/strings";
 import type { AssistantSource, PreferenceSuggestion } from "@/lib/assistant";
 import { cn } from "@/lib/utils";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RichText } from "./rich-text";
 import {
@@ -350,10 +351,14 @@ function PreferenceChip({
 
   if (state === "confirmed") {
     return (
-      <div className="flex items-center gap-1.5 rounded-2xl border border-signal/30 bg-signal/8 px-3 py-2 text-[12px] text-signal">
-        <Check size={13} className="shrink-0" />
+      <Alert
+        variant="info"
+        align="center"
+        className="gap-1.5 rounded-2xl"
+        icon={<Check size={13} />}
+      >
         {t("assistantPrefSaved")}
-      </div>
+      </Alert>
     );
   }
 

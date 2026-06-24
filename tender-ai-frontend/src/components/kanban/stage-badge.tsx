@@ -40,7 +40,7 @@ export function StageBadge({
         className,
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full", m.dot)} />
+      <span className={cn("size-1.5 rounded-full", m.dot)} />
       {STRINGS[lang][STAGE_LABEL_KEY[stage]]}
     </span>
   );

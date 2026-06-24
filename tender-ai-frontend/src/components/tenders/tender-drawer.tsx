@@ -33,6 +33,7 @@ import {
 } from "@/lib/api";
 import { load, save } from "@/lib/storage";
 import { Dialog } from "@/components/ui/dialog";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -224,10 +225,9 @@ export function TenderDrawer({
 
           {/* 排除提示 */}
           {reason && (
-            <div className="flex items-start gap-2 rounded-md border border-danger/30 bg-danger/8 px-3 py-2 text-[12px] text-danger">
-              <Ban size={14} className="mt-0.5 shrink-0" />
+            <Alert variant="danger" icon={<Ban size={14} className="mt-0.5" />}>
               <span>{reason}</span>
-            </div>
+            </Alert>
           )}
 
           {/* 主體雙欄 grid */}

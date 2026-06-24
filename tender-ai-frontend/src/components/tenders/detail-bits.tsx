@@ -24,6 +24,7 @@ import {
   Briefcase,
   type LucideIcon,
 } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { sourceByKey } from "@/data/sources";
@@ -152,10 +153,14 @@ export function DaysLeftBanner({
   const text =
     daysLeft < 0 ? t("deadlinePassed") : `${daysLeft} ${t("daysLeft")}`;
   return (
-    <div className="flex items-center gap-2 rounded-md border border-danger/30 bg-danger/8 px-3 py-2 text-[12px] font-medium text-danger">
-      <Clock size={14} className="shrink-0" />
+    <Alert
+      variant="danger"
+      align="center"
+      className="font-medium"
+      icon={<Clock size={14} />}
+    >
       <span>{text}</span>
-    </div>
+    </Alert>
   );
 }
 
@@ -513,7 +518,7 @@ export function DecisionRecommendationBlock({
             meta.tone,
           )}
         >
-          <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
+          <span className={cn("size-1.5 rounded-full", meta.dot)} />
           {t(meta.key)}
         </span>
         <span className="tnum text-[12px] text-ink-muted">
@@ -527,12 +532,12 @@ export function DecisionRecommendationBlock({
       )}
       <div className="mt-2 flex items-center gap-3 text-[11px] text-ink-dim">
         <span className="inline-flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-tier-high" />
+          <span className="size-1.5 rounded-full bg-tier-high" />
           {t("conclFeasible")}{" "}
           <span className="tnum text-ink">{rec.feasibleCount}</span>
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-tier-low" />
+          <span className="size-1.5 rounded-full bg-tier-low" />
           {t("conclInfeasible")}{" "}
           <span className="tnum text-ink">{rec.infeasibleCount}</span>
         </span>
