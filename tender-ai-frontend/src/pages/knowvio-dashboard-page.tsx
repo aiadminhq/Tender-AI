@@ -122,6 +122,11 @@ const CAT_LABEL = {
   en: { works: "Works", goods: "Goods", services: "Services" },
 } as const;
 
+// tx/cat 來自 TX[lang]／CAT_LABEL[lang]，型別為 zh|en literal 聯集；元件 prop 以
+// 「值為 string」的結構型別承接，避免 literal 聯集不可賦值給單一語系 literal。
+type Tx = { [K in keyof (typeof TX)["zh"]]: string };
+type Cat = { [K in keyof (typeof CAT_LABEL)["zh"]]: string };
+
 export function KnowvioDashboardPage() {
   const { lang } = useApp();
   const { metrics, filteredTenders, usingLiveData } = useAppData();
@@ -361,7 +366,7 @@ function KvSidebar() {
 }
 
 /* ----------------------------- 頂部歡迎列 ----------------------------- */
-function TopWelcome({ tx }: { tx: (typeof TX)["zh"] }) {
+function TopWelcome({ tx }: { tx: Tx }) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
@@ -696,7 +701,7 @@ function ProgressArea({ lang }: { lang: string }) {
 }
 
 /* ----------------------------- 活動甜甜圈 ----------------------------- */
-function ActivityDonut({ tx }: { tx: (typeof TX)["zh"] }) {
+function ActivityDonut({ tx }: { tx: Tx }) {
   const segs = [
     { label: tx.actView, pct: 45, color: "#fb923c" },
     { label: tx.actRate, pct: 25, color: "#3b82f6" },
@@ -780,8 +785,8 @@ function DeadlineTable({
   rows,
   live,
 }: {
-  tx: (typeof TX)["zh"];
-  cat: (typeof CAT_LABEL)["zh"];
+  tx: Tx;
+  cat: Cat;
   rows: ReturnType<typeof useAppData>["filteredTenders"];
   live: boolean;
 }) {
@@ -860,7 +865,7 @@ function DeadlineTable({
 }
 
 /* ----------------------------- 快速複盤卡 ----------------------------- */
-function QuickReview({ tx }: { tx: (typeof TX)["zh"] }) {
+function QuickReview({ tx }: { tx: Tx }) {
   const icons = [Sparkles, Activity, Star, Clock, Brain];
   return (
     <div className="flex flex-col gap-4">
