@@ -15,7 +15,15 @@ import type {
   SimilarTender,
 } from "@/lib/api";
 import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
-import { Star, Clock, FileText } from "lucide-react";
+import {
+  Star,
+  Clock,
+  FileText,
+  HardHat,
+  Package,
+  Briefcase,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { sourceByKey } from "@/data/sources";
@@ -77,6 +85,13 @@ const CAT_VARIANT: Record<Category, "signal" | "muted" | "outline"> = {
   works: "signal",
   goods: "muted",
   services: "outline",
+};
+
+/** 類別圖示：以「形狀」區分類別（房屋風格：類別差異靠 icon 形狀，不疊加第二彩色 accent）。 */
+export const CAT_ICON: Record<Category, LucideIcon> = {
+  works: HardHat,
+  goods: Package,
+  services: Briefcase,
 };
 
 /** 來源 + 類別色標 + 城市 Badge 列。 */

@@ -128,7 +128,7 @@ function ThreadEmpty() {
               prompt={s}
               send
               clearComposer
-              className="group flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[13px] text-foreground/90 transition-colors hover:border-signal/40 hover:bg-accent"
+              className="group flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[13px] text-foreground/90 transition-all hover:border-signal/40 hover:bg-accent hover:shadow-[0_1px_2px_rgba(0,0,0,.06)] active:scale-[.99]"
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent text-ink-muted transition-colors group-hover:text-signal">
                 <Icon size={14} />
@@ -136,7 +136,7 @@ function ThreadEmpty() {
               <span className="min-w-0 flex-1">{s}</span>
               <ChevronRight
                 size={14}
-                className="shrink-0 text-ink-dim opacity-0 transition-opacity group-hover:opacity-100"
+                className="shrink-0 text-ink-dim opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
               />
             </ThreadPrimitive.Suggestion>
           );
@@ -167,7 +167,7 @@ function ThreadFollowups() {
             prompt={f}
             send
             clearComposer
-            className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] text-ink-muted transition-colors hover:border-signal/40 hover:bg-accent hover:text-foreground/90"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] text-ink-muted transition-all hover:border-signal/40 hover:bg-accent hover:text-foreground/90 active:scale-[.97]"
           >
             <CornerDownRight
               size={12}

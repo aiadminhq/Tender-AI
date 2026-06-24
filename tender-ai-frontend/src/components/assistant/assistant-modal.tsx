@@ -1,9 +1,10 @@
-// 非阻擋式小助手浮窗（自管 position:fixed 面板，取代原 Radix Popover 容器）：
-//   1. 兩種型態：floating（右下角浮窗，預設高度 = fit content）與 sidebar（貼右側、滿版高度）；
-//      標題列右側「切換側邊欄」鈕互切。型態 + 尺寸記在 localStorage，跨 session 還原。
-//   2. floating 錨定右下角，左上角有縮放把手 → 往左上長、右下角固定；寬高即時記憶。
-//      sidebar 左緣有縮放把手 → 調整寬度。皆以 pointer capture 拖曳，min/max 夾住不破版。
-//   3. 全程無遮罩、不鎖背景；點外面不關閉，由 FAB 或關閉鈕收合（與原行為一致）。
+// 非阻擋式小助手面板（自管 position:fixed 容器，取代原 Radix Popover）：
+//   1. 兩種型態皆「滿版高度、只調寬度」：sidebar（預設,貼齊右緣、與邊框切齊）與
+//      floating（脫離右緣、四周留邊距的圓角浮窗）；標題列右側鈕互切。型態 + 寬度記在
+//      localStorage,跨 session 還原。
+//   2. 兩型態左緣皆有縮放把手 → 往左拖變寬、往右拖變窄（min/max 夾住不破版），
+//      高度恆為滿版（不調高）。以 pointer capture 拖曳。
+//   3. 全程無遮罩、不鎖背景；點外面不關閉，開啟時 FAB 收起,由標題列關閉鈕收合。
 //   4. 房屋風格 tokens（bg-popover / border-border / rounded-2xl / 輕陰影 / animate-in）。
 // 內容即共用的 AssistantUIThread；對話狀態由外層 <AssistantRuntime> 提供（不依賴 Popover context）。
 import { forwardRef, useEffect, useRef, useState } from "react";
@@ -36,21 +37,17 @@ interface PanelState {
   mode: PanelMode;
   /** floating 寬度（px）。 */
   floatW: number;
-  /** floating 高度（px）；null = fit content（預設）。 */
-  floatH: number | null;
   /** sidebar 寬度（px）。 */
   sidebarW: number;
 }
 
 const STORAGE_KEY = "tender-assistant-panel";
 const DEFAULT_STATE: PanelState = {
-  mode: "floating",
+  mode: "sidebar",
   floatW: 400,
-  floatH: null,
   sidebarW: 420,
 };
 const MIN_W = 320;
-const MIN_H = 280;
 
 function loadState(): PanelState {
   try {
@@ -58,12 +55,11 @@ function loadState(): PanelState {
     if (!raw) return DEFAULT_STATE;
     const parsed = JSON.parse(raw) as Partial<PanelState>;
     return {
-      mode: parsed.mode === "sidebar" ? "sidebar" : "floating",
+      mode: parsed.mode === "floating" ? "floating" : "sidebar",
       floatW:
         typeof parsed.floatW === "number"
           ? parsed.floatW
           : DEFAULT_STATE.floatW,
-      floatH: typeof parsed.floatH === "number" ? parsed.floatH : null,
       sidebarW:
         typeof parsed.sidebarW === "number"
           ? parsed.sidebarW
@@ -83,7 +79,6 @@ export function AssistantModal({
   tenderId,
 }: AssistantModalProps) {
   const [state, setState] = useState<PanelState>(loadState);
-  const isSidebar = state.mode === "sidebar";
 
   // 尺寸／型態變更即落地 localStorage（跨 session 還原）。
   useEffect(() => {
@@ -96,9 +91,9 @@ export function AssistantModal({
 
   return (
     <>
-      {/* FAB：closed 或 floating 時顯示（sidebar 開啟時面板已佔右緣，改由標題列關閉）。
+      {/* FAB：面板收合時才顯示；開啟時（兩型態皆滿版高度）面板已佔右側，改由標題列關閉鈕收合。
           以 portal 送到 body：launcher 掛在 sticky topbar 內，固定定位需以 viewport 為準。 */}
-      {(!open || !isSidebar) &&
+      {!open &&
         createPortal(
           <div className="fixed bottom-20 right-4 z-40 md:bottom-6 md:right-6">
             <FabButton open={open} onClick={() => onOpenChange(!open)} />
@@ -137,49 +132,30 @@ function AssistantPanel({
   const isSidebar = state.mode === "sidebar";
   const dragRef = useRef<{
     startX: number;
-    startY: number;
     w: number;
-    h: number;
   } | null>(null);
 
-  // 左上角（floating）／左緣（sidebar）縮放：pointer capture 拖曳，min/max 夾住。
+  // 縮放把手（兩型態共用，皆在左緣）：pointer capture 拖曳，只調寬度，min/max 夾住。
   const onResizePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const el = e.currentTarget as HTMLElement;
     el.setPointerCapture(e.pointerId);
-    const startW = isSidebar ? state.sidebarW : state.floatW;
-    const startH =
-      state.floatH ??
-      // fit-content 起手：以實際面板高度為基準，縮放才連續不跳。
-      el.closest("[data-assistant-panel]")?.getBoundingClientRect().height ??
-      DEFAULT_STATE.floatH ??
-      MIN_H;
     dragRef.current = {
       startX: e.clientX,
-      startY: e.clientY,
-      w: startW,
-      h: startH,
+      w: isSidebar ? state.sidebarW : state.floatW,
     };
   };
 
   const onResizePointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
-    const dx = d.startX - e.clientX; // 往左拖 → 變大
-    if (isSidebar) {
-      const maxW = window.innerWidth - 48;
-      setState((s) => ({ ...s, sidebarW: clamp(d.w + dx, MIN_W, maxW) }));
-    } else {
-      const dy = d.startY - e.clientY; // 往上拖 → 變高
-      const maxW = window.innerWidth - 32;
-      const maxH = window.innerHeight - 96;
-      setState((s) => ({
-        ...s,
-        floatW: clamp(d.w + dx, MIN_W, maxW),
-        floatH: clamp(d.h + dy, MIN_H, maxH),
-      }));
-    }
+    const dx = d.startX - e.clientX; // 往左拖 → 變寬
+    const maxW = window.innerWidth - 48;
+    const next = clamp(d.w + dx, MIN_W, maxW);
+    setState((s) =>
+      isSidebar ? { ...s, sidebarW: next } : { ...s, floatW: next },
+    );
   };
 
   const onResizePointerUp = (e: React.PointerEvent) => {
@@ -197,15 +173,10 @@ function AssistantPanel({
       mode: s.mode === "sidebar" ? "floating" : "sidebar",
     }));
 
-  // 容器定位／尺寸。
+  // 容器寬度（兩型態皆滿版高度，僅寬度可調）。
   const style: React.CSSProperties = isSidebar
     ? { width: state.sidebarW }
-    : {
-        width: `min(${state.floatW}px, calc(100vw - 2rem))`,
-        ...(state.floatH != null
-          ? { height: state.floatH }
-          : { maxHeight: "calc(100svh - 7rem)" }),
-      };
+    : { width: `min(${state.floatW}px, calc(100vw - 2rem))` };
 
   return (
     <div
@@ -213,36 +184,22 @@ function AssistantPanel({
       style={style}
       className={cn(
         "fixed z-40 flex flex-col overflow-hidden bg-popover text-popover-foreground",
-        "animate-in fade-in",
+        "animate-in fade-in slide-in-from-right-4",
         isSidebar
-          ? "right-0 top-0 bottom-0 h-svh border-l border-border shadow-[-8px_0_24px_-12px_rgba(0,0,0,.18)] slide-in-from-right-4"
-          : "bottom-20 right-4 rounded-2xl border border-border shadow-lg zoom-in-95 slide-in-from-bottom-2 md:bottom-6 md:right-6",
+          ? "right-0 top-0 bottom-0 h-svh border-l border-border shadow-[-8px_0_24px_-12px_rgba(0,0,0,.18)]"
+          : "right-4 top-4 bottom-4 rounded-2xl border border-border shadow-lg md:right-6 md:top-6 md:bottom-6",
       )}
     >
-      {/* 縮放把手：floating → 左上角；sidebar → 左緣整條。 */}
-      {isSidebar ? (
-        <div
-          role="separator"
-          aria-label={t("assistantResize")}
-          title={t("assistantResize")}
-          onPointerDown={onResizePointerDown}
-          onPointerMove={onResizePointerMove}
-          onPointerUp={onResizePointerUp}
-          className="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize touch-none hover:bg-signal/30"
-        />
-      ) : (
-        <div
-          role="separator"
-          aria-label={t("assistantResize")}
-          title={t("assistantResize")}
-          onPointerDown={onResizePointerDown}
-          onPointerMove={onResizePointerMove}
-          onPointerUp={onResizePointerUp}
-          className="group absolute left-0 top-0 z-10 grid h-5 w-5 cursor-nwse-resize touch-none place-items-center"
-        >
-          <span className="h-2 w-2 rounded-br-sm border-l-2 border-t-2 border-ink-dim/50 transition-colors group-hover:border-signal" />
-        </div>
-      )}
+      {/* 縮放把手（兩型態共用）：左緣整條，往左拖變寬。 */}
+      <div
+        role="separator"
+        aria-label={t("assistantResize")}
+        title={t("assistantResize")}
+        onPointerDown={onResizePointerDown}
+        onPointerMove={onResizePointerMove}
+        onPointerUp={onResizePointerUp}
+        className="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize touch-none hover:bg-signal/30"
+      />
 
       <ModalHeader
         tenderId={tenderId}

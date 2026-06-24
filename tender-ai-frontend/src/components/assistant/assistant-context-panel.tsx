@@ -5,7 +5,13 @@
 // Fact / MeterRow / SectionLabel / SimilarCasesList，與標案詳情頁同一套視覺語彙。
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ExternalLink, FileSearch, Star } from "lucide-react";
+import {
+  Check,
+  CornerDownRight,
+  ExternalLink,
+  FileSearch,
+  Star,
+} from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
 import { trackEvent } from "@/lib/events";
@@ -17,11 +23,14 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { TierBadge } from "@/components/ui/tier-badge";
 import {
+  CAT_ICON,
+  CAT_KEY,
   Fact,
   MeterRow,
   SectionLabel,
   SimilarCasesList,
 } from "@/components/tenders/detail-bits";
+import { useAssistantBridge } from "./assistant-runtime-provider";
 
 interface AssistantContextPanelProps {
   /** 目前正在檢視的標案 id；null（首頁等非標案頁）→ 空態。 */
@@ -36,6 +45,7 @@ export function AssistantContextPanel({
 }: AssistantContextPanelProps) {
   const { t, lang } = useApp();
   const { tenders, isStarred, toggleStar, accept } = useAppData();
+  const bridge = useAssistantBridge();
   const view = tenderId ? tenders.find((x) => x.id === tenderId) : undefined;
 
   const [similar, setSimilar] = useState<SimilarTender[]>([]);
@@ -77,6 +87,16 @@ export function AssistantContextPanel({
 
   const starred = isStarred(view.id);
   const dleft = daysLeft(view.deadline);
+  // 類別：以 icon 形狀區分（房屋風格），點擊送一句該類別提問進左欄對話。
+  const CatIcon = CAT_ICON[view.category];
+  const catLabel = t(CAT_KEY[view.category]);
+  const catAsk = t("assistantCatAsk").replace("{cat}", catLabel);
+  // 「問小助手」建議提問（pill 按鈕）；留在本頁，回覆出現在左欄對話。
+  const asks = [
+    t("assistantAskFit"),
+    t("assistantAskCompare"),
+    t("assistantAskQualBudget"),
+  ];
   const deadlineTone =
     dleft < 0
       ? "text-ink-dim"
@@ -88,13 +108,27 @@ export function AssistantContextPanel({
 
   return (
     <div className="space-y-5 px-5 py-5">
-      {/* 頭部：層級 + 來源 + 標題 + 機關 */}
+      {/* 頭部：層級 + 來源 + 類別鈕 + 標題 + 機關 */}
       <header className="space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <TierBadge tier={view.tier} lang={lang} />
           <span className="text-[11px] text-ink-dim">
             {sourceByKey(view.source).shortName}
           </span>
+          {/* 類別 tag 按鈕：icon 形狀辨類別，點擊送一句該類別提問給小助手。 */}
+          <button
+            type="button"
+            onClick={() => bridge.send(catAsk)}
+            title={t("assistantCatHint")}
+            aria-label={t("assistantCatHint")}
+            className="group ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-muted transition-all hover:border-signal/40 hover:bg-accent hover:text-foreground active:scale-[.97]"
+          >
+            <CatIcon
+              size={12}
+              className="text-ink-dim transition-colors group-hover:text-signal"
+            />
+            {catLabel}
+          </button>
         </div>
         <h2 className="text-[16px] font-semibold leading-snug tracking-tight text-ink">
           {view.title}
@@ -122,6 +156,27 @@ export function AssistantContextPanel({
             value={view.supplierCoverage}
           />
           <MeterRow label={t("feasibility")} value={view.feasibility} />
+        </div>
+      </section>
+
+      {/* 問小助手：把「建議提問」做成可點 pill 按鈕，點擊直接送進左欄對話（留在本頁看回覆）。 */}
+      <section>
+        <SectionLabel>{t("assistantContextAsk")}</SectionLabel>
+        <div className="flex flex-wrap gap-2">
+          {asks.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => bridge.send(q)}
+              className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] text-ink-muted transition-all hover:border-signal/40 hover:bg-accent hover:text-foreground active:scale-[.97]"
+            >
+              <CornerDownRight
+                size={13}
+                className="text-ink-dim transition-colors group-hover:text-signal"
+              />
+              {q}
+            </button>
+          ))}
         </div>
       </section>
 
