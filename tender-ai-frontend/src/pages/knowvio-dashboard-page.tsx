@@ -14,7 +14,6 @@ import {
   MessageSquare,
   MoreHorizontal,
   Search,
-  Settings,
   SlidersHorizontal,
   Sparkles,
   Star,
@@ -23,6 +22,7 @@ import {
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
 import { daysLeft } from "@/lib/format";
+import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 
 /* =========================================================================
    Knowvio 風格儀表板（忠實複刻：淺色奶油底＋橘調＋柔影）
@@ -73,11 +73,6 @@ const TX = {
     startQuiz: "開始評分",
     live: "即時資料",
     demo: "示範資料",
-    upgradeTitle: "升級到",
-    pro: "Pro",
-    trialLeft: "試用剩 5 天！",
-    upgradeSub: "別失去你的篩選紀錄，試用結束前升級。",
-    upgradeNow: "立即升級",
   },
   en: {
     welcome: "Welcome Back Alex!",
@@ -119,11 +114,6 @@ const TX = {
     startQuiz: "Start Review",
     live: "Live",
     demo: "Demo",
-    upgradeTitle: "Upgrade to",
-    pro: "Pro",
-    trialLeft: "5 days left!",
-    upgradeSub: "Don't lose your filters, upgrade before trial ends.",
-    upgradeNow: "Upgrade Now",
   },
 } as const;
 
@@ -154,12 +144,12 @@ export function KnowvioDashboardPage() {
   }, [filteredTenders]);
 
   return (
-    <div className="kv min-h-screen w-full bg-[#e8eaed] p-4 text-[#111827] antialiased sm:p-6">
-      <div className="mx-auto flex max-w-[1240px] overflow-hidden rounded-[28px] bg-white shadow-[0_24px_60px_-20px_rgba(16,24,40,.25)]">
-        <KvSidebar tx={tx} />
+    <div className="kv min-h-screen w-full bg-[#e8eaed] p-3 text-[#111827] antialiased sm:p-5 lg:p-6">
+      <div className="mx-auto flex max-w-[1240px] overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_-20px_rgba(16,24,40,.25)] sm:rounded-[28px]">
+        <KvSidebar />
 
         {/* 主內容 */}
-        <main className="min-w-0 flex-1 bg-[#fafbfc] p-6 sm:p-7">
+        <main className="min-w-0 flex-1 bg-[#fafbfc] p-4 sm:p-6 lg:p-7">
           <TopWelcome tx={tx} />
 
           {/* Highlights 標頭 */}
@@ -253,6 +243,9 @@ export function KnowvioDashboardPage() {
           </div>
         </main>
       </div>
+
+      {/* 專案既有 AI 小助手（自包含浮動面板，含 runtime/引導/匯流排） */}
+      <AssistantLauncher />
     </div>
   );
 }
@@ -316,7 +309,7 @@ const NAV: {
   { icon: SlidersHorizontal, label: { zh: "規則", en: "Rules" } },
 ];
 
-function KvSidebar({ tx }: { tx: (typeof TX)["zh"] }) {
+function KvSidebar() {
   const { lang } = useApp();
   const L = lang === "en" ? "en" : "zh";
   return (
@@ -350,30 +343,6 @@ function KvSidebar({ tx }: { tx: (typeof TX)["zh"] }) {
         ))}
       </nav>
 
-      {/* 升級卡 */}
-      <div className="mt-5 rounded-2xl border border-[#eef0f3] bg-[#fafbfc] p-3.5">
-        <div className="flex items-center gap-1.5 text-[12px] font-semibold">
-          {tx.upgradeTitle}
-          <span className="rounded-md bg-gradient-to-br from-[#fb923c] to-[#f97316] px-1.5 py-px text-[10px] font-bold text-white">
-            {tx.pro}
-          </span>
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-[11px] font-medium text-[#9ca3af]">
-            {tx.trialLeft}
-          </span>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#eceef2]">
-            <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-[#fb923c] to-[#f97316]" />
-          </div>
-        </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-[#9ca3af]">
-          {tx.upgradeSub}
-        </p>
-        <button className="mt-3 w-full rounded-xl bg-[#111827] py-2 text-[12px] font-semibold text-white transition hover:bg-black">
-          {tx.upgradeNow}
-        </button>
-      </div>
-
       {/* 使用者 */}
       <div className="mt-auto flex items-center gap-2.5 rounded-xl border border-[#eef0f3] p-2.5">
         <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-[#fdba74] to-[#fb923c] text-[12px] font-bold text-white">
@@ -394,25 +363,27 @@ function KvSidebar({ tx }: { tx: (typeof TX)["zh"] }) {
 /* ----------------------------- 頂部歡迎列 ----------------------------- */
 function TopWelcome({ tx }: { tx: (typeof TX)["zh"] }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-[22px] font-bold tracking-tight">{tx.welcome}</h1>
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0">
+        <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
+          {tx.welcome}
+        </h1>
         <p className="mt-1 text-[13px] text-[#6b7280]">{tx.welcomeSub}</p>
       </div>
       <div className="flex items-center gap-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[#e7e9ee] bg-white px-3 py-2 lg:flex-none">
+          <Search size={15} className="shrink-0 text-[#9ca3af]" />
+          <input
+            placeholder={tx.searchPh}
+            className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[#9ca3af] lg:w-[200px] lg:flex-none"
+          />
+        </div>
         <IconBtn badge="9">
           <MessageSquare size={17} />
         </IconBtn>
         <IconBtn>
           <Bell size={17} />
         </IconBtn>
-        <div className="flex items-center gap-2 rounded-full border border-[#e7e9ee] bg-white px-3 py-2">
-          <Search size={15} className="text-[#9ca3af]" />
-          <input
-            placeholder={tx.searchPh}
-            className="w-[200px] bg-transparent text-[12px] outline-none placeholder:text-[#9ca3af]"
-          />
-        </div>
         <IconBtn>
           <MoreHorizontal size={17} />
         </IconBtn>
@@ -835,51 +806,56 @@ function DeadlineTable({
   }
 
   return (
-    <table className="w-full border-collapse text-left">
-      <thead>
-        <tr className="text-[11px] font-medium text-[#9ca3af]">
-          <th className="pb-2.5 font-medium">{tx.colTask}</th>
-          <th className="pb-2.5 font-medium">{tx.colDue}</th>
-          <th className="pb-2.5 font-medium">{tx.colType}</th>
-          <th className="pb-2.5 font-medium">{tx.colStatus}</th>
-          <th className="pb-2.5 text-right font-medium">{tx.colPriority}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => {
-          const sk = statusByIdx[i % 3];
-          return (
-            <tr key={r.id} className="border-t border-[#f1f2f5] text-[12.5px]">
-              <td className="py-3 pr-3">
-                <span className="flex items-center gap-2.5">
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: dotByTier[r.tier] }}
-                  />
-                  <span className="truncate font-medium text-[#111827]">
-                    {r.title}
+    <div className="-mx-1 overflow-x-auto px-1">
+      <table className="w-full min-w-[460px] border-collapse text-left">
+        <thead>
+          <tr className="text-[11px] font-medium text-[#9ca3af]">
+            <th className="pb-2.5 font-medium">{tx.colTask}</th>
+            <th className="pb-2.5 font-medium">{tx.colDue}</th>
+            <th className="pb-2.5 font-medium">{tx.colType}</th>
+            <th className="pb-2.5 font-medium">{tx.colStatus}</th>
+            <th className="pb-2.5 text-right font-medium">{tx.colPriority}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const sk = statusByIdx[i % 3];
+            return (
+              <tr
+                key={r.id}
+                className="border-t border-[#f1f2f5] text-[12.5px]"
+              >
+                <td className="py-3 pr-3">
+                  <span className="flex items-center gap-2.5">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: dotByTier[r.tier] }}
+                    />
+                    <span className="truncate font-medium text-[#111827]">
+                      {r.title}
+                    </span>
                   </span>
-                </span>
-              </td>
-              <td className="py-3 pr-3 font-mono text-[#6b7280]">
-                {r.deadline}
-              </td>
-              <td className="py-3 pr-3 text-[#6b7280]">{cat[r.category]}</td>
-              <td className="py-3 pr-3">
-                <span
-                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[sk]}`}
-                >
-                  {statusLabel[sk]}
-                </span>
-              </td>
-              <td className="py-3 text-right text-[12px] font-medium text-[#374151]">
-                {r.tier === "high" ? tx.prHigh : tx.prMid}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                </td>
+                <td className="py-3 pr-3 font-mono text-[#6b7280]">
+                  {r.deadline}
+                </td>
+                <td className="py-3 pr-3 text-[#6b7280]">{cat[r.category]}</td>
+                <td className="py-3 pr-3">
+                  <span
+                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[sk]}`}
+                  >
+                    {statusLabel[sk]}
+                  </span>
+                </td>
+                <td className="py-3 text-right text-[12px] font-medium text-[#374151]">
+                  {r.tier === "high" ? tx.prHigh : tx.prMid}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
