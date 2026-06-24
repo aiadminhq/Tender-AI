@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Ban,
   Check,
+  Clock,
   ExternalLink,
   Link,
   Mail,
@@ -182,10 +183,9 @@ export function TenderDrawer({
     >
       {tender && (
         <div className="space-y-4">
-          {/* 標題列下方：標籤列 + 可行性徽章 + 收藏鈕 */}
+          {/* 標題列下方：標籤列 + 收藏鈕（可行性分數移入下方快照格） */}
           <div className="flex flex-wrap items-center gap-2">
             <LabelTags tender={tender} lang={lang} t={t} />
-            <FeasibilityBadge result={feasOf(tender)} t={t} />
             <button
               type="button"
               onClick={() => toggleStar(tender.id)}
@@ -214,11 +214,40 @@ export function TenderDrawer({
           <div className="grid gap-6 md:grid-cols-3">
             {/* 左欄：主資訊（2/3） */}
             <div className="space-y-5 md:col-span-2">
-              {/* 截止日警示條 */}
-              <DaysLeftBanner daysLeft={dleft} t={t} />
-
-              {/* 可行性量表 */}
-              <MeterRow label={t("feasibility")} value={feasOf(tender).score} />
+              {/* 快照格：可行性分數 + 漸層條（hover 看加減項拆解）＋ 急迫度。
+                  合併原本散落的可行性徽章／量表／截止警示，消除重複顯示。 */}
+              <div
+                title={`${t("feasBreakdown")}: ${feasTip}`}
+                className="rounded-md border border-border bg-surface-1 px-4 py-3.5"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-ink-dim">
+                    {t("feasibility")}
+                  </span>
+                  <span className="tnum text-[22px] font-semibold leading-none text-signal">
+                    {feasOf(tender).score}
+                  </span>
+                </div>
+                <FeasibilityMeter
+                  value={feasOf(tender).score}
+                  className="mt-2.5"
+                />
+                {dleft < 7 && (
+                  <div
+                    className={cn(
+                      "mt-3 flex items-center gap-1.5 text-[12px] font-medium",
+                      dleft < 0 ? "text-ink-dim" : "text-danger",
+                    )}
+                  >
+                    <Clock size={13} className="shrink-0" />
+                    <span>
+                      {dleft < 0
+                        ? t("deadlinePassed")
+                        : `${dleft} ${t("daysLeft")}`}
+                    </span>
+                  </div>
+                )}
+              </div>
 
               {/* 下一步 */}
               {tender.nextStep && (

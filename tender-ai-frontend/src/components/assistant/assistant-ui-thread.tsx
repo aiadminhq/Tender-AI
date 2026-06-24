@@ -72,7 +72,9 @@ const canFollowUp = (s: AssistantState) => {
   const msgs = s.thread.messages;
   const last = msgs[msgs.length - 1];
   if (!last || last.role !== "assistant") return false;
-  const meta = last.metadata?.custom as AssistantCustomMeta | undefined;
+  const meta = last.metadata?.custom as unknown as
+    | AssistantCustomMeta
+    | undefined;
   if (meta?.error) return false;
   const text = last.content
     .map((p) => (p.type === "text" ? p.text : ""))
