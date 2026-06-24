@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { fetchTenders, fetchSavedSearches, postSavedSearch } from "@/lib/api";
+import {
+  fetchTenders,
+  fetchSavedSearches,
+  postSavedSearch,
+  fetchUserDecisions,
+} from "@/lib/api";
 import type { FilterState } from "@/types/domain";
 
 function makeItem(id: number) {
@@ -146,5 +151,97 @@ describe("saved-searches client", () => {
     expect(await postSavedSearch("x", FILTER)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllEnvs();
+  });
+});
+
+describe("fetchUserDecisions（決策回顧水合）", () => {
+  it("snake→camel 映射，且 tender_id(number) → tenderId(String) 對齊前端 id", async () => {
+    const fetchMock = vi.fn(async (input: string) => {
+      expect(input).toContain("/me/tender-decisions");
+      return {
+        ok: true,
+        json: async () => ({
+          user_id: 3,
+          counts: { accepted: 1, starred: 0, skipped: 1 },
+          decisions: [
+            {
+              tender_id: 42,
+              disposition: "skipped",
+              title: "舊大樓拆除",
+              org: "某機關",
+              tier: "low",
+              deadline_iso: "2026-07-01",
+              reason: "預算過高",
+              by: "承辦小明",
+              at: "2026-06-20T08:00:00",
+            },
+            {
+              tender_id: 7,
+              disposition: "accepted",
+              title: "校舍整修",
+              org: null,
+              tier: null,
+              deadline_iso: null,
+              reason: null,
+              by: null,
+              at: null,
+            },
+          ],
+        }),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchUserDecisions();
+    expect(res.userId).toBe(3);
+    expect(res.counts).toEqual({ accepted: 1, starred: 0, skipped: 1 });
+    expect(res.decisions[0]).toEqual({
+      tenderId: "42", // number → String（對齊 dispositionOf(tender.id)）
+      disposition: "skipped",
+      title: "舊大樓拆除",
+      org: "某機關",
+      tier: "low",
+      deadline: "2026-07-01",
+      reason: "預算過高",
+      by: "承辦小明",
+      at: "2026-06-20T08:00:00",
+    });
+    // 空值（org/tier/deadline_iso/reason/by/at）映射為 null／空字串
+    expect(res.decisions[1]).toEqual({
+      tenderId: "7",
+      disposition: "accepted",
+      title: "校舍整修",
+      org: null,
+      tier: null,
+      deadline: "",
+      reason: null,
+      by: null,
+      at: null,
+    });
+  });
+
+  it("counts 缺漏時各處置補 0；decisions 缺漏回空陣列", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        ({
+          ok: true,
+          json: async () => ({ user_id: null, counts: null }),
+        }) as Response,
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await fetchUserDecisions();
+    expect(res.counts).toEqual({ accepted: 0, starred: 0, skipped: 0 });
+    expect(res.decisions).toEqual([]);
+  });
+
+  it("後端非 2xx 時 throw（由水合呼叫端 fallback 至本地）", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 500 }) as Response),
+    );
+    await expect(fetchUserDecisions()).rejects.toThrow(
+      "tender-decisions API 500",
+    );
   });
 });

@@ -132,6 +132,33 @@ class AbandonedKeywordCandidatesOut(BaseModel):
     candidates: list[AbandonedRootCandidate] = Field(default_factory=list)
 
 
+class TenderDecisionItem(BaseModel):
+    """本人對單一標案的處置（決策回顧 / 評分管理用，唯讀）。
+
+    ``disposition`` 對齊前端 ``Disposition``：accepted（打勾承接）／starred（星星收藏）／
+    skipped（叉叉淘汰）。``reason``／``by``／``at`` 主要用於淘汰案：``by`` 為登入帳號名
+    （具名貢獻者，Layer B 白名單內共享）；``at`` 為 ISO datetime。
+    """
+
+    tender_id: int
+    disposition: Literal["accepted", "starred", "skipped"]
+    title: str
+    org: str | None = None
+    tier: str | None = None  # 取最新每日快照（high/mid/low/priority）；無快照為 None
+    deadline_iso: str | None = None  # ISO date（YYYY-MM-DD）
+    reason: str | None = None  # 淘汰理由（速覽 pass payload.reason → 評估 rationale）
+    by: str | None = None  # 具名貢獻者（登入帳號名）
+    at: str | None = None  # 決策時間（ISO datetime）
+
+
+class TenderDecisionsOut(BaseModel):
+    """本人標案處置清單（由 Layer B 行為訊號重建，唯讀）。"""
+
+    user_id: int | None = None
+    counts: dict[str, int] = Field(default_factory=dict)  # {accepted, starred, skipped}
+    decisions: list[TenderDecisionItem] = Field(default_factory=list)
+
+
 class TenderReasoningOut(BaseModel):
     """單一標案的可中標推理。"""
 

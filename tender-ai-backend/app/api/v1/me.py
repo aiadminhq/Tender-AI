@@ -18,6 +18,7 @@ from app.schemas.reasoning import (
     AbandonedKeywordCandidatesOut,
     CriteriaProfileOut,
     ManualKeywordIn,
+    TenderDecisionsOut,
 )
 from app.schemas.user import (
     ConsentIn,
@@ -30,6 +31,7 @@ from app.services import abandoned_keywords as akc_svc
 from app.services import account as asvc
 from app.services import manual_keywords as mksvc
 from app.services import reasoning as reasoning_svc
+from app.services import tender_decisions as td_svc
 
 router = APIRouter(tags=["me"])
 
@@ -104,6 +106,23 @@ async def get_abandoned_keyword_candidates(
         session, user.id, min_count=min_count, limit=limit
     )
     return AbandonedKeywordCandidatesOut.model_validate(data)
+
+
+@router.get("/me/tender-decisions", response_model=TenderDecisionsOut)
+async def get_tender_decisions(
+    user_id: int | None = None,
+    limit: int = 200,
+    session: AsyncSession = Depends(get_session),
+) -> TenderDecisionsOut:
+    """決策回顧 / 評分管理：彙整本人按過星星／打勾／叉叉的標案處置清單（唯讀）。
+
+    由 Layer B 行為訊號（速覽 pass 事件、tender_user_state 狀態／收藏／星等）重建，
+    供前端「決策回顧」頁水合後重新檢視存留／淘汰。此端點不寫任何權重／狀態（唯讀）。
+    """
+    user = await asvc.get_me(session, user_id)
+    await session.commit()  # 佔位帳號可能於此建立
+    data = await td_svc.user_tender_decisions(session, user.id, limit=limit)
+    return TenderDecisionsOut.model_validate(data)
 
 
 @router.post("/me/keywords", response_model=CriteriaProfileOut)

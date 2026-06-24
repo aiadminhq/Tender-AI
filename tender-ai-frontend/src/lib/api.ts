@@ -776,6 +776,85 @@ export async function fetchAbandonedKeywordCandidates(opts?: {
   };
 }
 
+// ── 決策回顧 / 標案評分管理：本人按過星星／打勾／叉叉的處置清單（唯讀；GET /me/tender-decisions） ──
+// P4 真資料端點：由 Layer B 行為訊號（速覽 pass 事件、tender_user_state 狀態/收藏/星等）重建
+// 三處置：accepted（打勾承接）／starred（星星收藏）／skipped（叉叉淘汰），對齊前端 dispositionOf。
+// 供「決策回顧」頁水合後重新檢視存留／淘汰；後端唯讀、不寫任何權重／狀態。
+export type DecisionDisposition = "accepted" | "starred" | "skipped";
+
+export interface UserDecision {
+  tenderId: string; // 後端 number → String，對齊前端 tender.id
+  disposition: DecisionDisposition;
+  title: string;
+  org: string | null;
+  tier: string | null; // high/mid/low/priority；無快照為 null
+  deadline: string; // ISO date（YYYY-MM-DD），與 adapt() 的 deadline 一致
+  reason: string | null; // 淘汰理由（skipped 才有）
+  by: string | null; // 具名貢獻者（登入帳號名）
+  at: string | null; // 決策時間（ISO datetime）
+}
+export interface UserDecisions {
+  userId: number | null;
+  counts: { accepted: number; starred: number; skipped: number };
+  decisions: UserDecision[];
+}
+interface UserDecisionRaw {
+  tender_id: number;
+  disposition: DecisionDisposition;
+  title: string;
+  org: string | null;
+  tier: string | null;
+  deadline_iso: string | null;
+  reason: string | null;
+  by: string | null;
+  at: string | null;
+}
+interface UserDecisionsRaw {
+  user_id: number | null;
+  counts: Record<string, number> | null;
+  decisions: UserDecisionRaw[];
+}
+
+/**
+ * 抓取本人的標案處置清單（決策回顧頁水合用）。
+ * 後端唯讀、離線、不寫任何權重／狀態。後端不可達／錯誤時 throw，由呼叫端 fallback。
+ */
+export async function fetchUserDecisions(opts?: {
+  limit?: number;
+  signal?: AbortSignal;
+}): Promise<UserDecisions> {
+  const params = new URLSearchParams();
+  if (currentUserId != null) params.set("user_id", String(currentUserId));
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  const q = params.toString();
+  const url = `${API_BASE}/me/tender-decisions${q ? `?${q}` : ""}`;
+  const res = await fetch(url, {
+    headers: authHeaders(),
+    signal: opts?.signal,
+  });
+  if (!res.ok) throw new Error(`tender-decisions API ${res.status}`);
+  const d = (await res.json()) as UserDecisionsRaw;
+  return {
+    userId: d.user_id,
+    counts: {
+      accepted: d.counts?.accepted ?? 0,
+      starred: d.counts?.starred ?? 0,
+      skipped: d.counts?.skipped ?? 0,
+    },
+    decisions: (d.decisions ?? []).map((x) => ({
+      tenderId: String(x.tender_id),
+      disposition: x.disposition,
+      title: x.title,
+      org: x.org ?? null,
+      tier: x.tier ?? null,
+      deadline: x.deadline_iso ?? "",
+      reason: x.reason ?? null,
+      by: x.by ?? null,
+      at: x.at ?? null,
+    })),
+  };
+}
+
 // ── 標案判斷（✓ 可行／✗ 不可行／⭐ 精選）→ Layer B＋即時 B→C 學習 ──────────
 // 後端 POST /tenders/{id}/evaluate（app/api/v1/behavior.py）：upsert Evaluation
 // ＋發 judgment 事件 → 即時重算關鍵字權重（個人線＋consent-aware 團隊線，append-only）。

@@ -44,6 +44,7 @@ import {
   postSave,
   fetchSavedSearches,
   postSavedSearch,
+  fetchUserDecisions,
   type EvaluateResult,
   type FeasibleVerdict,
 } from "@/lib/api";
@@ -695,6 +696,84 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         /* 雲端讀取失敗：維持 localStorage，不影響 UI */
+      });
+    return () => ac.abort();
+  }, []);
+
+  // 決策回顧水合（P4 真資料端點）：由後端 Layer B 行為訊號重建本人的星星／打勾／叉叉處置，
+  // 補進 starred / skipped 與具名淘汰理由。原則：localStorage 為真相，**只填空缺**（local-wins）——
+  // 已在本地分類（starred/skipped/有進行中專案）的標案不被遠端改判；理由僅在本地缺漏時補上。
+  // accepted 由看板 projects 管理，不在此水合建立專案卡（維持既有範圍）。
+  // 後端唯讀、不寫任何權重／狀態；後端不可達時靜默維持本地（不影響純 mock 模式）。
+  useEffect(() => {
+    if (import.meta.env.VITE_USE_API === "false") return;
+    const ac = new AbortController();
+    fetchUserDecisions({ signal: ac.signal })
+      .then((data) => {
+        if (!data.decisions.length) return;
+        // mount 當下的本地真相（直接讀 localStorage，避免把 state 列為 effect 依賴）
+        const localStarred = load<string[]>("starred", []);
+        const localSkipped = load<string[]>("skipped", []);
+        const localProjects = load<TenderProject[]>("projects", []);
+        const classified = new Set<string>([
+          ...localStarred,
+          ...localSkipped,
+          ...localProjects
+            .filter((p) => p.tenderId && p.stage !== "abandoned")
+            .map((p) => p.tenderId as string),
+        ]);
+
+        const addSkip: string[] = [];
+        const addStar: string[] = [];
+        const reasonFills: Record<string, DiscardReason> = {};
+        for (const d of data.decisions) {
+          // 淘汰理由：只要遠端有具名理由就列為候選（稍後僅填本地缺漏），與分類判定獨立。
+          if (d.disposition === "skipped" && d.reason?.trim() && d.by) {
+            reasonFills[d.tenderId] = {
+              reason: d.reason,
+              by: d.by,
+              at: d.at ?? "",
+            };
+          }
+          if (classified.has(d.tenderId)) continue; // 已本地分類：local-wins
+          if (d.disposition === "skipped") addSkip.push(d.tenderId);
+          else if (d.disposition === "starred") addStar.push(d.tenderId);
+        }
+
+        if (addSkip.length) {
+          setSkipped((prev) => {
+            const next = new Set(prev);
+            for (const id of addSkip) next.add(id);
+            save("skipped", [...next]);
+            return next;
+          });
+        }
+        if (addStar.length) {
+          setStarred((prev) => {
+            const next = new Set(prev);
+            for (const id of addStar) next.add(id);
+            save("starred", [...next]);
+            return next;
+          });
+        }
+        if (Object.keys(reasonFills).length) {
+          setDiscardReasons((prev) => {
+            const next = { ...prev };
+            let changed = false;
+            for (const [id, r] of Object.entries(reasonFills)) {
+              if (!next[id]) {
+                next[id] = r;
+                changed = true;
+              }
+            }
+            if (!changed) return prev;
+            save("discard-reason", next);
+            return next;
+          });
+        }
+      })
+      .catch(() => {
+        /* 後端不可達：維持 localStorage，不影響 UI */
       });
     return () => ac.abort();
   }, []);
