@@ -38,6 +38,13 @@
   --on-primary: #000000;
   /* 卡片陰影（暗色維持近乎全平，僅極輕分層） */
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  /* 分層 elevation（暗色背景吃光，靠較高 key alpha＋負 spread 收成俐落投影，
+     非 ghost-card 暈染）：rest 靜置 → hover 抬升 → overlay 浮層。 */
+  --elev-rest: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elev-hover:
+    0 6px 16px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --elev-overlay:
+    0 24px 48px -12px rgba(0, 0, 0, 0.7), 0 8px 16px -8px rgba(0, 0, 0, 0.5);
 
   /* ---- shadcn 語意映射（白 pill 主行動 = primary） ---- */
   --background: var(--canvas);
@@ -87,6 +94,16 @@
   --on-primary: #ffffff;
   /* 卡片軟陰影（房規：僅些微陰影） */
   --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  /* 分層 elevation（淺色）：rest 守房規等級的些微陰影；hover 用負 spread 收成
+     俐落抬升（blur < 16px，不觸 ghost-card 反模式）；overlay 給浮層明確漂浮感。 */
+  --elev-rest:
+    0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 1px rgba(16, 24, 40, 0.04);
+  --elev-hover:
+    0 6px 16px -6px rgba(16, 24, 40, 0.16),
+    0 2px 5px -2px rgba(16, 24, 40, 0.08);
+  --elev-overlay:
+    0 24px 48px -12px rgba(16, 24, 40, 0.22),
+    0 8px 16px -8px rgba(16, 24, 40, 0.12);
 
   /* Knowvio 主行動 = 橙 pill（淺色覆寫，暗色仍為白 pill） */
   --primary: var(--signal);
@@ -142,6 +159,11 @@
   --radius-lg: calc(var(--radius) + 4px);
   --radius-xl: calc(var(--radius) + 10px);
 
+  /* 動效曲線：ease-out 指數族（房規：無 bounce／elastic）。
+     暴露成 Tailwind ease-* 工具類（ease-out-quart / ease-out-quint）。 */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+
   --font-sans:
     "Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui,
     -apple-system, "Segoe UI", sans-serif;
@@ -168,6 +190,19 @@ html[lang="en"] {
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  /* 動效可及性（房規必備）：使用者要求減少動態時，抬升／浮層仍即時切換，
+     僅關閉位移／縮放與過場時長，避免暈眩。 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   html {

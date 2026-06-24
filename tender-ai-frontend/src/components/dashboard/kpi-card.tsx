@@ -37,7 +37,7 @@ export function KpiCard({
   spark?: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--card-shadow)] transition-colors duration-150 hover:border-ink-dim/30">
+    <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--elev-rest)] transition-[box-shadow,transform,border-color] duration-200 ease-out-quart hover:-translate-y-0.5 hover:border-ink-dim/30 hover:shadow-[var(--elev-hover)]">
       <div className="flex items-center gap-2">
         <span
           className={cn(

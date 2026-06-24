@@ -46,7 +46,7 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative flex h-full w-full flex-col border-l border-border bg-popover shadow-2xl animate-in slide-in-from-right duration-200",
+          "relative flex h-full w-full flex-col border-l border-border bg-popover shadow-[var(--elev-overlay)] animate-in slide-in-from-right duration-200 ease-out",
           width,
         )}
       >

@@ -46,7 +46,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative flex max-h-[90vh] w-full max-w-[95vw] flex-col rounded-xl border border-border shadow-[0_16px_48px_-16px_rgba(0,0,0,0.3)] animate-in fade-in zoom-in-95 duration-200",
+          "relative flex max-h-[90vh] w-full max-w-[95vw] flex-col rounded-xl border border-border shadow-[var(--elev-overlay)] animate-in fade-in zoom-in-95 duration-200 ease-out",
           surfaceClassName,
           width,
         )}
