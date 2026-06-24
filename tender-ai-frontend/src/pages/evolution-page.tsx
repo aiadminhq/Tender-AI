@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { Brain, RefreshCw } from "lucide-react";
+import {
+  Brain,
+  CircleCheck,
+  CircleSlash,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Repeat,
+} from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import {
   fetchEvolutionStatus,
   runEvolution,
@@ -116,22 +125,35 @@ export function EvolutionPage() {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  <Stat label={t("evoTotalRuns")} value={data.totalRuns} />
-                  <Stat
+                  <KpiCard
+                    label={t("evoTotalRuns")}
+                    value={data.totalRuns}
+                    icon={Repeat}
+                    accent="neutral"
+                  />
+                  <KpiCard
                     label={t("evoSamplesFeasible")}
                     value={data.latest.feasibleSamples}
+                    icon={CircleCheck}
+                    accent="high"
                   />
-                  <Stat
+                  <KpiCard
                     label={t("evoSamplesInfeasible")}
                     value={data.latest.infeasibleSamples}
+                    icon={CircleSlash}
+                    accent="low"
                   />
-                  <Stat
+                  <KpiCard
                     label={t("evoKeywordsAdded")}
                     value={data.latest.keywordsAdded}
+                    icon={Plus}
+                    accent="signal"
                   />
-                  <Stat
+                  <KpiCard
                     label={t("evoKeywordsUpdated")}
                     value={data.latest.keywordsUpdated}
+                    icon={Pencil}
+                    accent="priority"
                   />
                 </div>
               </section>
@@ -185,17 +207,6 @@ export function EvolutionPage() {
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface-1 px-3 py-2.5">
-      <p className="tnum text-[20px] font-semibold tracking-tight text-ink">
-        {value}
-      </p>
-      <p className="mt-0.5 text-[11px] text-ink-dim">{label}</p>
     </div>
   );
 }
