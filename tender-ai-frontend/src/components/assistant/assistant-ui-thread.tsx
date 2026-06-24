@@ -5,7 +5,7 @@
 //
 // 設計約束（見專案 CLAUDE.md house style／DESIGN.md）：單色面 + 單一 signal 強調色，
 // 類別差異一律靠「icon 形狀」而非彩色色票（不得疊加第二個彩色 accent）。
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BookOpen,
   Check,
@@ -221,6 +221,20 @@ function AssistantMessage() {
   const { sources, error, preference, preferenceState } = useMessageMeta();
   const sourceCount = sources?.length ?? 0;
 
+  // 本則回答已引用的標案（id→標題），供 RichText 把答案內文的「#<id> 標題」連到詳情頁。
+  // 只認已引用的 id，確保不會連到不存在／未檢索的案子（死連結）。
+  const tenderRefs = useMemo(() => {
+    const seen = new Set<number>();
+    const refs: { id: number; title: string }[] = [];
+    for (const s of sources ?? []) {
+      if (s.tenderId != null && !seen.has(s.tenderId)) {
+        seen.add(s.tenderId);
+        refs.push({ id: s.tenderId, title: s.title });
+      }
+    }
+    return refs;
+  }, [sources]);
+
   // 串流期間（尚無答案文字）改顯示「正在依 N 筆證據作答…」的 grounding 行，
   // 而非把整面來源 chip 牆傾倒在 loading 卡下方（這正是先前「割裂」的根因）。
   const loadingLabel =
@@ -245,7 +259,7 @@ function AssistantMessage() {
             {error ? (
               <p className="text-[13px] leading-relaxed">{text}</p>
             ) : (
-              <RichText text={text} />
+              <RichText text={text} tenderRefs={tenderRefs} />
             )}
           </div>
         ) : (
