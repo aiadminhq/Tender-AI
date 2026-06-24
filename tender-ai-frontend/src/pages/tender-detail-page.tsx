@@ -399,7 +399,14 @@ export function TenderDetailPage() {
 
           {/* SL3 為什麼·推理：可中標判準吻合度 + 逐條依據 + 判準輪廓 */}
           {reasoning && (
-            <ReasoningPanel reasoning={reasoning} lang={lang} t={t} />
+            <ReasoningPanel
+              reasoning={reasoning}
+              lang={lang}
+              t={t}
+              onProfileChange={(profile) =>
+                setReasoning((r) => (r ? { ...r, profile } : r))
+              }
+            />
           )}
 
           {/* 註記 */}

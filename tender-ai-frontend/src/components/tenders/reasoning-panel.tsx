@@ -1,6 +1,8 @@
-import { Brain, Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { Brain, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import type { Lang, TextKey } from "@/i18n/strings";
 import type {
+  CriteriaProfile,
   ReasonCode,
   ReasonDirection,
   ReasonVerdict,
@@ -8,7 +10,11 @@ import type {
 } from "@/types/domain";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/tenders/detail-bits";
+import { postKeywordOverride } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+// 三區塊對應後端覆寫 kind（見 app/schemas/reasoning.py ManualKeywordIn）。
+type KwKind = "positive" | "negative" | "engaged";
 
 // SL3「為什麼·推理」面板：把後端可解釋推理（fit + reason codes + 判準輪廓）
 // 視覺化。回應願景「推理使用者衡量可中標的標準是基於什麼因素與關係」。
@@ -90,12 +96,35 @@ export function ReasoningPanel({
   reasoning,
   lang,
   t,
+  onProfileChange,
 }: {
   reasoning: TenderReasoning;
   lang: Lang;
   t: (k: TextKey) => string;
+  // 手動覆寫關鍵字後，回傳合併後的最新判準輪廓給上層更新（顯示用；計分另計）。
+  onProfileChange?: (profile: CriteriaProfile) => void;
 }) {
   const { criteriaFit, verdict, headline, reasons, profile } = reasoning;
+  // 進行中的覆寫（term#kind），用來鎖住該 tag／輸入避免重複送出。
+  const [pending, setPending] = useState<string | null>(null);
+
+  // 互動：手動 add／remove 一個關鍵字 → 後端回傳合併後輪廓 → 通知上層。
+  // 唯讀（未提供 onProfileChange）時不掛任何互動，維持原純展示行為。
+  const interactive = typeof onProfileChange === "function";
+  async function mutate(term: string, kind: KwKind, action: "add" | "remove") {
+    const trimmed = term.trim();
+    if (!trimmed || !onProfileChange) return;
+    const key = `${trimmed}#${kind}#${action}`;
+    setPending(key);
+    try {
+      const next = await postKeywordOverride(trimmed, kind, action);
+      onProfileChange(next);
+    } catch {
+      /* 失敗不就地回滾畫面；下次重整或重試 */
+    } finally {
+      setPending((p) => (p === key ? null : p));
+    }
+  }
   const confKey: TextKey =
     profile.confidence === "high"
       ? "confHigh"
@@ -173,25 +202,45 @@ export function ReasoningPanel({
           {t("reasoningEvents")}
         </p>
 
-        {profile.engagedCategories.length > 0 && (
+        {/* 互動模式：三區塊恆顯示（含「+ 新增」框）；唯讀模式維持原本「有才顯示」。
+            迴避(neg)＝「負分一律由人手動給」的唯一合規路徑（系統不得自動產生負分）。 */}
+        {(interactive || profile.engagedCategories.length > 0) && (
           <ProfileTagRow
             label={t("reasoningEngaged")}
             tags={profile.engagedCategories}
             tone="signal"
+            kind="engaged"
+            addLabel={t("reasoningKwAddEngaged")}
+            t={t}
+            pending={pending}
+            onAdd={interactive ? mutate : undefined}
+            onRemove={interactive ? mutate : undefined}
           />
         )}
-        {profile.topKeywordsPositive.length > 0 && (
+        {(interactive || profile.topKeywordsPositive.length > 0) && (
           <ProfileTagRow
             label={t("reasoningKwPos")}
             tags={profile.topKeywordsPositive}
             tone="pos"
+            kind="positive"
+            addLabel={t("reasoningKwAddPos")}
+            t={t}
+            pending={pending}
+            onAdd={interactive ? mutate : undefined}
+            onRemove={interactive ? mutate : undefined}
           />
         )}
-        {profile.topKeywordsNegative.length > 0 && (
+        {(interactive || profile.topKeywordsNegative.length > 0) && (
           <ProfileTagRow
             label={t("reasoningKwNeg")}
             tags={profile.topKeywordsNegative}
             tone="neg"
+            kind="negative"
+            addLabel={t("reasoningKwAddNeg")}
+            t={t}
+            pending={pending}
+            onAdd={interactive ? mutate : undefined}
+            onRemove={interactive ? mutate : undefined}
           />
         )}
         {budgetRange && (
@@ -213,10 +262,22 @@ function ProfileTagRow({
   label,
   tags,
   tone,
+  kind,
+  addLabel,
+  t,
+  pending,
+  onAdd,
+  onRemove,
 }: {
   label: string;
   tags: string[];
   tone: "signal" | "pos" | "neg";
+  kind: KwKind;
+  addLabel: string;
+  t: (k: TextKey) => string;
+  pending: string | null;
+  onAdd?: (term: string, kind: KwKind, action: "add" | "remove") => void;
+  onRemove?: (term: string, kind: KwKind, action: "add" | "remove") => void;
 }) {
   const cls =
     tone === "pos"
@@ -224,21 +285,93 @@ function ProfileTagRow({
       : tone === "neg"
         ? "border-tier-low/40 text-tier-low"
         : "border-signal/40 text-signal";
+  const interactive = Boolean(onAdd || onRemove);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  function submitAdd() {
+    const term = draft.trim();
+    if (term && onAdd) onAdd(term, kind, "add");
+    setDraft("");
+    setAdding(false);
+  }
+
   return (
     <div className="mt-2">
       <div className="mb-1 text-[11px] text-ink-dim">{label}</div>
-      <div className="flex flex-wrap gap-1.5">
-        {tags.map((tg) => (
-          <span
-            key={tg}
-            className={cn(
-              "rounded-full border bg-surface-1 px-2 py-0.5 text-[11px]",
-              cls,
-            )}
-          >
-            {tg}
-          </span>
-        ))}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {tags.map((tg) => {
+          const busy = pending === `${tg}#${kind}#remove`;
+          return (
+            <span
+              key={tg}
+              className={cn(
+                "group inline-flex items-center gap-1 rounded-full border bg-surface-1 px-2 py-0.5 text-[11px]",
+                cls,
+                busy && "opacity-50",
+              )}
+            >
+              {tg}
+              {onRemove && (
+                <button
+                  type="button"
+                  aria-label={`${t("reasoningKwRemove")}：${tg}`}
+                  title={t("reasoningKwRemove")}
+                  disabled={busy}
+                  onClick={() => onRemove(tg, kind, "remove")}
+                  className={cn(
+                    "grid size-3.5 place-items-center rounded-full opacity-0 transition",
+                    "hover:bg-current/10 focus-visible:opacity-100 focus-visible:outline-none",
+                    "group-hover:opacity-70 hover:opacity-100",
+                  )}
+                >
+                  <Minus size={11} className="shrink-0" />
+                </button>
+              )}
+            </span>
+          );
+        })}
+
+        {interactive &&
+          (adding ? (
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={submitAdd}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitAdd();
+                } else if (e.key === "Escape") {
+                  setDraft("");
+                  setAdding(false);
+                }
+              }}
+              placeholder={t("reasoningKwHint")}
+              className={cn(
+                "h-[22px] w-36 rounded-full border bg-surface-1 px-2 text-[11px]",
+                "text-ink placeholder:text-ink-dim/70",
+                "border-signal/50 outline-none focus-visible:ring-1 focus-visible:ring-signal/40",
+              )}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              title={addLabel}
+              aria-label={addLabel}
+              className={cn(
+                "inline-flex items-center gap-0.5 rounded-full border border-dashed",
+                "border-border bg-transparent px-2 py-0.5 text-[11px] text-ink-dim",
+                "transition hover:border-ink-dim/60 hover:text-ink-muted",
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-signal/40",
+              )}
+            >
+              <Plus size={11} className="shrink-0" />
+              {t("reasoningKwAdd")}
+            </button>
+          ))}
       </div>
     </div>
   );

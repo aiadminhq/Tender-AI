@@ -575,6 +575,30 @@ export async function fetchReasoningProfile(
   }
 }
 
+/**
+ * 推理卡手動關鍵字覆寫（Phase 2）：在「為什麼·推理」卡上親手 add／remove 一個
+ * 偏好／迴避／常點開的詞。後端 POST /me/keywords，回傳合併覆寫後的最新判準輪廓。
+ *
+ * kind=negative（迴避）即「負分一律由人手動給」的唯一合規路徑（系統不得自動產生
+ * 負分）。個人化線（Layer B）只用本人資料、依登入帳號具名，未登入則落到後端預設
+ * 使用者。失敗時 throw，由呼叫端決定如何呈現（不就地回滾畫面）。
+ */
+export async function postKeywordOverride(
+  term: string,
+  kind: "positive" | "negative" | "engaged",
+  action: "add" | "remove",
+  signal?: AbortSignal,
+): Promise<CriteriaProfile> {
+  const res = await fetch(`${API_BASE}/me/keywords`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(withUser({ term, kind, action })),
+    signal,
+  });
+  if (!res.ok) throw new Error(`keyword override API ${res.status}`);
+  return adaptProfile((await res.json()) as CriteriaProfileRaw);
+}
+
 // ── 行為回寫（Layer B 共享學習迴圈，fire-and-forget） ──────────────
 // 後端 app/api/v1/behavior.py。Layer B 在白名單(@hqdesign.tw)合作範圍內共享，
 // 供同事與 AI/agent 互相學習。白名單帳號登入後由 setCurrentUserId 注入 user_id，
