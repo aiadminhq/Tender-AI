@@ -332,6 +332,20 @@ export const STRINGS = {
     tagWeight: "加權",
     tagDownrank: "降權",
     tagAutodrop: "自動剔除",
+    // 建議迴避字根（由本人淘汰行為聚合；P3 規則字根連動）
+    rulesAbandonedTitle: "建議迴避字根",
+    rulesAbandonedDesc:
+      "從你淘汰過的標案標題自動拆解出常見字根／詞。點「加入迴避」才會生效——系統不會自動替你扣分。",
+    rulesAbandonedEmpty:
+      "尚無足夠的淘汰紀錄。多在速覽配對按「✗ 淘汰」或把標案標記為放棄,這裡就會浮現可迴避的字根。",
+    rulesAbandonedError: "建議載入失敗,稍後再試。",
+    rulesAbandonedLoading: "正在分析你淘汰過的標案…",
+    rulesAbandonedAdd: "加入迴避",
+    rulesAbandonedAdded: "已加入",
+    rulesAbandonedRefresh: "重新整理",
+    rulesAbandonedCountTip: "出現在幾件你淘汰的標案",
+    rulesKindWord: "詞",
+    rulesKindRoot: "字根",
     // connector states
     connected: "已連線",
     unbound: "未綁定",
@@ -1006,6 +1020,19 @@ export const STRINGS = {
     tagWeight: "Boost",
     tagDownrank: "Lower",
     tagAutodrop: "Auto-drop",
+    rulesAbandonedTitle: "Suggested avoid terms",
+    rulesAbandonedDesc:
+      "Auto-extracted from the titles of tenders you discarded. Takes effect only when you click Add to avoid — the system never penalizes for you automatically.",
+    rulesAbandonedEmpty:
+      "Not enough discards yet. Pass tenders in Swipe or mark them abandoned, and avoidable terms will surface here.",
+    rulesAbandonedError: "Couldn't load suggestions. Try again later.",
+    rulesAbandonedLoading: "Analyzing the tenders you discarded…",
+    rulesAbandonedAdd: "Add to avoid",
+    rulesAbandonedAdded: "Added",
+    rulesAbandonedRefresh: "Refresh",
+    rulesAbandonedCountTip: "Number of your discarded tenders containing this",
+    rulesKindWord: "word",
+    rulesKindRoot: "root",
     connected: "Connected",
     unbound: "Unbound",
     failed: "Failed",

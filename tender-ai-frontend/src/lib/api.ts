@@ -714,6 +714,68 @@ export async function fetchKeywordCandidates(
   };
 }
 
+// ── 規則頁「建議迴避字根」：由本人淘汰過的標案聚合（唯讀；GET /me/abandoned-keyword-candidates） ──
+// P3 規則字根連動：把本人**實際淘汰**（速覽 ✗／狀態＝放棄）的標案標題拆字根（2-gram）／詞
+// （jieba），跨案做文件頻次統計成候選。附 count／示例標題供人判斷。
+// 紅線（negative-keywords-human-only）：此端點唯讀、不寫任何負權重；真正歸負分需本人在規則頁
+// 按「加入迴避」走 postKeywordOverride(kind="negative")。
+export interface AbandonedRootCandidate {
+  term: string;
+  kind: "word" | "root"; // word=jieba 斷詞；root=2-gram 字根
+  count: number; // 出現在幾件你淘汰的標案（文件頻次）
+  sampleTitles: string[]; // 最多 3 筆示例標題
+}
+export interface AbandonedKeywordCandidates {
+  userId: number | null;
+  abandonedCount: number; // 納入統計的淘汰標案數
+  candidates: AbandonedRootCandidate[];
+}
+interface AbandonedRootCandidateRaw {
+  term: string;
+  kind: "word" | "root";
+  count: number;
+  sample_titles: string[];
+}
+interface AbandonedKeywordCandidatesRaw {
+  user_id: number | null;
+  abandoned_count: number;
+  candidates: AbandonedRootCandidateRaw[];
+}
+
+/**
+ * 抓取本人淘汰標案聚合出的「建議迴避字根」候選（規則頁用）。
+ * 後端唯讀、離線、不寫任何權重。後端不可達／錯誤時 throw，由呼叫端 fallback。
+ */
+export async function fetchAbandonedKeywordCandidates(opts?: {
+  minCount?: number;
+  limit?: number;
+  signal?: AbortSignal;
+}): Promise<AbandonedKeywordCandidates> {
+  const params = new URLSearchParams();
+  if (currentUserId != null) params.set("user_id", String(currentUserId));
+  if (opts?.minCount != null) params.set("min_count", String(opts.minCount));
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  const q = params.toString();
+  const url = `${API_BASE}/me/abandoned-keyword-candidates${q ? `?${q}` : ""}`;
+  const res = await fetch(url, {
+    headers: authHeaders(),
+    signal: opts?.signal,
+  });
+  if (!res.ok)
+    throw new Error(`abandoned-keyword-candidates API ${res.status}`);
+  const d = (await res.json()) as AbandonedKeywordCandidatesRaw;
+  return {
+    userId: d.user_id,
+    abandonedCount: d.abandoned_count ?? 0,
+    candidates: (d.candidates ?? []).map((c) => ({
+      term: c.term,
+      kind: c.kind,
+      count: c.count,
+      sampleTitles: c.sample_titles ?? [],
+    })),
+  };
+}
+
 // ── 標案判斷（✓ 可行／✗ 不可行／⭐ 精選）→ Layer B＋即時 B→C 學習 ──────────
 // 後端 POST /tenders/{id}/evaluate（app/api/v1/behavior.py）：upsert Evaluation
 // ＋發 judgment 事件 → 即時重算關鍵字權重（個人線＋consent-aware 團隊線，append-only）。

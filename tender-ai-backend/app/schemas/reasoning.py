@@ -111,6 +111,27 @@ class KeywordCandidatesOut(BaseModel):
     recommended_negative: list[NegativeCandidate] = Field(default_factory=list)
 
 
+class AbandonedRootCandidate(BaseModel):
+    """本人淘汰標案聚合出的『建議迴避字根』候選（唯讀、附證據）。
+
+    僅為**建議**：採納與否由人拍板，真正歸負分只發生在本人於規則頁按下「加入迴避」、
+    經 ``POST /me/keywords``（``kind=negative``）寫入。此候選本身不寫任何負權重。
+    """
+
+    term: str
+    kind: Literal["word", "root"]  # word=jieba 斷詞；root=2-gram 字根
+    count: int  # 出現在幾件你淘汰的標案（文件頻次，每案至多計一次）
+    sample_titles: list[str] = Field(default_factory=list)  # 最多 3 筆示例標題
+
+
+class AbandonedKeywordCandidatesOut(BaseModel):
+    """規則頁「建議迴避字根」清單（由本人淘汰行為聚合，唯讀）。"""
+
+    user_id: int | None = None
+    abandoned_count: int = 0  # 納入統計的淘汰標案數
+    candidates: list[AbandonedRootCandidate] = Field(default_factory=list)
+
+
 class TenderReasoningOut(BaseModel):
     """單一標案的可中標推理。"""
 

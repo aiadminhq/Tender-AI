@@ -14,7 +14,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.schemas.reasoning import CriteriaProfileOut, ManualKeywordIn
+from app.schemas.reasoning import (
+    AbandonedKeywordCandidatesOut,
+    CriteriaProfileOut,
+    ManualKeywordIn,
+)
 from app.schemas.user import (
     ConsentIn,
     ConsentOut,
@@ -22,6 +26,7 @@ from app.schemas.user import (
     PasswordChangeIn,
     PreferenceProfileOut,
 )
+from app.services import abandoned_keywords as akc_svc
 from app.services import account as asvc
 from app.services import manual_keywords as mksvc
 from app.services import reasoning as reasoning_svc
@@ -76,6 +81,29 @@ async def get_preference_profile(
         # 尚未學出輪廓：回空輪廓（不 404）
         return PreferenceProfileOut()
     return PreferenceProfileOut.model_validate(profile)
+
+
+@router.get(
+    "/me/abandoned-keyword-candidates",
+    response_model=AbandonedKeywordCandidatesOut,
+)
+async def get_abandoned_keyword_candidates(
+    user_id: int | None = None,
+    min_count: int = 2,
+    limit: int = 40,
+    session: AsyncSession = Depends(get_session),
+) -> AbandonedKeywordCandidatesOut:
+    """規則頁「建議迴避字根」：由本人淘汰過的標案標題聚合字根／詞候選（唯讀）。
+
+    僅為附證據（count／示例標題）的**建議**；真正歸負分需本人於規則頁按下「加入迴避」
+    走 ``POST /me/keywords``（kind=negative），此端點不寫任何權重（負分人工專屬紅線）。
+    """
+    user = await asvc.get_me(session, user_id)
+    await session.commit()  # 佔位帳號可能於此建立
+    data = await akc_svc.abandoned_keyword_candidates(
+        session, user.id, min_count=min_count, limit=limit
+    )
+    return AbandonedKeywordCandidatesOut.model_validate(data)
 
 
 @router.post("/me/keywords", response_model=CriteriaProfileOut)

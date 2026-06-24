@@ -5,6 +5,7 @@ import { useAppData } from "@/store/app-data";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { AbandonedRoots } from "./abandoned-roots";
 import { KeywordEditor } from "./keyword-editor";
 import { RulesWorkspace } from "./rules-workspace";
 
@@ -60,6 +61,8 @@ export function RulesPanel() {
           accent="danger"
         />
       </div>
+
+      <AbandonedRoots />
 
       <Dialog
         open={advancedOpen}
