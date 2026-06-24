@@ -26,11 +26,24 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useApp } from "@/store/app-context";
+import { useAppData, type RuleList } from "@/store/app-data";
 import { STRINGS } from "@/i18n/strings";
 import { postKeywordOverride } from "@/lib/api";
 import { requestAssistant } from "@/lib/assistant-bus";
 
 type Variant = "bubble" | "context";
+
+// 後端關鍵字類別（positive/negative/engaged）對應前端規則頁三清單（focus/avoid/hard）。
+// 偏好→聚焦、迴避→避免、常點開＝關注亦併入聚焦（規則頁無 engaged 專屬清單）。
+// 與 abandoned-roots.tsx 一致：postKeywordOverride 後再把詞反映進本地規則清單。
+const RULE_LIST_FOR_KIND: Record<
+  "positive" | "negative" | "engaged",
+  RuleList
+> = {
+  positive: "focus",
+  negative: "avoid",
+  engaged: "focus",
+};
 
 interface Snapshot {
   text: string;
@@ -90,6 +103,7 @@ function readSelection(): Omit<Snapshot, "variant" | "pointer"> | null {
 
 export function SelectionMenu() {
   const { t, lang } = useApp();
+  const { addKeywords } = useAppData();
   const navigate = useNavigate();
   const tenderMatch = useMatch("/tenders/:id");
   const tenderId = tenderMatch?.params.id ?? null;
@@ -196,7 +210,10 @@ export function SelectionMenu() {
   async function addKeyword(kind: "positive" | "negative" | "engaged") {
     if (!snap) return;
     try {
+      // 先寫後端（入庫 user_manual_keywords），成功後才反映進本地規則清單——
+      // 讓框選的詞立即出現在「關鍵字規則頁」（/rules 讀 useAppData 的 focus/avoid/hard）。
       await postKeywordOverride(snap.text, kind, "add");
+      addKeywords(RULE_LIST_FOR_KIND[kind], [snap.text]);
       setAdded(true);
       window.getSelection()?.removeAllRanges();
       window.setTimeout(close, 900);
