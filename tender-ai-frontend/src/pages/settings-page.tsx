@@ -5,6 +5,7 @@ import { SourceStatusList } from "@/components/layout/source-status";
 import { RulesWorkspace } from "@/components/rules/rules-workspace";
 import { AccountSecurity } from "@/components/settings/account-security";
 import { AdminUserPasswords } from "@/components/settings/admin-user-passwords";
+import { BrainPicker } from "@/components/settings/brain-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // /settings：系統設定載體。本波含「來源管理」「關鍵字管理」「帳號安全（改密）」，
@@ -46,6 +47,16 @@ export function SettingsPage() {
         <CardContent>
           <p className="mb-4 text-[12px] text-ink-muted">{t("rulesHint")}</p>
           <RulesWorkspace />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>{t("brainTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-[12px] text-ink-muted">{t("brainSub")}</p>
+          <BrainPicker />
         </CardContent>
       </Card>
 

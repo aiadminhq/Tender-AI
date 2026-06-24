@@ -76,3 +76,44 @@ class AssistantMessage(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True, nullable=False
     )
+
+
+class AssistantBrainConfig(Base):
+    """小助手「大腦」全域設定（開發期單機單操作者 → 單列 id=1，get-or-create）。
+
+    選擇 AI 助手視窗背後由哪個 provider 生成：
+    - ``ollama``（預設）：本機 Ollama 換模型，即現行 ``llm.stream_chat`` 路徑。
+    - ``cli``：spawn 本機 headless CLI（claude/codex/hermes，已注入 tender-ai-brain MCP）
+      自主 agentic 檢索＋推理。
+    - ``byok``：自帶金鑰直連雲端 LLM。
+
+    金鑰隔離（Layer B/secret 紅線）：BYOK 金鑰本體只進 ``.env``（gitignored），
+    此表只存 ``byok_key_set`` 布林供 UI 顯示，**永不入庫/版控**。CLI 路徑完全不碰 secret。
+    """
+
+    __tablename__ = "assistant_brain_config"
+
+    # 固定單列：service 端 get-or-create id=1。
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    # ollama | cli | byok；預設 ollama（無設定時即現行行為）。
+    provider: Mapped[str] = mapped_column(
+        String(16), default="ollama", server_default="ollama", nullable=False
+    )
+    # provider=ollama 時的模型；NULL → 用 settings.chat_model。
+    ollama_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # provider=cli 時的 CLI：claude | codex | hermes。
+    cli_agent: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # provider=byok 的協定（v1 先支援 anthropic）。
+    byok_protocol: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    byok_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    byok_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # 金鑰是否已設定（只存布林；金鑰本體放 .env）。
+    byok_key_set: Mapped[bool] = mapped_column(
+        default=False, server_default="false", nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )

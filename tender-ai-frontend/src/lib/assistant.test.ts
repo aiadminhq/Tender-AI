@@ -62,6 +62,33 @@ describe("streamAssistantChat 對話留存接線", () => {
     );
     expect(metaThreadId).toBe("t-server-99");
   });
+
+  it("progress 事件走 onProgress、不混入 onText（CLI 大腦暫態狀態）", async () => {
+    const fetchMock = vi.fn(async () =>
+      ndjsonResponse([
+        JSON.stringify({ type: "progress", text: "正在查詢標案…" }),
+        JSON.stringify({ type: "delta", text: "找到 3 筆" }),
+        JSON.stringify({ type: "done" }),
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const progresses: string[] = [];
+    const texts: string[] = [];
+    await streamAssistantChat(
+      [{ role: "user", text: "台北" }],
+      {
+        onProgress: (s) => progresses.push(s),
+        onText: (t) => texts.push(t),
+      },
+      undefined,
+      null,
+      { threadId: null, scope: "assistant" },
+    );
+
+    expect(progresses).toEqual(["正在查詢標案…"]);
+    expect(texts).toEqual(["找到 3 筆"]);
+  });
 });
 
 describe("fetchAssistantThreads", () => {

@@ -36,15 +36,13 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import {
   Fact,
-  MeterRow,
   SectionLabel,
   LabelTags,
-  FeasibilityBadge,
-  DaysLeftBanner,
   RevisionDetailBlock,
   SimilarCasesList,
   RatingStars,
 } from "@/components/tenders/detail-bits";
+import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
 import { cn } from "@/lib/utils";
 
 export function TenderDrawer({
@@ -128,6 +126,14 @@ export function TenderDrawer({
   const starred = tender ? isStarred(tender.id) : false;
   const excluded = tender ? isExcluded(tender) : false;
   const reason = excluded && tender ? excludeReasonOf(tender) : undefined;
+  const feas = tender ? feasOf(tender) : null;
+  // 可行性加減項拆解（移到快照格的 hover 提示，沿用原 FeasibilityBadge 行為）。
+  const feasTip =
+    feas && feas.breakdown.length
+      ? feas.breakdown
+          .map((b) => `${b.delta >= 0 ? "+" : ""}${b.delta} ${b.label}`)
+          .join("  ")
+      : t("feasDefault");
   const dleft = tender ? daysLeft(tender.deadline) : 0;
   const deadlineTone =
     dleft < 0

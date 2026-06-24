@@ -44,6 +44,7 @@ TEST_URL = _BASE_URL.set(database=_TEST_DB)
 _ALL_TABLES = [
     "assistant_messages",
     "assistant_threads",
+    "assistant_brain_config",
     "events",
     "annotations",
     "evaluations",

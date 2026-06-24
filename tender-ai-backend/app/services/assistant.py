@@ -32,6 +32,7 @@ from app.schemas.assistant import (
     AssistantChatDeltaOut,
     AssistantChatDoneOut,
     AssistantChatMetaOut,
+    AssistantChatProgressOut,
     AssistantChatRequest,
     AssistantSourceOut,
     AssistantToolContractOut,
@@ -40,6 +41,8 @@ from app.schemas.assistant import (
 from app.schemas.tender import TenderQuery
 from app.services.preference_capture import detect_standing_preference
 from app.services import assistant_store
+from app.services import brain as brain_svc
+from app.services import brain_config as brain_config_svc
 from app.services import llm
 from app.services import query as query_svc
 from app.services import search as search_svc
@@ -495,19 +498,45 @@ async def stream_chat_events(
     answer_text = ""
     used_llm = False
     if settings.assistant_use_llm:
+        # 載入全域大腦設定（單列 get-or-create）；失敗退回 None → brain 預設 ollama。
+        try:
+            brain_cfg = await brain_config_svc.get_or_create(session)
+        except Exception:  # noqa: BLE001
+            await session.rollback()
+            brain_cfg = None
         messages = _build_chat_messages(
             payload, prompt, evidence, knowledge, focus_note
         )
+        history = [
+            {"role": m["role"], "content": m["content"]}
+            for m in messages
+            if m["role"] in ("user", "assistant")
+        ]
         acc: list[str] = []
         since_flush = 0
         start = time.monotonic()
         try:
-            async for chunk in llm.stream_chat(messages):
-                acc.append(chunk)
-                since_flush += len(chunk)
+            # 依設定分派 provider（ollama/cli/byok）。delta=增量（此處累積成全文，前端
+            # replace）；progress=agentic 暫態狀態（直接轉發、不累積、不留存）。
+            async for bc in brain_svc.stream(
+                config=brain_cfg,
+                messages=messages,
+                prompt=prompt,
+                history=history,
+                focus_note=focus_note,
+            ):
+                if bc.kind == "progress":
+                    yield _json_line(
+                        AssistantChatProgressOut(text=bc.text).model_dump()
+                    )
+                    if time.monotonic() - start > settings.chat_deadline:
+                        break
+                    continue
+                acc.append(bc.text)
+                since_flush += len(bc.text)
                 # 累積全文（前端 delta 為 replace 語意）；以字數／換行門檻聚合，
                 # 避免逐 token 噴出 O(N^2) 的 NDJSON 行。
-                if since_flush >= 24 or "\n" in chunk:
+                if since_flush >= 24 or "\n" in bc.text:
                     yield _json_line(
                         AssistantChatDeltaOut(text="".join(acc)).model_dump()
                     )
@@ -522,7 +551,7 @@ async def stream_chat_events(
                 )
                 answer_text = final_text
                 used_llm = True
-        except llm.LlmError:
+        except brain_svc.BrainError:
             used_llm = False
         except Exception:  # noqa: BLE001 — 生成端任何異常都退回模板，維持 HTTP 200
             used_llm = False

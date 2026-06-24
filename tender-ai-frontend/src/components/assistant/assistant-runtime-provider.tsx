@@ -35,6 +35,8 @@ interface AssistantBridge {
   clear: () => void;
   hasTurns: boolean;
   suggestions: string[];
+  /** agentic（CLI 大腦）暫態狀態行（「正在查詢…」）；非 CLI 大腦或非串流時為 null。 */
+  progress: string | null;
 }
 
 const BridgeContext = createContext<AssistantBridge | null>(null);
@@ -74,6 +76,7 @@ export function AssistantRuntime({
   const {
     turns,
     streaming,
+    progress,
     send,
     stop,
     clear,
@@ -105,8 +108,17 @@ export function AssistantRuntime({
       clear,
       hasTurns: turns.length > 0,
       suggestions,
+      progress,
     }),
-    [scope, onSourceClick, resolvePreference, clear, turns.length, suggestions],
+    [
+      scope,
+      onSourceClick,
+      resolvePreference,
+      clear,
+      turns.length,
+      suggestions,
+      progress,
+    ],
   );
 
   return (

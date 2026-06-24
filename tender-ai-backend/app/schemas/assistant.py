@@ -111,6 +111,17 @@ class AssistantChatDeltaOut(BaseModel):
     text: str
 
 
+class AssistantChatProgressOut(BaseModel):
+    """agentic（CLI 大腦）執行過程的暫態狀態事件。
+
+    用於 CLI provider 自主呼叫 MCP 工具時，逐步告知前端「正在查詢哪個工具」。
+    前端據此顯示暫態狀態行，下一筆 delta 到達即清除；不寫入對話文字、不留存。
+    """
+
+    type: Literal["progress"] = "progress"
+    text: str
+
+
 class AssistantChatDoneOut(BaseModel):
     """串流結束事件。"""
 

@@ -4,7 +4,11 @@
 - Layer B 行為/回饋：白名單合作範圍內共享、對外不揭露（資料永不進公開 repo，但 schema/code 需入版控）。
 - Layer C 知識/RAG：tender_vectors（P3，公開衍生向量）。
 """
-from app.models.assistant import AssistantMessage, AssistantThread
+from app.models.assistant import (
+    AssistantBrainConfig,
+    AssistantMessage,
+    AssistantThread,
+)
 from app.models.behavior import (
     Annotation,
     Evaluation,
@@ -57,6 +61,8 @@ __all__ = [
     # 小助手對話留存（Phase 4）
     "AssistantThread",
     "AssistantMessage",
+    # 小助手「大腦」全域設定
+    "AssistantBrainConfig",
     # Layer C
     "TenderVector",
     "KnowledgeChunk",

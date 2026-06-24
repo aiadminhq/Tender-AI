@@ -30,6 +30,9 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
+  // agentic（CLI 大腦）暫態狀態：「正在查詢…」狀態行。收到下一筆 delta 或 done 即清空，
+  // 不寫入對話文字（見 lib/assistant.ts ProgressEvent）。非 CLI 大腦不會送 progress，恆為 null。
+  const [progress, setProgress] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -115,14 +118,21 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
               if (threadId) threadIdRef.current = threadId;
               patchLastAssistant({ sources });
             },
-            onText: (full) => patchLastAssistant({ text: full }),
+            onText: (full) => {
+              setProgress(null);
+              patchLastAssistant({ text: full });
+            },
+            onProgress: (status) => setProgress(status),
             onPreferenceSuggestion: (suggestion) =>
               patchLastAssistant(
                 suggestion
                   ? { preference: suggestion, preferenceState: "pending" }
                   : {},
               ),
-            onDone: () => setStreaming(false),
+            onDone: () => {
+              setProgress(null);
+              setStreaming(false);
+            },
           },
           ctrl.signal,
           focusRef.current,
@@ -134,6 +144,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
           patchLastAssistant({ text: t("assistantError"), error: true });
         }
       } finally {
+        setProgress(null);
         setStreaming(false);
       }
     },
@@ -143,11 +154,13 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
   // 中止進行中的串流但保留已產生的對話（供 assistant-ui onCancel 串接）。
   const stop = useCallback(() => {
     abortRef.current?.abort();
+    setProgress(null);
     setStreaming(false);
   }, []);
 
   const clear = useCallback(() => {
     abortRef.current?.abort();
+    setProgress(null);
     setStreaming(false);
     setTurns([]);
     setDraft("");
@@ -220,6 +233,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
     draft,
     setDraft,
     streaming,
+    progress,
     send,
     stop,
     clear,

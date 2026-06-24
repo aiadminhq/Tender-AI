@@ -445,6 +445,32 @@ export const STRINGS = {
     adminResetConfirm: "確認重置",
     adminListEmpty: "尚無可管理的帳號",
     adminListError: "讀取帳號清單失敗（需管理員權限與後端連線）",
+    // settings · 小助手大腦（provider 路由）
+    brainTitle: "小助手大腦",
+    brainSub: "選擇 AI 助手視窗背後由哪個引擎生成回答",
+    brainProvider: "生成引擎",
+    brainProviderOllama: "本機模型（Ollama）",
+    brainProviderCli: "本機 CLI（自主代理）",
+    brainProviderByok: "自帶金鑰雲端模型（BYOK）",
+    brainProviderHint:
+      "ollama 在本機換模型；cli 啟動本機代理自主查詢知識庫；byok 直連雲端。",
+    brainOllamaModel: "Ollama 模型名稱",
+    brainOllamaModelPh: "留空用預設（chat_model）",
+    brainCliAgent: "CLI 代理",
+    brainCliAgentHint:
+      "啟動已注入標案大腦 MCP 的本機 CLI，讓它自主查詢資料庫與知識庫再作答。",
+    brainByokProtocol: "協定",
+    brainByokModel: "模型名稱",
+    brainByokModelPh: "留空用預設（claude-opus-4-8）",
+    brainByokBaseUrl: "API 端點",
+    brainByokBaseUrlPh: "留空用預設（https://api.anthropic.com）",
+    brainByokKeySet: "金鑰已設定（於後端 .env）",
+    brainByokKeyMissing: "尚未設定金鑰——請在後端 .env 設 ANTHROPIC_API_KEY",
+    brainSave: "儲存",
+    brainSaving: "儲存中…",
+    brainSaved: "已儲存",
+    brainLoadError: "讀取大腦設定失敗（需後端連線）",
+    brainSaveError: "儲存失敗，請稍後再試",
   },
   en: {
     appName: "Bid Ops",
@@ -894,6 +920,33 @@ export const STRINGS = {
     adminListEmpty: "No accounts to manage yet",
     adminListError:
       "Failed to load accounts (needs admin role and backend connection)",
+    // settings · assistant brain (provider router)
+    brainTitle: "Assistant brain",
+    brainSub: "Choose which engine powers the AI assistant window",
+    brainProvider: "Engine",
+    brainProviderOllama: "Local model (Ollama)",
+    brainProviderCli: "Local CLI (autonomous agent)",
+    brainProviderByok: "Bring-your-own-key cloud model (BYOK)",
+    brainProviderHint:
+      "ollama swaps the local model; cli spawns a local agent that queries the knowledge base on its own; byok talks to the cloud directly.",
+    brainOllamaModel: "Ollama model name",
+    brainOllamaModelPh: "Leave empty for default (chat_model)",
+    brainCliAgent: "CLI agent",
+    brainCliAgentHint:
+      "Spawns a local CLI with the tender-brain MCP injected, letting it query the DB and knowledge base autonomously before answering.",
+    brainByokProtocol: "Protocol",
+    brainByokModel: "Model name",
+    brainByokModelPh: "Leave empty for default (claude-opus-4-8)",
+    brainByokBaseUrl: "API endpoint",
+    brainByokBaseUrlPh: "Leave empty for default (https://api.anthropic.com)",
+    brainByokKeySet: "Key configured (in backend .env)",
+    brainByokKeyMissing:
+      "No key set — set ANTHROPIC_API_KEY in the backend .env",
+    brainSave: "Save",
+    brainSaving: "Saving…",
+    brainSaved: "Saved",
+    brainLoadError: "Failed to load brain config (needs backend connection)",
+    brainSaveError: "Save failed, please try again",
   },
 } as const;
 

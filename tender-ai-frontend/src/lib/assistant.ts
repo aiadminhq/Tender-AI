@@ -64,10 +64,16 @@ interface DeltaEvent {
   type: "delta";
   text: string;
 }
+// agentic（CLI 大腦）執行過程的暫態狀態事件（對齊後端 AssistantChatProgressOut）。
+// 僅暫態：UI 顯示「正在查詢…」狀態行，下一筆 delta 到達即清除；不寫入對話文字。
+interface ProgressEvent {
+  type: "progress";
+  text: string;
+}
 interface DoneEvent {
   type: "done";
 }
-type StreamEvent = MetaEvent | DeltaEvent | DoneEvent;
+type StreamEvent = MetaEvent | DeltaEvent | ProgressEvent | DoneEvent;
 
 export interface StreamHandlers {
   /** threadId 為後端回傳的對話串 id（缺 thread_id 時由後端產生）；前端據此續接同串。 */
@@ -78,6 +84,8 @@ export interface StreamHandlers {
   ) => void;
   /** delta.text 為累積全文 → 直接 replace 當前助手訊息內容。 */
   onText?: (fullText: string) => void;
+  /** agentic 暫態狀態（CLI 大腦查詢工具中）；下一筆 onText 到達即應清除。 */
+  onProgress?: (status: string) => void;
   /** 偵測到對話中的長期條件時回呼（否則帶 null）；UI 據此顯示確認 chip。 */
   onPreferenceSuggestion?: (suggestion: PreferenceSuggestion | null) => void;
   onDone?: () => void;
@@ -155,6 +163,8 @@ export async function streamAssistantChat(
       handlers.onPreferenceSuggestion?.(evt.preference_suggestion ?? null);
     } else if (evt.type === "delta") {
       handlers.onText?.(evt.text);
+    } else if (evt.type === "progress") {
+      handlers.onProgress?.(evt.text);
     } else if (evt.type === "done") {
       handlers.onDone?.();
     }

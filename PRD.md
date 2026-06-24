@@ -247,7 +247,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 - **後端**：**FastAPI + SQLAlchemy 2.0 async + psycopg 3 + Pydantic v2 + PostgreSQL 16 + pgvector**，符合 §5；embeddings 用本地模型（bge-m3＝1024 維、HNSW cosine）。皆 brew 原生、無容器。
 - **預覽**：兩種——**vite dev（:5173，HMR、優先）** 與靜態 build（:8771，須 rebuild + cache-bust）。
 
-### 13.2 後端 API 現況（FastAPI `/api/v1`，28 路由，CORS 放行本機任意埠）
+### 13.2 後端 API 現況（FastAPI `/api/v1`，30 路由，CORS 放行本機任意埠）
 
 | 範圍     | Endpoint                                                                      | 狀態                                    |
 | -------- | ----------------------------------------------------------------------------- | --------------------------------------- |
@@ -256,7 +256,8 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 | 理由     | `GET /tenders/{id}/reasoning`、`/reasoning/profile`                           | ✅ live、前端已接（profile 視圖待確認） |
 | 行為     | `POST /tenders/{id}/{save,accept,rate,note,share}`、`/events`、saved-searches | ✅ live、前端已回寫（具名 user_id）     |
 | 語意     | `GET /search/semantic`、`GET /search/similar/{id}`                            | ✅ live、前端 `/search` 已接            |
-| 助手     | `POST /assistant/chat`（NDJSON 串流）                                         | ✅ live、前端浮窗＋指揮中心已接         |
+| 助手     | `POST /assistant/chat`（NDJSON 串流，provider 路由＋progress 暫態）、threads  | ✅ live、前端浮窗＋指揮中心已接         |
+| 設定     | `GET/PUT /settings/brain`（小助手大腦：provider／模型／CLI agent，單列）      | ✅ live（CLI 切片）、前端設定頁已接     |
 | 推播     | `GET/POST /push/{digest,run,read}`                                            | ✅ live、前端 `/push` 已接              |
 | 進化     | `POST /evolution/run`、`GET /evolution/status`                                | ✅ live、前端 `/evolution` 已接         |
 | 帳號     | `POST /auth/login`、`GET /me`、`PUT /me/{consent,password}`、`/admin/*`       | ✅ live、前端登入/設定已接              |
@@ -267,7 +268,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 - **6.2 標案列表**：✅ live（`GET /tenders?sort=feas&page_size=200`）；filter bar／排序／RWD 表格↔卡片完成。
 - **6.3 標案詳情**：✅ 完整詳情頁 `/tenders/:id` 已建（事實格／量表／歷史快照／相似案／PCC 原文／履約·資格·押標金·附件區塊）；列表彈窗 `TenderDrawer` 並存。
 - **6.4 語意搜尋頁**：✅ `/search` 已建（`searchSemantic` → 表格，含 search 埋點）。
-- **6.5 後台 admin**：🟡 規則頁（聚焦/避免/硬排除＋關鍵字編輯）完整；設定頁含推播/小助手/帳號安全/管理者改密；手動重跑改走 `/evolution` 面板，log／匯出未建。
+- **6.5 後台 admin**：🟡 規則頁（聚焦/避免/硬排除＋關鍵字編輯）完整；設定頁含推播/小助手/**小助手大腦（provider 路由：Ollama／CLI／BYOK，CLI 切片已接）**/帳號安全/管理者改密；手動重跑改走 `/evolution` 面板，log／匯出未建。
 - **6.6 登入頁**：✅ `/login` 已建（白名單 @hqdesign.tw、auth-context、改密、管理者重置）。
 - **6.7 標案助手**：✅ FAB 非阻擋浮窗（`@assistant-ui/react`）＋整頁指揮中心 `/assistant`；Phase 1 引導、Phase 2 全螢幕完成，Phase 3 情境接檢索／Phase 4 留存待補。
 - **其他**：`/swipe` 速配、`/kanban` 看板（具名註記＋轉傳）、`/insights` 洞察（部分 mock）、`/push` 推播、`/evolution` 進化、`/settings` 設定皆已建。
@@ -284,3 +285,16 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 - 多數 live 標案截止日早於今日 → 顯示「已截止」（資料屬實，非 bug）。
 - PCC 詳情頁「常駐型 CAPTCHA」阻擋全自動補詳情，需瀏覽器互動式抓取（架構級決策）。
 - 登入信任邊界為 Phase 1 輕量版（admin 以 `X-User-Role` 標頭把關），session/token Phase 2 待補。
+
+### 13.6 小助手大腦可選（provider 路由器，CLI 切片已落地）
+
+讓操作者在設定頁選擇「小助手視窗」背後由哪個大腦回答。開發期單機單操作者 → **全域單列設定**（`assistant_brain_config` id=1，get-or-create）。
+
+- **三 provider 路由**（`app/services/brain.py`，依 `config.provider` 分派，未知 → `BrainError`）：
+  - `ollama`：包現行 `llm.stream_chat`，逐塊 yield `delta`（增量），本機模型可換。
+  - `cli`：以 headless agentic CLI 為大腦（目前支援 `claude -p … --output-format stream-json`）。CLI 已注入 `tender-ai-brain` MCP，**全自主**呼叫 MCP 工具；text 區塊累積、`tool_use` → `progress` 暫態（如「查詢中：search_tenders」）、`result` → 一則 `delta`。
+  - `byok`：自帶金鑰走雲端（Anthropic messages stream）；system 訊息抽到頂層 `system`。
+- **串流協定**：`BrainChunk(kind="delta"|"progress")`。`delta` 為增量（前端累積後 REPLACE）；`progress` 為暫態狀態（直接轉發、不落地、不入留存）。非 CLI 大腦不發 progress → 恆為 null，前端 `lib/assistant.ts` 以 `evt.type` 區分、向後相容。
+- **祕密隔離（紅線）**：BYOK 金鑰本體只進 `.env`（`settings.anthropic_api_key`）；`/settings/brain` 只讀寫非密欄位，`byok_key_set` 由 `.env` 即時推導，永不回傳金鑰本體。**CLI 切片完全不碰任何祕密。**
+- **Layer B 安全點**：CLI 全自主路徑的 Layer B 邊界由 **MCP 工具輸出層**把關（去識別化／白名單），非靠 `assistant.py` 組 prompt；`llm.py` 一律不把 Layer B 行為塞進外部模型 prompt。
+- **交付切片序**：CLI（已落地）＞ BYOK ＞ Ollama 換模型。設計細節見 `docs/superpowers/specs/2026-06-23-assistant-brain-picker-design.md`。

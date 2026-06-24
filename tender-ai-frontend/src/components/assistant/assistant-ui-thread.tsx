@@ -130,7 +130,7 @@ function UserMessage() {
 
 function AssistantMessage() {
   const { t } = useApp();
-  const { onSourceClick } = useAssistantBridge();
+  const { onSourceClick, progress } = useAssistantBridge();
   const text = useMessageText();
   const { sources, error, preference, preferenceState } = useMessageMeta();
 
@@ -156,7 +156,7 @@ function AssistantMessage() {
         ) : (
           <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-card px-3.5 py-2.5 text-[12px] text-ink-muted">
             <Loader2 size={13} className="animate-spin" />
-            {t("assistantThinking")}
+            {progress ?? t("assistantThinking")}
           </div>
         )}
         {sources && sources.length > 0 && (

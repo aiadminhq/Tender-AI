@@ -11,6 +11,7 @@ from app.api.v1.me import router as me_router
 from app.api.v1.push import router as push_router
 from app.api.v1.reasoning import router as reasoning_router
 from app.api.v1.search import router as search_router
+from app.api.v1.settings import router as settings_router
 from app.api.v1.tenders import router as tenders_router
 
 api_router = APIRouter(prefix="/api/v1")
@@ -24,5 +25,6 @@ api_router.include_router(learning_router)
 api_router.include_router(me_router)
 api_router.include_router(admin_router)
 api_router.include_router(auth_router)
+api_router.include_router(settings_router)
 
 __all__ = ["api_router"]
