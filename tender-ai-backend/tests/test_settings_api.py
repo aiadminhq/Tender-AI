@@ -2,7 +2,7 @@
 """設定頁 API：小助手「大腦」全域設定（單機單操作者 → 單列 id=1）。
 
 對照 app/api/v1/settings.py 與 app/services/brain_config.py：
-  GET  /api/v1/settings/brain   首次讀取 get-or-create 預設（provider=ollama）
+  GET  /api/v1/settings/brain   首次讀取 get-or-create 預設（provider=cli, cli_agent=claude → Claude Code）
   PUT  /api/v1/settings/brain   部分更新非密欄位（exclude_unset）
 
 secret 紅線（見 CLAUDE.md）：BYOK 金鑰本體只進 .env，永不經 API 進出；
@@ -22,12 +22,15 @@ BRAIN = "/api/v1/settings/brain"
 
 
 async def test_get_brain_creates_default(client):
-    """首次 GET → get-or-create 出 provider=ollama 的單列預設。"""
+    """首次 GET → get-or-create 出預設單列：provider=cli、cli_agent=claude（Claude Code）。
+
+    開發期算力由本機 CLI 提供，故預設大腦＝Claude Code（見 brain_config.get_or_create）。
+    """
     r = await client.get(BRAIN)
     assert r.status_code == 200
     body = r.json()
-    assert body["provider"] == "ollama"
-    assert body["cli_agent"] is None
+    assert body["provider"] == "cli"
+    assert body["cli_agent"] == "claude"
     # 唯讀衍生布林必存在（值依 .env 而定，不在此斷言真假）。
     assert "byok_key_set" in body
 

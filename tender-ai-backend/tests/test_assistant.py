@@ -19,6 +19,10 @@ import pytest
 
 CHAT = "/api/v1/assistant/chat"
 
+# 本模組測 Ollama 生成路徑（monkeypatch llm.stream_chat）；產品預設大腦已改 cli/Claude Code，
+# 故全模組把大腦釘回 ollama，避免改走 cli 分支真的 spawn 子程序。
+pytestmark = pytest.mark.usefixtures("ollama_brain")
+
 
 def _payload(prompt: str) -> dict:
     return {"messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}]}

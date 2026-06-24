@@ -95,14 +95,16 @@ class AssistantBrainConfig(Base):
 
     # 固定單列：service 端 get-or-create id=1。
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
-    # ollama | cli | byok；預設 ollama（無設定時即現行行為）。
+    # ollama | cli | byok；預設 cli（開發期算力由本機 CLI 提供 → Claude Code）。
     provider: Mapped[str] = mapped_column(
-        String(16), default="ollama", server_default="ollama", nullable=False
+        String(16), default="cli", server_default="cli", nullable=False
     )
     # provider=ollama 時的模型；NULL → 用 settings.chat_model。
     ollama_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # provider=cli 時的 CLI：claude | codex | hermes。
-    cli_agent: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # provider=cli 時的 CLI：claude（Claude Code，預設）| codex | hermes。
+    cli_agent: Mapped[str | None] = mapped_column(
+        String(32), default="claude", server_default="claude", nullable=True
+    )
     # provider=byok 的協定（v1 先支援 anthropic）。
     byok_protocol: Mapped[str | None] = mapped_column(String(16), nullable=True)
     byok_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)

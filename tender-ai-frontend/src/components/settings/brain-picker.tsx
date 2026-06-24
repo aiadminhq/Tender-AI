@@ -17,9 +17,19 @@ import { Select } from "@/components/ui/select";
 
 const CLI_AGENTS: CliAgent[] = ["claude", "codex", "hermes"];
 
+// CLI 代理顯示名稱（i18n key），避免畫面直接吐 raw slug（claude → Claude Code）。
+const CLI_AGENT_LABEL = {
+  claude: "brainCliClaude",
+  codex: "brainCliCodex",
+  hermes: "brainCliHermes",
+} as const satisfies Record<CliAgent, string>;
+
 export function BrainPicker() {
   const { t } = useApp();
   const [config, setConfig] = useState<BrainConfig | null>(null);
+  // 目前實際指派（最後一次成功讀取／儲存）的大腦——與編輯中的 config 分開，
+  // 讓「目前大腦」readout 不會隨未儲存的編輯跳動。
+  const [current, setCurrent] = useState<BrainConfig | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [saveErr, setSaveErr] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -28,10 +38,31 @@ export function BrainPicker() {
   useEffect(() => {
     const ctrl = new AbortController();
     fetchBrainConfig(ctrl.signal)
-      .then((c) => setConfig(c))
+      .then((c) => {
+        setConfig(c);
+        setCurrent(c);
+      })
       .catch(() => setLoadErr(true));
     return () => ctrl.abort();
   }, []);
+
+  // 把一份設定描述成人話：cli → 「本機 CLI · Claude Code」等。
+  function describeBrain(c: BrainConfig): string {
+    if (c.provider === "cli") {
+      const agent = (c.cliAgent as CliAgent | null) ?? "claude";
+      return `${t("brainProviderCli")} · ${t(CLI_AGENT_LABEL[agent])}`;
+    }
+    if (c.provider === "byok") {
+      const model = c.byokModel?.trim();
+      return model
+        ? `${t("brainProviderByok")} · ${model}`
+        : t("brainProviderByok");
+    }
+    const model = c.ollamaModel?.trim();
+    return model
+      ? `${t("brainProviderOllama")} · ${model}`
+      : t("brainProviderOllama");
+  }
 
   if (loadErr) {
     return (
@@ -65,6 +96,7 @@ export function BrainPicker() {
         byokModel: config.byokModel || null,
       });
       setConfig(next);
+      setCurrent(next);
       setSaved(true);
     } catch {
       setSaveErr(true);
@@ -81,6 +113,20 @@ export function BrainPicker() {
 
   return (
     <form onSubmit={onSubmit} className="max-w-md space-y-4">
+      {current && (
+        <div className="rounded-2xl border border-line bg-surface-muted/40 px-3.5 py-3">
+          <span className="block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+            {t("brainCurrent")}
+          </span>
+          <span className="mt-0.5 block text-[14px] font-semibold text-ink">
+            {describeBrain(current)}
+          </span>
+          <span className="mt-1 block text-[11px] text-ink-muted">
+            {t("brainCurrentHint")}
+          </span>
+        </div>
+      )}
+
       <label className="block">
         <span className="mb-1.5 block text-[12px] font-medium text-ink-muted">
           {t("brainProvider")}
@@ -118,7 +164,10 @@ export function BrainPicker() {
           <Select
             value={config.cliAgent ?? "claude"}
             onValueChange={(v) => patch({ cliAgent: v })}
-            options={CLI_AGENTS.map((a) => ({ value: a, label: a }))}
+            options={CLI_AGENTS.map((a) => ({
+              value: a,
+              label: t(CLI_AGENT_LABEL[a]),
+            }))}
             disabled={busy}
           />
           <span className="mt-1.5 block text-[11px] text-ink-muted">

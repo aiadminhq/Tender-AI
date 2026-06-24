@@ -28,12 +28,16 @@ _MUTABLE_FIELDS = (
 
 
 async def get_or_create(session: AsyncSession) -> AssistantBrainConfig:
-    """取得單列設定；不存在則以預設（provider=ollama）建立。"""
+    """取得單列設定；不存在則以預設（provider=cli, cli_agent=claude → Claude Code）建立。
+
+    開發期單機單操作者，算力由本機 CLI 提供，故預設大腦＝Claude Code（CLI 自主代理，
+    已注入 tender-ai-brain MCP）。需要時可在設定頁改為 ollama／byok。
+    """
     config = await session.get(AssistantBrainConfig, _ROW_ID)
     if config is not None:
         return config
 
-    config = AssistantBrainConfig(id=_ROW_ID, provider="ollama")
+    config = AssistantBrainConfig(id=_ROW_ID, provider="cli", cli_agent="claude")
     session.add(config)
     await session.flush()
     return config

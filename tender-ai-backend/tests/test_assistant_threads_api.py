@@ -16,6 +16,9 @@ import pytest
 CHAT = "/api/v1/assistant/chat"
 THREADS = "/api/v1/assistant/threads"
 
+# 留存測試走 /chat 的 Ollama 生成路徑；產品預設大腦已改 cli/Claude Code，固定回 ollama。
+pytestmark = pytest.mark.usefixtures("ollama_brain")
+
 
 def _events(text: str) -> list[dict]:
     return [json.loads(line) for line in text.splitlines() if line.strip()]

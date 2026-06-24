@@ -165,6 +165,28 @@ def session_factory():
     return TestSessionLocal
 
 
+@pytest.fixture
+def ollama_brain(monkeypatch):
+    """把全域「大腦」設定釘成 ollama，供測 Ollama 生成路徑的測試使用。
+
+    產品預設大腦已改為 cli/Claude Code（見 brain_config.get_or_create），會 spawn 本機
+    CLI；但 /assistant/chat 的 LLM 生成/grounding/fallback 測試是針對 ollama 路徑、以
+    monkeypatch ``llm.stream_chat`` 驗證，故在這些模組以本 fixture 固定 provider=ollama，
+    避免改走 cli 分支真的去 spawn 子程序。模組層以 ``pytestmark = usefixtures`` 套用。
+    """
+
+    class _OllamaCfg:
+        provider = "ollama"
+        ollama_model = None
+
+    async def _fake_get_or_create(session):
+        return _OllamaCfg()
+
+    monkeypatch.setattr(
+        "app.services.brain_config.get_or_create", _fake_get_or_create
+    )
+
+
 async def seed_basic(session: AsyncSession) -> dict[str, int]:
     """植入一組可涵蓋各篩選/排序情境的合成標案。
 
