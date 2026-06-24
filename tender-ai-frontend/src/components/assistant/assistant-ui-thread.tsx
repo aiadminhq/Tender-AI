@@ -2,14 +2,28 @@
 // AuiIf / useAuiState）搭出骨架，但渲染層改用本專案的 RichText、四類來源 SourceChip、
 // Button 與設計語彙——不採官方 MarkdownText/TooltipIconButton，亦捨棄附件／推理／工具群組／
 // 分支切換／聽寫等本專案用不到的零件。浮窗 Modal 與整頁指揮中心共用此元件。
+//
+// 設計約束（見專案 CLAUDE.md house style／DESIGN.md）：單色面 + 單一 signal 強調色，
+// 類別差異一律靠「icon 形狀」而非彩色色票（不得疊加第二個彩色 accent）。
+import { useState } from "react";
 import {
-  Bot,
+  BookOpen,
   Check,
+  ChevronRight,
+  Clock,
+  CornerDownRight,
   ExternalLink,
+  FileText,
+  GitCompareArrows,
+  GraduationCap,
+  Lightbulb,
   Loader2,
+  ScanSearch,
   SendHorizontal,
   Sparkles,
   Square,
+  TrendingUp,
+  type LucideIcon,
 } from "lucide-react";
 import {
   AuiIf,
@@ -30,17 +44,43 @@ import {
   type AssistantCustomMeta,
 } from "./assistant-runtime-provider";
 
-// 來源類別 → i18n 字串鍵；知識庫類另渲染不同樣式（見 SourceChip）。
-const KIND_KEY: Record<AssistantSource["kind"], TextKey> = {
-  tender: "assistantKindTender",
-  semantic: "assistantKindSemantic",
-  similar: "assistantKindSimilar",
-  knowledge: "assistantKindKnowledge",
+// 來源類別 → i18n 字串鍵 + 代表 icon。類別差異只靠 icon 形狀承載（單色系不疊第二個彩色）。
+// 知識庫類另渲染 signal 微調色（與標案的中性 accent 區隔，沿用既有語彙）。
+const KIND_META: Record<
+  AssistantSource["kind"],
+  { key: TextKey; icon: LucideIcon }
+> = {
+  tender: { key: "assistantKindTender", icon: FileText },
+  semantic: { key: "assistantKindSemantic", icon: ScanSearch },
+  similar: { key: "assistantKindSimilar", icon: GitCompareArrows },
+  knowledge: { key: "assistantKindKnowledge", icon: BookOpen },
 };
+
+// 空態建議題依序對應的 icon（高潛力 / 相似案 / 即將截止 / 分級標準）。
+const SUGGEST_ICONS: LucideIcon[] = [
+  TrendingUp,
+  GitCompareArrows,
+  Clock,
+  GraduationCap,
+];
 
 const isNewChatView = (s: AssistantState) => s.thread.messages.length === 0;
 
-/** 整個對話串（含空態建議、訊息列、底部 composer）。寬度由外層容器決定。 */
+// 答後主動延伸提問的顯示條件：非串流中、最後一則為 assistant、有實際文字且非錯誤態。
+const canFollowUp = (s: AssistantState) => {
+  if (s.thread.isRunning) return false;
+  const msgs = s.thread.messages;
+  const last = msgs[msgs.length - 1];
+  if (!last || last.role !== "assistant") return false;
+  const meta = last.metadata?.custom as AssistantCustomMeta | undefined;
+  if (meta?.error) return false;
+  const text = last.content
+    .map((p) => (p.type === "text" ? p.text : ""))
+    .join("");
+  return text.trim().length > 0;
+};
+
+/** 整個對話串（含空態建議、訊息列、答後延伸提問、底部 composer）。寬度由外層容器決定。 */
 export function AssistantUIThread() {
   const { t } = useApp();
 
@@ -56,6 +96,9 @@ export function AssistantUIThread() {
         <ThreadPrimitive.Messages
           components={{ UserMessage, AssistantMessage }}
         />
+        <AuiIf condition={canFollowUp}>
+          <ThreadFollowups />
+        </AuiIf>
       </ThreadPrimitive.Viewport>
 
       <ThreadPrimitive.ViewportFooter className="border-t border-border px-4 py-3">
@@ -65,7 +108,7 @@ export function AssistantUIThread() {
   );
 }
 
-/** 空態：提示語 + 四個建議題（點擊即送出）。 */
+/** 空態：提示語 + 四個建議題（點擊即送出），每題帶情境 icon。 */
 function ThreadEmpty() {
   const { t } = useApp();
   const { suggestions } = useAssistantBridge();
@@ -75,19 +118,60 @@ function ThreadEmpty() {
         {t("assistantEmpty")}
       </p>
       <div className="flex flex-col gap-2">
-        {suggestions.map((s) => (
+        {suggestions.map((s, i) => {
+          const Icon = SUGGEST_ICONS[i] ?? Sparkles;
+          return (
+            <ThreadPrimitive.Suggestion
+              key={s}
+              prompt={s}
+              send
+              clearComposer
+              className="group flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[13px] text-foreground/90 transition-colors hover:border-signal/40 hover:bg-accent"
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent text-ink-muted transition-colors group-hover:text-signal">
+                <Icon size={14} />
+              </span>
+              <span className="min-w-0 flex-1">{s}</span>
+              <ChevronRight
+                size={14}
+                className="shrink-0 text-ink-dim opacity-0 transition-opacity group-hover:opacity-100"
+              />
+            </ThreadPrimitive.Suggestion>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** 答後主動延伸提問：一行標題 + 三個追問 chip（點擊即送出）。提升小助手主動性。 */
+function ThreadFollowups() {
+  const { t } = useApp();
+  const followups = [
+    t("assistantFollowup1"),
+    t("assistantFollowup2"),
+    t("assistantFollowup3"),
+  ];
+  return (
+    <div className="ml-[38px] space-y-2 pt-0.5">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-dim">
+        <Lightbulb size={12} className="shrink-0" />
+        {t("assistantFollowupTitle")}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {followups.map((f) => (
           <ThreadPrimitive.Suggestion
-            key={s}
-            prompt={s}
+            key={f}
+            prompt={f}
             send
             clearComposer
-            className="group flex items-center gap-2 rounded-lg border border-border bg-canvas px-3 py-2.5 text-left text-[13px] text-foreground/90 transition-colors hover:border-primary/50 hover:bg-accent"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] text-ink-muted transition-colors hover:border-signal/40 hover:bg-accent hover:text-foreground/90"
           >
-            <Sparkles
-              size={13}
-              className="shrink-0 text-ink-dim group-hover:text-primary"
+            <CornerDownRight
+              size={12}
+              className="shrink-0 text-ink-dim transition-colors group-hover:text-signal"
             />
-            {s}
+            {f}
           </ThreadPrimitive.Suggestion>
         ))}
       </div>
@@ -133,13 +217,22 @@ function AssistantMessage() {
   const { onSourceClick, progress } = useAssistantBridge();
   const text = useMessageText();
   const { sources, error, preference, preferenceState } = useMessageMeta();
+  const sourceCount = sources?.length ?? 0;
+
+  // 串流期間（尚無答案文字）改顯示「正在依 N 筆證據作答…」的 grounding 行，
+  // 而非把整面來源 chip 牆傾倒在 loading 卡下方（這正是先前「割裂」的根因）。
+  const loadingLabel =
+    progress ??
+    (sourceCount > 0
+      ? t("assistantGrounding").replace("{n}", String(sourceCount))
+      : t("assistantThinking"));
 
   return (
     <MessagePrimitive.Root className="flex gap-2.5">
-      <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/12 text-primary">
-        <Bot size={15} />
+      <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-signal/12 text-signal">
+        <Sparkles size={15} />
       </div>
-      <div className="min-w-0 flex-1 space-y-3">
+      <div className="min-w-0 flex-1 space-y-2.5">
         {text ? (
           <div
             className={cn(
@@ -154,32 +247,73 @@ function AssistantMessage() {
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-card px-3.5 py-2.5 text-[12px] text-ink-muted">
-            <Loader2 size={13} className="animate-spin" />
-            {progress ?? t("assistantThinking")}
+          <div className="inline-flex items-center gap-2 rounded-2xl rounded-tl-sm bg-card px-3.5 py-2.5 text-[12px] text-ink-muted">
+            <Loader2 size={13} className="animate-spin text-signal" />
+            {loadingLabel}
           </div>
         )}
-        {sources && sources.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-ink-dim">
-              {t("assistantSources")}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {sources.map((s, j) => (
-                <SourceChip
-                  key={`${s.tenderId ?? s.docId ?? "k"}-${s.kind}-${j}`}
-                  source={s}
-                  onClick={() => onSourceClick(s)}
-                />
-              ))}
-            </div>
-          </div>
+        {/* 來源只在答案出現後、以可收合區塊呈現（預設收合，標題列帶筆數＋類別 icon 預覽）。 */}
+        {!error && text && sourceCount > 0 && sources && (
+          <SourceSection sources={sources} onSourceClick={onSourceClick} />
         )}
         {preference && preferenceState && preferenceState !== "dismissed" && (
           <PreferenceChip preference={preference} state={preferenceState} />
         )}
       </div>
     </MessagePrimitive.Root>
+  );
+}
+
+/** 可收合的引用來源區：收合時僅一行（筆數＋去重類別 icon 預覽），展開列出帶 icon 的來源 chip。 */
+function SourceSection({
+  sources,
+  onSourceClick,
+}: {
+  sources: AssistantSource[];
+  onSourceClick: (s: AssistantSource) => void;
+}) {
+  const { t } = useApp();
+  const [open, setOpen] = useState(false);
+  const uniqueKinds = [...new Set(sources.map((s) => s.kind))];
+
+  return (
+    <div className="space-y-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 rounded-xl border border-border bg-card/60 px-3 py-2 text-left transition-colors hover:bg-accent"
+      >
+        <ChevronRight
+          size={14}
+          className={cn(
+            "shrink-0 text-ink-dim transition-transform duration-150",
+            open && "rotate-90",
+          )}
+        />
+        <span className="text-[12px] text-ink-muted">
+          {t("assistantSourcesCount").replace("{n}", String(sources.length))}
+        </span>
+        {!open && (
+          <span className="ml-auto flex items-center gap-1">
+            {uniqueKinds.map((k) => {
+              const Icon = KIND_META[k].icon;
+              return <Icon key={k} size={12} className="text-ink-dim" />;
+            })}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="flex flex-col gap-1.5">
+          {sources.map((s, j) => (
+            <SourceChip
+              key={`${s.tenderId ?? s.docId ?? "k"}-${s.kind}-${j}`}
+              source={s}
+              onClick={() => onSourceClick(s)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -200,7 +334,7 @@ function PreferenceChip({
 
   if (state === "confirmed") {
     return (
-      <div className="flex items-center gap-1.5 rounded-2xl border border-primary/30 bg-primary/8 px-3 py-2 text-[12px] text-primary">
+      <div className="flex items-center gap-1.5 rounded-2xl border border-signal/30 bg-signal/8 px-3 py-2 text-[12px] text-signal">
         <Check size={13} className="shrink-0" />
         {t("assistantPrefSaved")}
       </div>
@@ -214,7 +348,7 @@ function PreferenceChip({
   ).replace("{region}", preference.value);
 
   return (
-    <div className="space-y-2 rounded-2xl border border-primary/30 bg-primary/8 px-3.5 py-3">
+    <div className="space-y-2 rounded-2xl border border-signal/30 bg-signal/8 px-3.5 py-3">
       <p className="text-[13px] leading-relaxed text-foreground/90">
         {question}
       </p>
@@ -250,33 +384,41 @@ function SourceChip({
 }) {
   const { t } = useApp();
   const isKnowledge = source.kind === "knowledge";
+  const { icon: Icon, key } = KIND_META[source.kind];
 
-  // 知識庫來源：primary 色 badge（與標案的中性 accent 區隔），標題下方顯示 heading。
-  const badgeCls = isKnowledge
-    ? "rounded bg-primary/12 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-    : "rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-ink-muted";
+  // icon 容器：知識庫用 signal 微調色（與標案的中性 accent 區隔，沿用既有語彙），其餘中性。
+  const iconCls = isKnowledge
+    ? "bg-signal/12 text-signal"
+    : "bg-accent text-ink-muted";
+  // 次行：知識庫顯示 heading，標案類顯示資料源（source）。
+  const sub = isKnowledge ? source.heading : source.source;
 
   const inner = (
     <>
-      <span className={badgeCls}>{t(KIND_KEY[source.kind])}</span>
+      <span
+        className={cn(
+          "grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+          iconCls,
+        )}
+      >
+        <Icon size={14} />
+      </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[12px] text-foreground/90">
           {source.title}
         </span>
-        {isKnowledge && source.heading && (
-          <span className="truncate text-[10px] text-ink-dim">
-            {source.heading}
-          </span>
-        )}
+        <span className="truncate text-[10px] text-ink-dim">
+          {t(key)}
+          {sub ? ` · ${sub}` : ""}
+        </span>
       </span>
-      <span className="shrink-0 text-[10px] text-ink-dim">{source.source}</span>
       {!isKnowledge && source.url && (
         <ExternalLink size={12} className="shrink-0 text-ink-dim" />
       )}
     </>
   );
   const cls =
-    "flex items-center gap-2 rounded-md border border-border bg-canvas px-2.5 py-1.5 text-left transition-colors hover:border-primary/50 hover:bg-accent";
+    "flex items-center gap-2.5 rounded-xl border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:border-signal/40 hover:bg-accent";
   return !isKnowledge && source.url ? (
     <a
       href={source.url}
@@ -305,7 +447,7 @@ function Composer({ placeholder }: { placeholder: string }) {
         submitOnEnter
         placeholder={placeholder}
         aria-label={placeholder}
-        className="max-h-32 min-h-[40px] flex-1 resize-none rounded-md border border-border bg-canvas px-3 py-2 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-dim focus:border-primary/50"
+        className="max-h-32 min-h-[40px] flex-1 resize-none rounded-md border border-border bg-canvas px-3 py-2 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-dim focus:border-signal/50"
       />
       <AuiIf condition={(s: AssistantState) => !s.thread.isRunning}>
         <ComposerPrimitive.Send asChild>
