@@ -345,7 +345,16 @@ export type ActivityKind =
   | "comment"
   | "move"
   | "import"
-  | "rule";
+  | "rule"
+  | "judge";
+
+/**
+ * 標案三分判斷（需求 D：✓/✗/⭐ 語意明確區分）。
+ * - feasible：✓ 我可以做
+ * - featured：⭐ 精選（強正向，feasible=可行＋featured）
+ * - infeasible：✗ 不做（即時寫團隊負權，2026-06-24 覆寫紅線後）
+ */
+export type Verdict = "feasible" | "featured" | "infeasible";
 
 export interface ActivityItem {
   id: string;

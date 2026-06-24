@@ -27,6 +27,7 @@ import type {
   Tender,
   TenderProject,
   Tier,
+  Verdict,
 } from "@/types/domain";
 import { TENDERS } from "@/data/tenders";
 import { KANBAN_CARDS } from "@/data/kanban";
@@ -38,10 +39,13 @@ import { authDisplay, fetchAccounts, setWhitelist } from "@/lib/auth-api";
 import {
   fetchTenders,
   postAccept,
+  postEvaluate,
   postNote,
   postSave,
   fetchSavedSearches,
   postSavedSearch,
+  type EvaluateResult,
+  type FeasibleVerdict,
 } from "@/lib/api";
 import { trackEvent } from "@/lib/events";
 import { load, save } from "@/lib/storage";
@@ -162,6 +166,20 @@ export interface Metrics {
   kpiAccepted: number;
 }
 
+// 處置（決策回顧）：單一彙總標案目前落在哪個桶。
+// 優先序：skipped（淘汰，明確負向終態）> accepted（有進行中投標專案）> starred（收藏）> none。
+// 註：略過採「軟移動」——承接後再淘汰會保留專案卡並轉「放棄」階段，故淘汰優先於承接判定。
+export type Disposition = "accepted" | "starred" | "skipped" | "none";
+
+// 具名淘汰理由（Layer B 合作範圍內共享、依登入帳號具名；對外不揭露、匯出去識別化）。
+export interface DiscardReason {
+  reason: string;
+  /** 具名貢獻者＝登入帳號名稱（@hqdesign.tw 白名單內） */
+  by: string;
+  /** ISO 時間 */
+  at: string;
+}
+
 interface AppDataValue {
   // 篩選
   filter: FilterState;
@@ -185,6 +203,26 @@ interface AppDataValue {
   // 行動
   accept: (tenderId: string) => void;
   skip: (tenderId: string) => void;
+  // 處置回顧（決策回顧頁）：彙總目前處置、重新分流、具名淘汰理由。
+  isSkipped: (tenderId: string) => boolean;
+  isAccepted: (tenderId: string) => boolean;
+  dispositionOf: (tenderId: string) => Disposition;
+  /** 重新分流：在 收藏／承接／淘汰／無 之間移動；淘汰採軟移動、可附具名理由。 */
+  reclassify: (
+    tenderId: string,
+    to: Disposition,
+    opts?: { reason?: string },
+  ) => void;
+  discardReasonOf: (tenderId: string) => DiscardReason | undefined;
+  setDiscardReason: (tenderId: string, reason: string) => void;
+  // 三分判斷（✓ 可行 / ✗ 不可行 / ⭐ 精選）：附大致原因，即時併入 Layer B→C 學習。
+  verdictOf: (tenderId: string) => Verdict | undefined;
+  judge: (
+    tenderId: string,
+    verdict: Verdict,
+    rationale: string,
+    chips: string[],
+  ) => Promise<EvaluateResult | null>;
   // 註記
   commentsOf: (tenderId: string) => Comment[];
   addComment: (tenderId: string, text: string) => void;
@@ -356,6 +394,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [skipped, setSkipped] = useState<Set<string>>(
     () => new Set(load<string[]>("skipped", [])),
   );
+  // 三分判斷（需求 D）：tenderId → verdict，localStorage 為前端真相來源；
+  // 後端 /evaluate 僅作即時 Layer B→C 學習匯入（失敗不回滾本地）。
+  const [verdicts, setVerdicts] = useState<Record<string, Verdict>>(() =>
+    load<Record<string, Verdict>>("verdicts", {}),
+  );
+  // 具名淘汰理由（決策回顧）：tenderId → {reason, by, at}，localStorage 為前端真相來源。
+  // key 經 storage 前綴後落為 "tender:discard-reason"。
+  const [discardReasons, setDiscardReasons] = useState<
+    Record<string, DiscardReason>
+  >(() => load<Record<string, DiscardReason>>("discard-reason", {}));
   const [focusKeywords, setFocus] = useState<string[]>(() =>
     load("rules:focus", DEFAULT_FOCUS),
   );
@@ -399,6 +447,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => save("activity", activity), [activity]);
   useEffect(() => save("starred", [...starred]), [starred]);
   useEffect(() => save("skipped", [...skipped]), [skipped]);
+  useEffect(() => save("verdicts", verdicts), [verdicts]);
+  useEffect(() => save("discard-reason", discardReasons), [discardReasons]);
   useEffect(() => save("rules:focus", focusKeywords), [focusKeywords]);
   useEffect(() => save("rules:avoid", avoidKeywords), [avoidKeywords]);
   useEffect(() => save("rules:hard", hardExclude), [hardExclude]);
@@ -764,6 +814,204 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       postAccept(tenderId, "放棄");
     },
     [tenders, pushActivity],
+  );
+
+  // ── 處置回顧（決策回顧頁）──────────────────────────────────────
+  const isSkipped = useCallback(
+    (tenderId: string) => skipped.has(tenderId),
+    [skipped],
+  );
+  // 承接＝有進行中（非「放棄」階段）的投標專案；淘汰後軟移動轉「放棄」即排除在外。
+  const isAccepted = useCallback(
+    (tenderId: string) =>
+      projects.some((p) => p.tenderId === tenderId && p.stage !== "abandoned"),
+    [projects],
+  );
+  // 單一彙總目前處置（優先序見 Disposition 型別說明）。
+  const dispositionOf = useCallback(
+    (tenderId: string): Disposition => {
+      if (skipped.has(tenderId)) return "skipped";
+      if (
+        projects.some((p) => p.tenderId === tenderId && p.stage !== "abandoned")
+      )
+        return "accepted";
+      if (starred.has(tenderId)) return "starred";
+      return "none";
+    },
+    [skipped, projects, starred],
+  );
+  const discardReasonOf = useCallback(
+    (tenderId: string): DiscardReason | undefined => discardReasons[tenderId],
+    [discardReasons],
+  );
+  // 具名淘汰理由：寫入帶當前登入帳號名稱與時間；空字串＝清除該筆。
+  const setDiscardReason = useCallback(
+    (tenderId: string, reason: string) => {
+      const trimmed = reason.trim();
+      setDiscardReasons((prev) => {
+        if (!trimmed) {
+          if (!(tenderId in prev)) return prev;
+          const next = { ...prev };
+          delete next[tenderId];
+          return next;
+        }
+        return {
+          ...prev,
+          [tenderId]: { reason: trimmed, by: currentMemberName, at: nowISO() },
+        };
+      });
+    },
+    [currentMemberName],
+  );
+
+  // 重新分流：在 收藏／承接／淘汰／無 之間移動。沿用 accept/skip/toggleStar 的既有副作用語意，
+  // 不硬刪資料（淘汰為軟移動：保留專案卡並轉「放棄」階段）。
+  // 紅線：本函式不寫任何關鍵字負權重；迴避字根仍須走 SwipeDecisionDialog→postKeywordOverride 人工確認。
+  const reclassify = useCallback(
+    (tenderId: string, to: Disposition, opts?: { reason?: string }) => {
+      const t = tenders.find((x) => x.id === tenderId);
+      const removeFromSkipped = () =>
+        setSkipped((prev) => {
+          if (!prev.has(tenderId)) return prev;
+          const next = new Set(prev);
+          next.delete(tenderId);
+          return next;
+        });
+
+      if (to === "skipped") {
+        // 淘汰：加入略過、進行中專案軟移動轉「放棄」；可附具名理由。
+        setSkipped((prev) => new Set(prev).add(tenderId));
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.tenderId === tenderId && p.stage !== "abandoned"
+              ? { ...p, stage: "abandoned", updatedAt: nowISO() }
+              : p,
+          ),
+        );
+        if (opts?.reason) setDiscardReason(tenderId, opts.reason);
+        if (t) pushActivity("skip", t.title);
+        postAccept(tenderId, "放棄");
+        return;
+      }
+
+      if (to === "accepted") {
+        // 承接：撤銷淘汰、重啟（或建立）投標專案＋看板卡。
+        removeFromSkipped();
+        if (t) {
+          setCards((prev) =>
+            prev.some((c) => c.tenderId === tenderId)
+              ? prev
+              : [
+                  {
+                    id: `k-${uid()}`,
+                    tenderId,
+                    title: t.title,
+                    status: "todo",
+                    assignee: person.id,
+                    tier: t.tier,
+                    deadline: t.deadline,
+                  },
+                  ...prev,
+                ],
+          );
+          setProjects((prev) => {
+            if (prev.some((p) => p.tenderId === tenderId)) {
+              return prev.map((p) =>
+                p.tenderId === tenderId && p.stage === "abandoned"
+                  ? { ...p, stage: "watching", updatedAt: nowISO() }
+                  : p,
+              );
+            }
+            const ts = nowISO();
+            return [
+              {
+                id: `p-${uid()}`,
+                tenderId,
+                title: t.title,
+                stage: "watching",
+                tier: t.tier,
+                deadline: t.deadline,
+                ownerId: currentMemberId,
+                subtasks: [],
+                notes: [],
+                createdAt: ts,
+                updatedAt: ts,
+              },
+              ...prev,
+            ];
+          });
+          pushActivity("accept", t.title);
+        }
+        postAccept(tenderId, "備標中");
+        return;
+      }
+
+      if (to === "starred") {
+        // 收藏：撤銷淘汰並加星（不建立投標專案）。
+        removeFromSkipped();
+        setStarred((prev) =>
+          prev.has(tenderId) ? prev : new Set(prev).add(tenderId),
+        );
+        postSave(tenderId, true);
+        return;
+      }
+
+      // none：撤銷所有處置——移出淘汰、取消收藏（不刪專案卡，保留歷史）。
+      removeFromSkipped();
+      setStarred((prev) => {
+        if (!prev.has(tenderId)) return prev;
+        const next = new Set(prev);
+        next.delete(tenderId);
+        return next;
+      });
+      postSave(tenderId, false);
+    },
+    [tenders, person.id, currentMemberId, pushActivity, setDiscardReason],
+  );
+
+  // 三分判斷（需求 B/C/D/E）：✓ 可行 / ✗ 不可行 / ⭐ 精選，皆附大致原因（chips＋選填文字）。
+  const verdictOf = useCallback(
+    (tenderId: string): Verdict | undefined => verdicts[tenderId],
+    [verdicts],
+  );
+  // 送判斷 → Layer B，並即時觸發 B→C 學習；回傳已落地結果＋本批學習摘要供呼叫端回饋。
+  // 本地副作用維持語意一致：⭐ 精選同步收藏；✗ 不可行同步略過（移出列表）；✓/⭐ 取消先前略過。
+  // 後端 /evaluate 已自行發 judgment 事件，前端不再重送以免重複計數。
+  const judge = useCallback(
+    (
+      tenderId: string,
+      verdict: Verdict,
+      rationale: string,
+      chips: string[],
+    ): Promise<EvaluateResult | null> => {
+      const t = tenders.find((x) => x.id === tenderId);
+      setVerdicts((prev) => ({ ...prev, [tenderId]: verdict }));
+      const featured = verdict === "featured";
+      const feasible: FeasibleVerdict =
+        verdict === "infeasible" ? "不可行" : "可行";
+      if (verdict === "infeasible") {
+        setSkipped((prev) => new Set(prev).add(tenderId));
+      } else {
+        setSkipped((prev) => {
+          if (!prev.has(tenderId)) return prev;
+          const next = new Set(prev);
+          next.delete(tenderId);
+          return next;
+        });
+      }
+      if (featured) {
+        setStarred((prev) =>
+          prev.has(tenderId) ? prev : new Set(prev).add(tenderId),
+        );
+      }
+      if (t) pushActivity("judge", t.title);
+      // 即時 Layer B→C：負向亦即時寫團隊負權（2026-06-24 本人覆寫紅線）；失敗靜默不回滾。
+      return postEvaluate(tenderId, feasible, rationale, {
+        chips,
+        featured,
+      }).catch(() => null);
+    },
+    [tenders, verdicts, pushActivity],
   );
 
   const commentsOf = useCallback(
@@ -1389,6 +1637,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       toggleStar,
       accept,
       skip,
+      isSkipped,
+      isAccepted,
+      dispositionOf,
+      reclassify,
+      discardReasonOf,
+      setDiscardReason,
+      verdictOf,
+      judge,
       commentsOf,
       addComment,
       cards,
@@ -1456,6 +1712,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       toggleStar,
       accept,
       skip,
+      isSkipped,
+      isAccepted,
+      dispositionOf,
+      reclassify,
+      discardReasonOf,
+      setDiscardReason,
+      verdictOf,
+      judge,
       commentsOf,
       addComment,
       cards,

@@ -714,6 +714,92 @@ export async function fetchKeywordCandidates(
   };
 }
 
+// ── 標案判斷（✓ 可行／✗ 不可行／⭐ 精選）→ Layer B＋即時 B→C 學習 ──────────
+// 後端 POST /tenders/{id}/evaluate（app/api/v1/behavior.py）：upsert Evaluation
+// ＋發 judgment 事件 → 即時重算關鍵字權重（個人線＋consent-aware 團隊線，append-only）。
+// 非 fire-and-forget：UI 需要回傳「已落地的判斷＋本批學習摘要」做就地回饋與排序刷新。
+// 「⭐ 精選」＝feasible=可行＋criteria.featured=true（強正向）。
+export type FeasibleVerdict = "可行" | "不可行";
+
+export interface JudgmentCriteria {
+  chips: string[]; // 選中的原因標籤（快速 chips）
+  featured: boolean; // ⭐ 精選旗標
+}
+
+/** 本批即時學習摘要（負向已依 2026-06-24 覆寫即時寫團隊負權，append-only）。 */
+export interface RealtimeLearning {
+  keywordsAdded: number;
+  keywordsUpdated: number;
+  feasibleSamples: number;
+  infeasibleSamples: number;
+  consentingUsers: number;
+  revisionBatch: string | null;
+}
+
+export interface EvaluateResult {
+  feasible: FeasibleVerdict | null;
+  featured: boolean;
+  rationale: string | null;
+  learning: RealtimeLearning | null;
+}
+
+interface EvaluateResultRaw {
+  evaluation: {
+    feasible: string | null;
+    criteria: { featured?: boolean; chips?: string[] } | null;
+    rationale: string | null;
+  };
+  learning: {
+    keywords_added?: number;
+    keywords_updated?: number;
+    feasible_samples?: number;
+    infeasible_samples?: number;
+    consenting_users?: number;
+    revision_batch?: string | null;
+  } | null;
+}
+
+/**
+ * 送出標案判斷並回傳已落地結果＋本批即時學習摘要。
+ * 純 mock 模式回 null；feasible 非 {可行,不可行}→後端 422、未知標案→404，皆 throw。
+ */
+export async function postEvaluate(
+  id: string,
+  feasible: FeasibleVerdict,
+  rationale: string | null,
+  criteria: JudgmentCriteria,
+): Promise<EvaluateResult | null> {
+  if (import.meta.env.VITE_USE_API === "false") return null;
+  const res = await fetch(
+    `${API_BASE}/tenders/${encodeURIComponent(id)}/evaluate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(
+        withUser({ feasible, rationale: rationale?.trim() || null, criteria }),
+      ),
+    },
+  );
+  if (!res.ok) throw new Error(`evaluate API ${res.status}`);
+  const d = (await res.json()) as EvaluateResultRaw;
+  const lr = d.learning;
+  return {
+    feasible: (d.evaluation?.feasible as FeasibleVerdict | null) ?? null,
+    featured: Boolean(d.evaluation?.criteria?.featured),
+    rationale: d.evaluation?.rationale ?? null,
+    learning: lr
+      ? {
+          keywordsAdded: lr.keywords_added ?? 0,
+          keywordsUpdated: lr.keywords_updated ?? 0,
+          feasibleSamples: lr.feasible_samples ?? 0,
+          infeasibleSamples: lr.infeasible_samples ?? 0,
+          consentingUsers: lr.consenting_users ?? 0,
+          revisionBatch: lr.revision_batch ?? null,
+        }
+      : null,
+  };
+}
+
 // 後端 PreferenceProfileOut（app/schemas/user.py）：AI 從本人行為學到的個人化偏好。
 interface PreferenceProfileRaw {
   top_keywords: string[] | null;

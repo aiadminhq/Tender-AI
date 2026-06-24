@@ -57,6 +57,7 @@
 > 動 `reasoning.py`／`learn_keywords.py`／embedding job 前先讀本節；若現況與此處不符，停下回報、提出你的判斷與建議，而非照舊或硬改。
 
 - **分類傾向（自動學正向，負向只建議）**：`工程`／`營繕工程` 視為正向先驗（已驗證，約 `+0.18`）。`財物`／`勞務` 預設中性 `0.0`，**不要預設給負分**（尚未有足夠 lift 佐證）。正向權重可由資料自動學習；**負分（avoid／降權關鍵字）一律由人手動給出**——系統可在累積到足夠 lift 證據時，把可疑詞**列為候選並附理由主動建議**給管理者，但**不得自動寫入負權重**，最終由人確認。詳見記憶 `negative-keywords-human-only`。
+  - **例外（2026-06-24 owner 知情覆寫）**：使用者本人在 UI 主動做出的**「不可行」判斷**（三分判斷 ✓/✗/⭐ → `POST /tenders/{id}/evaluate`），會**即時寫入團隊負權重**（`realtime_learn.learn_after_evaluation(allow_auto_negative=True)`），保留 append-only／consent-aware／具名／可回退安全網。此覆寫**僅限「使用者親自判斷的即時學習」這條路徑**；一般 `learn_keywords` 批次與自演化 job **仍適用上述原規**（無人類判斷不得自動種負分）。
 - **預算軟閾值**：超出舒適區間以連續軟懲罰處理，不做硬性 0/1 切斷（見 P4_LEARNING_ANALYSIS §3.3）。
 - **自演化觸發閘**（`app/jobs/self_evolve.py`）：預設在團隊線 consent-aware 樣本數 **≥ 50** 且 **較上批有新增**才重跑 `learn_keywords`；`force=True` 可手動覆寫。完全 offline／冪等，無新資料不空轉。閘值是經驗預設，若資料情境改變可評估調整並說明理由。
 - **學習軌跡 append-only**：權重更新寫 `KeywordWeightRevision` 審計批次（`batch=now.isoformat()`，記 `feasible_samples`/`infeasible_samples`），不就地覆蓋；讀「目前值」優先 `current_revision_id`，否則取最新 revision。

@@ -1,5 +1,6 @@
-import { Check, Star, X } from "lucide-react";
-import type { Tender } from "@/types/domain";
+import { useState } from "react";
+import { Star, ThumbsDown, ThumbsUp } from "lucide-react";
+import type { Tender, Verdict } from "@/types/domain";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
 import { sourceByKey } from "@/data/sources";
@@ -10,6 +11,7 @@ import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { JudgmentReasonDialog } from "@/components/tenders/judgment-reason-dialog";
 import { cn } from "@/lib/utils";
 
 // 桌機表格欄寬（與 TenderTable 表頭共用，務必同步）。
@@ -87,47 +89,80 @@ function DeadlineCell({ iso, className }: { iso: string; className?: string }) {
   );
 }
 
-function RowActions({ tender }: { tender: Tender }) {
+// 三分判斷鈕（✓ 可行 / ✗ 不可行 / ⭐ 精選）。任一鍵都先開「大致原因」表單，
+// 確認後才經 store.judge() 寫入 Layer B 並即時併入 Layer C（見 JudgmentReasonDialog）。
+// 共用於桌機列、行動卡片與今日焦點列（收合即顯）。
+export function JudgmentActions({ tender }: { tender: Tender }) {
   const { t } = useApp();
-  const { accept, skip, isStarred, toggleStar } = useAppData();
-  const starred = isStarred(tender.id);
+  const { verdictOf } = useAppData();
+  const current = verdictOf(tender.id);
+  const [pending, setPending] = useState<Verdict | null>(null);
+
+  const buttons: {
+    verdict: Verdict;
+    icon: typeof ThumbsUp;
+    tip: string;
+    on: string;
+    off: string;
+  }[] = [
+    {
+      verdict: "feasible",
+      icon: ThumbsUp,
+      tip: t("judgeTipFeasible"),
+      on: "bg-success/15 text-success",
+      off: "text-ink-dim hover:text-success",
+    },
+    {
+      verdict: "infeasible",
+      icon: ThumbsDown,
+      tip: t("judgeTipInfeasible"),
+      on: "bg-danger/15 text-danger",
+      off: "text-ink-dim hover:text-danger",
+    },
+    {
+      verdict: "featured",
+      icon: Star,
+      tip: t("judgeTipFeatured"),
+      on: "bg-priority/15 text-priority",
+      off: "text-ink-dim hover:text-priority",
+    },
+  ];
+
   return (
     <div
       className="flex items-center justify-end gap-1"
       onClick={(e) => e.stopPropagation()}
     >
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={starred ? t("unstar") : t("star")}
-        title={starred ? t("unstar") : t("star")}
-        onClick={() => toggleStar(tender.id)}
-      >
-        <Star
-          size={15}
-          className={cn(
-            starred ? "fill-tier-mid text-tier-mid" : "text-ink-dim",
-          )}
+      {buttons.map(({ verdict, icon: Icon, tip, on, off }) => {
+        const active = current === verdict;
+        return (
+          <Button
+            key={verdict}
+            variant="ghost"
+            size="icon-sm"
+            aria-label={tip}
+            aria-pressed={active}
+            title={tip}
+            className={active ? on : off}
+            onClick={() => setPending(verdict)}
+          >
+            <Icon
+              size={15}
+              className={cn(
+                active && verdict === "featured" && "fill-priority",
+              )}
+            />
+          </Button>
+        );
+      })}
+      {pending && (
+        <JudgmentReasonDialog
+          verdict={pending}
+          tenderId={tender.id}
+          title={tender.title}
+          onResolved={() => setPending(null)}
         />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t("skip")}
-        title={t("skip")}
-        onClick={() => skip(tender.id)}
-      >
-        <X size={15} className="text-ink-muted" />
-      </Button>
-      <Button
-        variant="primary"
-        size="icon-sm"
-        aria-label={t("accept")}
-        title={t("accept")}
-        onClick={() => accept(tender.id)}
-      >
-        <Check size={15} />
-      </Button>
+      )}
     </div>
   );
 }
@@ -191,7 +226,7 @@ export function TenderRow({
         <div className="flex justify-center">
           <OwnerCell ownerId={tender.owner} />
         </div>
-        <RowActions tender={tender} />
+        <JudgmentActions tender={tender} />
       </div>
 
       {/* 行動裝置：卡片列 */}
@@ -241,7 +276,7 @@ export function TenderRow({
         )}
         <div className="mt-3 flex items-center justify-between">
           <OwnerCell ownerId={tender.owner} />
-          <RowActions tender={tender} />
+          <JudgmentActions tender={tender} />
         </div>
       </div>
     </>
