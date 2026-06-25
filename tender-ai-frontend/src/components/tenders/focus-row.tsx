@@ -115,6 +115,21 @@ export function FocusRow({
               {t("viewFullDetail")} <ArrowRight size={14} />
             </Button>
           </div>
+          {/* 就地評分區：在展開面板直接做三分判斷＋寫原因，重用 JudgmentActions
+              （→ JudgmentReasonDialog → tokenize → Layer C 即時學習，具名／可回退）。 */}
+          <div className="flex items-center justify-between gap-3 border-t border-hairline pt-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-ink">
+                {t("focusJudgePrompt")}
+              </p>
+              <p className="truncate text-[11px] text-ink-dim">
+                {t("focusJudgeHint")}
+              </p>
+            </div>
+            <span className="shrink-0">
+              <JudgmentActions tender={tender} />
+            </span>
+          </div>
         </div>
       )}
     </div>
