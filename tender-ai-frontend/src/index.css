@@ -12,116 +12,112 @@
    ========================================================================= */
 :root,
 [data-theme="dark"] {
-  /* surface */
-  --canvas: #090909;
-  --surface-1: #141414;
-  --surface-2: #1c1c1c;
-  --hairline: #262626;
-  --hairline-soft: #1a1a1a;
-  /* ink */
-  --ink: #ffffff;
-  --ink-muted: #9b9b9b;
-  --ink-dim: #6b6b6b;
-  /* signal accent（只用於連結 / focus / selected） */
-  --signal: #0099ff;
-  --signal-ring: rgba(0, 153, 255, 0.3);
+  /* surface（tweakcn 暗色：紫調深底、紫卡面） */
+  --canvas: oklch(0.1649 0.0352 281.8285);
+  --surface-1: oklch(0.2542 0.0611 281.1423);
+  --surface-2: oklch(0.3015 0.0654 281.1423);
+  --hairline: oklch(0.3279 0.0832 280.789);
+  --hairline-soft: oklch(0.27 0.07 281.1423);
+  /* ink（紫調中性層級；tweakcn 自身 muted-foreground 無層級差，這裡補出 muted/dim） */
+  --ink: oklch(0.9513 0.0074 260.7315);
+  --ink-muted: oklch(0.6245 0.05 278.1046);
+  --ink-dim: oklch(0.52 0.045 278.1046);
+  /* signal accent（連結 / focus / selected / 主行動）＝ tweakcn 橙 primary */
+  --signal: oklch(0.6677 0.2235 36.9862);
+  --signal-ring: oklch(0.6677 0.2235 36.9862 / 0.35);
   /* 語意：潛力分級 / 狀態（克制使用） */
-  --tier-high: #22c55e;
-  --tier-mid: #f5a623;
-  --tier-low: #ff5577;
-  --priority: #7c6bff;
-  --success: #22c55e;
-  --danger: #ff5577;
-  /* chart 分類色盤（沿用既有語意 token，避免引入陌生色；暗色） */
-  --chart-1: var(--signal); /* 藍 */
-  --chart-2: var(--tier-high); /* 綠 */
-  --chart-3: var(--tier-mid); /* 琥珀 */
-  --chart-4: var(--priority); /* 紫 */
-  --chart-5: var(--tier-low); /* 桃紅 */
-  /* 可行性漸層（唯一允許漸層用途之一） */
-  --feasibility-from: #22c55e;
-  --feasibility-to: #0099ff;
-  --on-primary: #000000;
-  /* 卡片陰影（暗色維持近乎全平，僅極輕分層） */
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-  /* 分層 elevation（暗色背景吃光，靠較高 key alpha＋負 spread 收成俐落投影，
-     非 ghost-card 暈染）：rest 靜置 → hover 抬升 → overlay 浮層。 */
-  --elev-rest: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --elev-hover:
-    0 6px 16px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
-  --elev-overlay:
-    0 24px 48px -12px rgba(0, 0, 0, 0.7), 0 8px 16px -8px rgba(0, 0, 0, 0.5);
+  --tier-high: oklch(0.8 0.16 171.269);
+  --tier-mid: oklch(0.8 0.15 95);
+  --tier-low: oklch(0.6535 0.2348 34.037);
+  --priority: oklch(0.5488 0.2944 299.0954);
+  --success: oklch(0.8 0.16 171.269);
+  --danger: oklch(0.6535 0.2348 34.037);
+  /* chart 分類色盤（tweakcn 暗色：洋紅／紫／青／薄荷／黃） */
+  --chart-1: oklch(0.6726 0.2904 341.4084);
+  --chart-2: oklch(0.5488 0.2944 299.0954);
+  --chart-3: oklch(0.8442 0.1457 209.2851);
+  --chart-4: oklch(0.8903 0.1739 171.269);
+  --chart-5: oklch(0.9168 0.1915 101.407);
+  /* 可行性漸層（綠 → 橙；唯一允許漸層用途之一） */
+  --feasibility-from: oklch(0.8442 0.1457 171.269);
+  --feasibility-to: oklch(0.6677 0.2235 36.9862);
+  --on-primary: oklch(1 0 0);
 
-  /* ---- shadcn 語意映射（白 pill 主行動 = primary） ---- */
+  /* 陰影（tweakcn 造型族；暗色另靠卡面 / border 提供分層） */
+  --shadow-2xs: 0px 4px 8px -2px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0px 4px 8px -2px hsl(0 0% 0% / 0.05);
+  --shadow-sm:
+    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 1px 2px -3px hsl(0 0% 0% / 0.1);
+  --shadow:
+    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 1px 2px -3px hsl(0 0% 0% / 0.1);
+  --shadow-md:
+    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 2px 4px -3px hsl(0 0% 0% / 0.1);
+  --shadow-lg:
+    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 4px 6px -3px hsl(0 0% 0% / 0.1);
+  --shadow-xl:
+    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 8px 10px -3px hsl(0 0% 0% / 0.1);
+  --shadow-2xl: 0px 4px 8px -2px hsl(0 0% 0% / 0.25);
+  /* 領域分層別名（沿用既有元件用的名稱，改吃 tweakcn 陰影族） */
+  --card-shadow: var(--shadow-sm);
+  --elev-rest: var(--shadow-xs);
+  --elev-hover: var(--shadow-lg);
+  --elev-overlay: var(--shadow-2xl);
+
+  /* ---- shadcn 語意映射（tweakcn 橙 primary，亮暗一致） ---- */
   --background: var(--canvas);
   --foreground: var(--ink);
   --card: var(--surface-1);
   --card-foreground: var(--ink);
   --popover: var(--surface-2);
   --popover-foreground: var(--ink);
-  --primary: var(--ink); /* 白 pill */
-  --primary-foreground: var(--on-primary); /* 黑字 */
-  --secondary: var(--surface-1);
+  --primary: var(--signal); /* tweakcn 橙 pill */
+  --primary-foreground: var(--on-primary); /* 白字 */
+  --secondary: var(--surface-2);
   --secondary-foreground: var(--ink);
   --muted: var(--surface-2);
   --muted-foreground: var(--ink-muted);
-  --accent: var(--surface-2); /* shadcn accent = hover 抬升面，非品牌色 */
+  --accent: var(
+    --surface-2
+  ); /* shadcn accent = hover 抬升面，非品牌色（房規保留） */
   --accent-foreground: var(--ink);
   --destructive: var(--danger);
-  --destructive-foreground: #ffffff;
+  --destructive-foreground: oklch(1 0 0);
   --border: var(--hairline);
   --input: var(--hairline);
   --ring: var(--signal);
-  --radius: 10px;
+  --radius: 0.5rem; /* tweakcn 8px */
 }
 
-/* 淺色 = Knowvio 設計語彙（暖灰底、白卡、橙 #f97316 主色、軟陰影、較圓角）。
-   為產品預設主題（loadTheme() 預設回傳 light）；暗色經切換鈕保留。 */
+/* 淺色 = tweakcn 淺色語彙（近白底、白卡、橙 primary、薄荷 / 洋紅點綴）。
+   為產品預設主題（loadTheme() 預設回傳 light）；暗色經切換鈕保留。
+   造型（圓角 / 陰影）與 shadcn 語意映射沿用 base（:root），此處僅覆寫色彩原語。 */
 [data-theme="light"] {
-  --canvas: #eceef1;
-  --surface-1: #ffffff;
-  --surface-2: #f3f5f8;
-  --hairline: #e7e9ee;
-  --hairline-soft: #eef1f5;
-  --ink: #111827;
-  --ink-muted: #6b7280;
-  --ink-dim: #9ca3af;
-  /* signal accent = Knowvio 橙（連結 / focus / selected / 主行動） */
-  --signal: #f97316;
-  --signal-ring: rgba(249, 115, 22, 0.28);
-  --tier-high: #16a34a;
-  --tier-mid: #d97706;
-  --tier-low: #dc2626;
-  --priority: #6d5be0;
-  --success: #16a34a;
-  --danger: #dc2626;
-  /* chart 分類色盤（沿用既有語意 token；淺色） */
-  --chart-1: var(--signal); /* 橙 */
-  --chart-2: var(--tier-high); /* 綠 */
-  --chart-3: var(--tier-mid); /* 琥珀 */
-  --chart-4: var(--priority); /* 紫 */
-  --chart-5: var(--tier-low); /* 紅 */
-  --feasibility-from: #16a34a;
-  --feasibility-to: #f97316;
-  --on-primary: #ffffff;
-  /* 卡片軟陰影（房規：僅些微陰影） */
-  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-  /* 分層 elevation（淺色）：rest 守房規等級的些微陰影；hover 用負 spread 收成
-     俐落抬升（blur < 16px，不觸 ghost-card 反模式）；overlay 給浮層明確漂浮感。 */
-  --elev-rest:
-    0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 1px rgba(16, 24, 40, 0.04);
-  --elev-hover:
-    0 6px 16px -6px rgba(16, 24, 40, 0.16),
-    0 2px 5px -2px rgba(16, 24, 40, 0.08);
-  --elev-overlay:
-    0 24px 48px -12px rgba(16, 24, 40, 0.22),
-    0 8px 16px -8px rgba(16, 24, 40, 0.12);
-
-  /* Knowvio 主行動 = 橙 pill（淺色覆寫，暗色仍為白 pill） */
-  --primary: var(--signal);
-  --primary-foreground: #ffffff;
-  /* Knowvio 卡片較圓（rounded-lg = 16px、rounded-xl = 22px） */
-  --radius: 12px;
+  --canvas: oklch(0.9816 0.0017 247.839);
+  --surface-1: oklch(1 0 0);
+  --surface-2: oklch(0.9595 0.02 286.0164);
+  --hairline: oklch(0.9205 0.0086 225.0878);
+  --hairline-soft: oklch(0.95 0.0086 225.0878);
+  --ink: oklch(0.1649 0.0352 281.8285);
+  --ink-muted: oklch(0.44 0.03 281.8285);
+  --ink-dim: oklch(0.6 0.025 281.8285);
+  /* signal accent = tweakcn 橙（連結 / focus / selected / 主行動） */
+  --signal: oklch(0.6958 0.2043 43.491);
+  --signal-ring: oklch(0.6958 0.2043 43.491 / 0.3);
+  --tier-high: oklch(0.72 0.15 171.269);
+  --tier-mid: oklch(0.7 0.14 95);
+  --tier-low: oklch(0.6535 0.2348 34.037);
+  --priority: oklch(0.625 0.2583 305.8714);
+  --success: oklch(0.72 0.15 171.269);
+  --danger: oklch(0.6535 0.2348 34.037);
+  /* chart 分類色盤（tweakcn 淺色：紅／紫／青／薄荷／黃綠） */
+  --chart-1: oklch(0.6539 0.2322 24.3251);
+  --chart-2: oklch(0.625 0.2583 305.8714);
+  --chart-3: oklch(0.8964 0.1094 204.8017);
+  --chart-4: oklch(0.9136 0.131 177.7414);
+  --chart-5: oklch(0.9453 0.1453 102.8937);
+  --feasibility-from: oklch(0.72 0.15 171.269);
+  --feasibility-to: oklch(0.6958 0.2043 43.491);
+  --on-primary: oklch(1 0 0);
 }
 
 /* =========================================================================
@@ -174,9 +170,19 @@
   --color-chart-5: var(--chart-5);
 
   --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --radius-xl: calc(var(--radius) + 10px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* tweakcn 陰影族（暴露成 shadow-xs / shadow-sm / shadow-md … 工具類） */
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
 
   /* 動效曲線：ease-out 指數族（房規：無 bounce／elastic）。
      暴露成 Tailwind ease-* 工具類（ease-out-quart / ease-out-quint）。 */
