@@ -6,7 +6,7 @@
 
 ```
             ┌─────────────────────────────────────────────┐
-  10:00 TW  │ GitHub Actions @ aiadminhq/tender-reports     │  ← 爬 PCC、AI 評分、
+  ~08:00 TW │ GitHub Actions @ aiadminhq/tender-reports     │  ← 爬 PCC、AI 評分、
 （雲端發布）│   產出 reports/tender-YYYYMMDD.html（索引頁）  │     發布每日索引
             └───────────────────────┬─────────────────────┘
                                     │ git pull（公開 repo）
@@ -28,7 +28,7 @@
 
 依專案 `CLAUDE.md`／後端 `README`：**雲端／沙箱環境連不到 PCC 招標網、本機 Ollama、本機 PostgreSQL**。因此：
 
-- 索引「發布」可由 GitHub Actions（雲端）完成 —— repo 已在做，只需把時間改 10:00。
+- 索引「發布」由 GitHub Actions（雲端）完成 —— repo 已在做，沿用現狀（約台灣 08:00 發布），**不需改動 Actions**；本機排程在其後（10:15）即可抓到當日報表。
 - 「抓 PCC 詳情建檔 + 灌向量」必須在**能連到 PCC／Ollama／DB 的本機**執行 —— 由 launchd 觸發本機管線完成（預設 `direct` 直跑引擎，零 token；必要時可切 `claude` 模式）。
 
 管線對連不到的步驟採 **fail-soft**：連線受阻就跳過該步並記錄，索引仍會照建，待能連線時補跑即可。
@@ -41,7 +41,6 @@
 | `scripts/automation/tender-daily.command.md`           | Claude Code slash command `/tender-daily` 的定義（待複製到 `.claude/commands/`） |
 | `scripts/automation/run_claude_daily.sh`               | launchd 包裝器：載入環境後跑管線（預設 `direct` 直跑引擎；可切 `claude` 模式）   |
 | `scripts/automation/com.hqdesign.tenderai.daily.plist` | launchd 排程，每日 10:15 觸發                                                    |
-| `scripts/automation/github-actions-publish-10am.yml`   | 給 `aiadminhq/tender-reports` 改發布時間為 10:00 的 cron 片段                    |
 
 ## 安裝（本機 macOS，一次性）
 
@@ -65,7 +64,7 @@ launchctl load   "$HOME/Library/LaunchAgents/com.hqdesign.tenderai.daily.plist"
 launchctl list | grep tenderai      # 確認已載入
 ```
 
-> 變更 GitHub Actions 發布時間：開 `aiadminhq/tender-reports` 內既有發布 workflow，把 `on.schedule.cron` 換成 `github-actions-publish-10am.yml` 內的 `0 2 * * *`（依治理規範由本人於該 repo 自行提交）。
+> GitHub Actions 發布時間**維持現狀**（約台灣 08:00），不需改動 —— 本機排程 10:15 在其後，必能抓到當日報表。若日後想更動發布時間，於 `aiadminhq/tender-reports` 既有 workflow 自行調整 `on.schedule.cron` 即可（依治理規範由本人於該 repo 提交）。
 
 ## 手動測試
 
