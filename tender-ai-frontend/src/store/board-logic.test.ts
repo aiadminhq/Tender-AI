@@ -3,11 +3,13 @@ import {
   STAGE_FROM_STATUS,
   cardsToProjects,
   filterAssignableMembers,
+  mergeAccountsIntoMembers,
   isProjectVisible,
   filterVisibleProjects,
   resolveTender,
 } from "./board-logic";
 import { TENDERS } from "@/data/tenders";
+import { authDisplay, type AccountRow } from "@/lib/auth-api";
 import type {
   BoardView,
   KanbanCard,
@@ -118,6 +120,91 @@ describe("filterAssignableMembers", () => {
 
   it("無白名單成員時回傳空陣列", () => {
     expect(filterAssignableMembers([mkMember(9, false)])).toEqual([]);
+  });
+});
+
+describe("mergeAccountsIntoMembers（白名單 hydration 合併＋prune）", () => {
+  const mkRow = (
+    id: number,
+    email: string | null,
+    over: Partial<AccountRow> = {},
+  ): AccountRow => ({
+    id,
+    name: email ? email.split("@")[0] : `u${id}`,
+    email,
+    role: "member",
+    isAdmin: false,
+    whitelistActive: true,
+    consentShared: false,
+    ...over,
+  });
+
+  it("剔除『種子來源（正 id）但後端已不存在』的殘留假帳號（復活 bug 的回歸守衛）", () => {
+    const prev = [mkMember(1, true), mkMember(2, true)]; // m1@ 後端有、m2@ 後端無
+    const out = mergeAccountsIntoMembers(prev, [mkRow(101, "m1@hqdesign.tw")]);
+    const emails = out.map((m) => m.email);
+    expect(emails).toContain("m1@hqdesign.tw");
+    expect(emails).not.toContain("m2@hqdesign.tw"); // 不復活
+    expect(out).toHaveLength(1);
+  });
+
+  it("保留本地新增、尚未落地後端者（負 id），即使後端沒有它", () => {
+    const prev = [mkMember(-1, false)]; // 剛由 UI 新增、未開通白名單
+    const out = mergeAccountsIntoMembers(prev, [
+      mkRow(101, "other@hqdesign.tw"),
+    ]);
+    const local = out.find((m) => m.id === -1);
+    expect(local?.email).toBe("m-1@hqdesign.tw");
+    expect(out.map((m) => m.email)).toContain("other@hqdesign.tw");
+  });
+
+  it("後端列以真實 id / whitelist / consent 覆寫本地同 email 種子，並重算頭像", () => {
+    const prev = [mkMember(1, false)]; // 本地種子 id=1, wl=false
+    const rows = [
+      mkRow(777, "m1@hqdesign.tw", {
+        name: "Real One",
+        role: "admin",
+        isAdmin: true,
+        whitelistActive: true,
+        consentShared: true,
+      }),
+    ];
+    const out = mergeAccountsIntoMembers(prev, rows);
+    expect(out).toHaveLength(1);
+    const m = out[0];
+    expect(m.id).toBe(777); // 真實 id 覆寫
+    expect(m.name).toBe("Real One");
+    expect(m.role).toBe("admin");
+    expect(m.whitelistActive).toBe(true);
+    expect(m.consentShared).toBe(true);
+    const d = authDisplay({ name: "Real One", email: "m1@hqdesign.tw" });
+    expect(m.initials).toBe(d.initials); // 頭像由後端 name/email 重算
+    expect(m.color).toBe(d.color);
+  });
+
+  it("後端新帳號（本地沒有）會被併入名單", () => {
+    const out = mergeAccountsIntoMembers([], [mkRow(5, "new@hqdesign.tw")]);
+    expect(out.map((m) => m.email)).toEqual(["new@hqdesign.tw"]);
+  });
+
+  it("email 比對不分大小寫：同 email 不重複、且被後端覆寫（不誤剔）", () => {
+    const prev: Member[] = [
+      { ...mkMember(1, false), email: "Alex@HQDesign.TW" },
+    ];
+    const out = mergeAccountsIntoMembers(prev, [
+      mkRow(9, "alex@hqdesign.tw", { name: "Alex" }),
+    ]);
+    expect(out).toHaveLength(1); // 不因大小寫而重複
+    expect(out[0].id).toBe(9); // 後端覆寫
+  });
+
+  it("無 email 的成員原樣保留；後端 email=null（系統佔位）不納入合併", () => {
+    const prev: Member[] = [{ ...mkMember(1, true), email: null }];
+    const out = mergeAccountsIntoMembers(prev, [
+      mkRow(1, null, { name: "default" }),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].email).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 // 投標看板的純邏輯（無 React／無 I/O），抽出以便 vitest 直接測試。
 // 對應 app-data 的：① 舊看板卡遷移 cardsToProjects ② Issue #1 白名單指派名單
-// ③ visibleProjects 檢視過濾（stage / member / mineOnly）。
+// ③ visibleProjects 檢視過濾（stage / member / mineOnly）④ 白名單 hydration 合併。
 import type {
   BidStage,
   BoardView,
@@ -10,6 +10,7 @@ import type {
   Tender,
   TenderProject,
 } from "@/types/domain";
+import { authDisplay, type AccountRow } from "@/lib/auth-api";
 
 // 舊 KanbanCard.status → 新 BidStage（一次性遷移；done 視為得標，無對應 abandoned）。
 export const STAGE_FROM_STATUS: Record<TaskStatus, BidStage> = {
@@ -88,6 +89,45 @@ export function cardsToProjects(
 // Issue #1 指派名單唯一來源：僅白名單成員（whitelistActive）才可被指派。
 export function filterAssignableMembers(members: Member[]): Member[] {
   return members.filter((m) => m.whitelistActive);
+}
+
+// 白名單 hydration 的合併邏輯（純函式，抽出以便測試；對應 app-data 的
+// fetchAccounts() → setMembers）。後端＝白名單帳號的真實來源：以 email（小寫）為鍵，
+// 後端列覆寫本地（更新真實 id / whitelist / consent，並由 authDisplay 重算頭像）。
+// 關鍵在 prune——剔除「種子來源（正 id）但後端已不存在」的殘留 email 成員（如先前的
+// 示範假帳號），讓管理員刪除真正落地、重整不再復活；本地剛新增、尚未落地後端者為
+// 負 id（見 app-data.addMember），一律保留。無 email 的成員原樣保留（理論上不存在）。
+export function mergeAccountsIntoMembers(
+  prev: Member[],
+  rows: AccountRow[],
+): Member[] {
+  const emailless = prev.filter((m) => !m.email);
+  const backendEmails = new Set(
+    rows.filter((r) => r.email).map((r) => r.email!.toLowerCase()),
+  );
+  const byEmail = new Map<string, Member>();
+  for (const m of prev) {
+    if (!m.email) continue;
+    const key = m.email.toLowerCase();
+    // 種子來源（正 id）但後端已無 → 剔除（殘留假帳號）；負 id（本地新增未落地）保留。
+    if (m.id > 0 && !backendEmails.has(key)) continue;
+    byEmail.set(key, m);
+  }
+  for (const r of rows) {
+    if (!r.email) continue;
+    const d = authDisplay({ name: r.name, email: r.email });
+    byEmail.set(r.email.toLowerCase(), {
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      role: r.role,
+      whitelistActive: r.whitelistActive,
+      consentShared: r.consentShared,
+      initials: d.initials,
+      color: d.color,
+    });
+  }
+  return [...emailless, ...byEmail.values()];
 }
 
 // 單一專案是否通過目前 boardView 過濾（階段 / 成員 / 與我相關）。

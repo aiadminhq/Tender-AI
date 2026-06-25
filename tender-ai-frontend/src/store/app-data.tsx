@@ -60,6 +60,7 @@ import {
   cardsToProjects,
   filterAssignableMembers,
   filterVisibleProjects,
+  mergeAccountsIntoMembers,
 } from "@/store/board-logic";
 import { keywordHits } from "@/lib/keyword-hits";
 import {
@@ -1682,8 +1683,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // 白名單 best-effort hydration：live+admin 時抓真實帳號，依 email 併入 members
-  // （更新真實 id / whitelist / consent，並由 authDisplay 重算頭像）。非 admin／離線
-  // 會 403／不可達 → 維持本地種子＋本地 CRUD（前端優先的退化路徑）。
+  // （更新真實 id / whitelist / consent、剔除後端已不存在的殘留種子帳號；合併邏輯
+  // 抽至 board-logic.mergeAccountsIntoMembers 以便測試）。非 admin／離線會 403／不可達
+  // → 維持本地種子＋本地 CRUD（前端優先的退化路徑）。
   useEffect(() => {
     if (import.meta.env.VITE_USE_API === "false" || !isAdmin) return;
     let cancelled = false;
@@ -1691,35 +1693,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .then((rows) => {
         if (cancelled || !rows || !rows.length) return;
         setMembers((prev) => {
-          const emailless = prev.filter((m) => !m.email);
-          // 後端＝白名單帳號的真實來源。剔除「種子來源（正 id）但後端已不存在」的
-          // 殘留 email 成員（如先前的示範假帳號 aaron@/jamie@/yvonne@），讓刪除真正
-          // 落地、不再於重整時復活。本地剛新增、尚未落地後端者為負 id，一律保留。
-          const backendEmails = new Set(
-            rows.filter((r) => r.email).map((r) => r.email!.toLowerCase()),
-          );
-          const byEmail = new Map<string, Member>();
-          for (const m of prev) {
-            if (!m.email) continue;
-            const key = m.email.toLowerCase();
-            if (m.id > 0 && !backendEmails.has(key)) continue;
-            byEmail.set(key, m);
-          }
-          for (const r of rows) {
-            if (!r.email) continue;
-            const d = authDisplay({ name: r.name, email: r.email });
-            byEmail.set(r.email.toLowerCase(), {
-              id: r.id,
-              name: r.name,
-              email: r.email,
-              role: r.role,
-              whitelistActive: r.whitelistActive,
-              consentShared: r.consentShared,
-              initials: d.initials,
-              color: d.color,
-            });
-          }
-          const merged = [...emailless, ...byEmail.values()];
+          const merged = mergeAccountsIntoMembers(prev, rows);
           save("members", merged);
           return merged;
         });
