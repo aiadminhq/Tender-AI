@@ -48,6 +48,13 @@ tender-ai-frontend/dist/
 **/data/downloads/
 **/backfill_report.json
 
+# ── 每日管線運行產物（外部 repo git 快取／運行日誌／DB 備份）──────────────
+# 別的 repo 的 GitHub 存檔預設放專案外；即使覆寫路徑回專案內也兜底。
+# 只有處理完成的 Layer A/B/C 結果才可入庫，這些來源/中間/運維資料一律不入版控。
+**/data/tender-reports-cache/
+**/data/pipeline-logs/
+**/data/backups/
+
 # ── 設計參考圖庫（本機靈感素材，非源碼；視覺方向已被 plans/uiux-v2-draft.html 吸收）──
 Dashboar UI REF/
 
