@@ -62,6 +62,7 @@ _ALL_TABLES = [
     "saved_searches",
     "push_logs",
     "evolution_logs",
+    "tier_threshold_revisions",
     "tender_user_state",
     "daily_tender",
     "daily_runs",

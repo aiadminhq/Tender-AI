@@ -14,6 +14,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -304,4 +305,47 @@ class DecisionVector(Base):
             postgresql_using="hnsw",
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+    )
+
+
+class TierThresholdRevision(Base):
+    """層級 C：潛力分帶門檻「版本快照」（信心校準學習的稽核軌跡）。
+
+    潛力分級（高/中/低）由團隊線可行性分數 ``Tender.feasibility_team`` 分帶而來；
+    分帶切點 ``c_high`` / ``c_low`` 不寫死，而是由 ``app/jobs/learn_tier_thresholds.py``
+    以**信心校準**從 consent-aware 團隊樣本學出：``c_high`` ＝ 能讓「分數≥c_high 的標案
+    實際可行比例 ≥ target_high」成立的最低切點；``c_low`` ＝ 能讓「分數<c_low 的標案
+    實際不可行比例 ≥ target_low」成立的最高切點（皆需 ≥ min_support 支援）。
+
+    每次學習跑完 append 一列（不更新）：記下該批切點、目標信心、支援度與樣本脈絡。
+    讀「目前門檻」取最新一列；資料不足時 ``fallback=True`` 並沿用種子切點。
+    與 ``KeywordWeightRevision`` 同為 append-only 稽核軌跡；本表只存分數切點，
+    **不產生任何負分關鍵字權重**（與「負分人工專屬」紅線無涉）。
+
+    隱私鐵則：本表僅存聚合切點與樣本計數（Layer A 聚合統計）——無人名／email。
+    """
+    __tablename__ = "tier_threshold_revisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # 同一次門檻學習迭代共用此 batch 值（ISO8601 UTC 時間戳）
+    batch: Mapped[str] = mapped_column(String(32), index=True, nullable=False)
+    # 學出的高潛力切點（分數 ≥ c_high → 高潛力）
+    c_high: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 學出的低潛力切點（分數 < c_low → 低潛力；介於兩者 → 中潛力）
+    c_low: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 校準目標：高帶要求的「實際可行」比例、低帶要求的「實際不可行」比例
+    target_high: Mapped[float] = mapped_column(Float, nullable=False)
+    target_low: Mapped[float] = mapped_column(Float, nullable=False)
+    # 每個切點成立所需的最小樣本數
+    min_support: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # 該批落在高帶 / 低帶的樣本數（支援度）
+    support_high: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    support_low: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # 當批校準所用的可行／不可行樣本脈絡
+    feasible_samples: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    infeasible_samples: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # 是否因資料不足而回退種子切點（True = 未真正學到，沿用 SEED_C_HIGH/LOW）
+    fallback: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )

@@ -379,39 +379,23 @@ async def _latest_snapshot(session: AsyncSession, tender_id: int):
     return (row[0], row[1]) if row else (None, None)
 
 
-async def explain_tender(
-    session: AsyncSession, tender_id: int, user_id: int | None = None
-) -> TenderReasoningOut:
-    """對單一標案輸出可中標推理（fit + 逐條 reason code + 結論）。查無 → 404。"""
-    t = await session.get(Tender, tender_id)
-    if t is None:
-        raise EntityNotFound(f"tender {tender_id} not found")
+# --------------------------------------------------------------------------- #
+# 計分核心（純函式）：供 explain_tender（個人線）與物化 job（團隊線）共用
+# --------------------------------------------------------------------------- #
+def accumulate_fit(
+    t: Tender,
+    profile: CriteriaProfile,
+    positive_kws: list[KeywordWeight],
+    manual_negatives: list[str],
+    learned_negatives: list[KeywordWeight] | None = None,
+    days_left: int | None = None,
+) -> tuple[float, list[tuple[float, ReasonCode]], list[ReasonCode]]:
+    """逐項疊加 criteria fit（**未** clamp），回傳 (fit_raw, weighted, neutral)。
 
-    profile = await build_criteria_profile(session, user_id)
-    tier, days_left = await _latest_snapshot(session, tender_id)
-    # 正向學習詞：所有非負極性。
-    positive_kws = list(
-        (
-            await session.execute(
-                select(KeywordWeight).where(KeywordWeight.polarity != "negative")
-            )
-        ).scalars()
-    )
-    # 負向兩源：①本人手動迴避詞（profile.kw_negative）。②即時判斷學習派生的團隊
-    # 負權——只取帶標記（notes 非空）者；遺留的「自動」負向（notes 為 NULL）仍被
-    # 忽略並由 learn_keywords 清除，維持紅線測試與向後相容。
-    manual_negatives = list(profile.kw_negative)
-    learned_negatives = list(
-        (
-            await session.execute(
-                select(KeywordWeight).where(
-                    KeywordWeight.polarity == "negative",
-                    KeywordWeight.notes.is_not(None),
-                )
-            )
-        ).scalars()
-    )
-
+    純函式：只讀傳入的 profile／關鍵字，不碰 DB、**不讀標案分級（tier）**，因此可同時
+    供 explain_tender（個人線）與物化 job（團隊線）共用，且不會循環依賴報表分級。
+    ``days_left`` 僅驅動中性「截止急迫」提示，不影響 fit。
+    """
     weighted: list[tuple[float, ReasonCode]] = []
     neutral: list[ReasonCode] = []
     fit = profile.base_rate
@@ -594,17 +578,77 @@ async def explain_tender(
             ),
         ))
 
-    fit = max(0.03, min(0.97, fit))
-    criteria_fit = round(fit * 100)
+    return fit, weighted, neutral
+
+
+def finalize_criteria_fit(fit_raw: float) -> int:
+    """clamp 到 [0.03, 0.97] 後映射為 0–100 整數（與原 explain_tender 等價）。"""
+    return round(max(0.03, min(0.97, fit_raw)) * 100)
+
+
+def verdict_for(criteria_fit: int) -> tuple[str, str]:
+    """由 criteria_fit 推結論碼與標題（門檻 62／42 與文案與原版不變）。"""
     if criteria_fit >= 62:
-        verdict = "strong"
-        headline = "判準高度吻合，建議優先評估投標"
-    elif criteria_fit >= 42:
-        verdict = "consider"
-        headline = "部分判準吻合，建議進一步評估"
-    else:
-        verdict = "weak"
-        headline = "與你的承標判準偏離，多半可略過"
+        return "strong", "判準高度吻合，建議優先評估投標"
+    if criteria_fit >= 42:
+        return "consider", "部分判準吻合，建議進一步評估"
+    return "weak", "與你的承標判準偏離，多半可略過"
+
+
+def compute_team_fit(
+    t: Tender,
+    profile: CriteriaProfile,
+    positive_kws: list[KeywordWeight],
+    learned_negatives: list[KeywordWeight] | None = None,
+) -> int:
+    """團隊線可行性分數（0–100）：物化 job 專用。
+
+    等同 explain_tender 的 criteria_fit，但以**團隊線 profile**（``user_id=None``）、
+    **無個人手動迴避詞**（manual_negatives=[]，貫徹「負分人工專屬」團隊紅線），
+    且不計截止急迫中性項（本就不影響分數）。
+    """
+    fit_raw, _, _ = accumulate_fit(t, profile, positive_kws, [], learned_negatives)
+    return finalize_criteria_fit(fit_raw)
+
+
+async def explain_tender(
+    session: AsyncSession, tender_id: int, user_id: int | None = None
+) -> TenderReasoningOut:
+    """對單一標案輸出可中標推理（fit + 逐條 reason code + 結論）。查無 → 404。"""
+    t = await session.get(Tender, tender_id)
+    if t is None:
+        raise EntityNotFound(f"tender {tender_id} not found")
+
+    profile = await build_criteria_profile(session, user_id)
+    tier, days_left = await _latest_snapshot(session, tender_id)
+    # 正向學習詞：所有非負極性。
+    positive_kws = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(KeywordWeight.polarity != "negative")
+            )
+        ).scalars()
+    )
+    # 負向兩源：①本人手動迴避詞（profile.kw_negative）。②即時判斷學習派生的團隊
+    # 負權——只取帶標記（notes 非空）者；遺留的「自動」負向（notes 為 NULL）仍被
+    # 忽略並由 learn_keywords 清除，維持紅線測試與向後相容。
+    manual_negatives = list(profile.kw_negative)
+    learned_negatives = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(
+                    KeywordWeight.polarity == "negative",
+                    KeywordWeight.notes.is_not(None),
+                )
+            )
+        ).scalars()
+    )
+
+    fit, weighted, neutral = accumulate_fit(
+        t, profile, positive_kws, manual_negatives, learned_negatives, days_left
+    )
+    criteria_fit = finalize_criteria_fit(fit)
+    verdict, headline = verdict_for(criteria_fit)
 
     weighted.sort(key=lambda x: abs(x[0]), reverse=True)
     reasons = [rc for _, rc in weighted] + neutral

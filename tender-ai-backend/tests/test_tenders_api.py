@@ -5,7 +5,10 @@
 """
 from __future__ import annotations
 
+from sqlalchemy import update
+
 from app.models.knowledge import KeywordWeight
+from app.models.tender import Tender
 from tests.conftest import TestSessionLocal
 
 BASE = "/api/v1/tenders"
@@ -19,6 +22,16 @@ async def _add_keyword_weight(term: str, polarity: str, weight: float) -> None:
     """植入一條學習權重（供 feas 排序受權重影響的驗證）。"""
     async with TestSessionLocal() as s:
         s.add(KeywordWeight(term=term, polarity=polarity, weight=weight, support=2))
+        await s.commit()
+
+
+async def _set_feasibility_team(updates: dict[int, int]) -> None:
+    """直接物化團隊線可行性分數（feas 排序的主鍵來源）。"""
+    async with TestSessionLocal() as s:
+        for tid, score in updates.items():
+            await s.execute(
+                update(Tender).where(Tender.id == tid).values(feasibility_team=score)
+            )
         await s.commit()
 
 
@@ -123,7 +136,8 @@ async def test_avoid_not(client, seeded):
 # 排序（皆 null 殿後）
 # --------------------------------------------------------------------------- #
 async def test_sort_feas_default(client, seeded):
-    # 預設 feas＝(tier_rank, days)：high < mid < low < tmu(null)
+    # 預設 feas＝(feasibility_team desc, tier_rank, days)；種子皆未物化(NULL)
+    # → 退化為 (tier_rank, days)：high < mid < low < tmu(null)
     r = await client.get(BASE)
     assert _ids(r.json()) == [
         seeded["high"],
@@ -172,23 +186,25 @@ async def test_sort_invalid_returns_422(client, seeded):
 
 
 # --------------------------------------------------------------------------- #
-# SL2：feas 排序受學習權重（KeywordWeight）影響、且回傳真實可行度分數
+# SL2：feas 排序以物化團隊線可行性分數為主鍵、且回傳真實可行度分數
 # --------------------------------------------------------------------------- #
-async def test_feas_sort_shifts_with_keyword_weight(client, seeded):
-    """無權重時 high 居首；對「勞務」加正權重後，low（桃園清潔勞務委外）躍居首位。
+async def test_feas_sort_orders_by_team_feasibility(client, seeded):
+    """未物化時退化為 tier 排序（high 居首）；物化分數後，最高分案躍居首位。
 
-    證明 feas 排序＝feas_raw（學習權重命中加總）＋ tier 權重，而非單純 tier。
+    證明預設 feas 排序＝feasibility_team（物化團隊線分數）優先，而非單純 tier。
+    分數本身如何隨學習權重變動，由 test_score_team_feasibility 的 job 層測試覆蓋。
     """
-    # 冷啟動：keyword_weights 為空 → 退化為純 tier 排序，high 居首。
+    # 冷啟動：feasibility_team 皆 NULL → 退化為純 tier 排序，high 居首。
     cold = (await client.get(BASE)).json()
     assert _ids(cold)[0] == seeded["high"]
 
-    # 注入正向權重：「勞務」+5.0（命中 low 的名稱／類別）。
-    await _add_keyword_weight("勞務", "positive", 5.0)
+    # 物化分數：low 給最高分、high 給較低分 → low 躍居首位、high 退居其後。
+    await _set_feasibility_team({seeded["low"]: 90, seeded["high"]: 50})
 
     warm = (await client.get(BASE)).json()
-    # low 命中 +5.0（tier=low→0）＝5.0，壓過 high（tier=high→2、未命中＝0）。
     assert _ids(warm)[0] == seeded["low"]
+    # high(50) 仍排在兩個未物化(NULL 殿後)的 mid／tmu 之前。
+    assert _ids(warm)[1] == seeded["high"]
 
 
 async def test_list_returns_feasibility_score(client, seeded):
