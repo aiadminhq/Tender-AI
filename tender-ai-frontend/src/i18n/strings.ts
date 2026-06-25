@@ -644,7 +644,9 @@ export const STRINGS = {
       "你的行為與想法如何進入白名單同事的共享知識庫，以及 AI 從你身上學到了什麼。",
     consentToggleLabel: "共享我的行為與想法",
     consentToggleDesc:
-      "開啟後，你的收藏、評分、想法會以你的登入帳號具名，進入白名單同事共享的知識庫；對外一律去識別化、永不揭露。關閉即停止匯入。",
+      "依團隊協議**預設開啟**。你的收藏、評分與想法會以登入帳號**具名**進入白名單同事共享知識庫；對外一律**去識別化、永不揭露**。可隨時退出，退出即停止匯入。",
+    consentOptOutOn: "共享中",
+    consentOptOutOff: "已退出共享",
     consentSince: "同意於",
     consentSavedOn: "已開啟共享",
     consentSavedOff: "已關閉共享",
@@ -1408,7 +1410,9 @@ export const STRINGS = {
       "How your activity and ideas feed the whitelisted team's shared knowledge base, and what the AI has learned about you.",
     consentToggleLabel: "Share my activity & ideas",
     consentToggleDesc:
-      "When on, your saves, ratings and notes join the whitelisted team's shared knowledge base, named by your login account; always de-identified and never disclosed externally. Turning it off stops the import.",
+      "On by default per team agreement. Your saves, ratings and ideas are contributed named (by login account) to the whitelisted team's shared knowledge base; always de-identified and never disclosed externally. You can opt out at any time — opting out stops the import.",
+    consentOptOutOn: "Sharing on",
+    consentOptOutOff: "Opted out",
     consentSince: "Consented on",
     consentSavedOn: "Sharing enabled",
     consentSavedOff: "Sharing disabled",

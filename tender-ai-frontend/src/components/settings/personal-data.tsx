@@ -91,6 +91,9 @@ export function PersonalData() {
           <p className="mt-0.5 text-[12px] leading-relaxed text-ink-muted">
             {t("consentToggleDesc")}
           </p>
+          <p className="mt-1 text-[12px] font-medium text-ink-muted">
+            {user.consentShared ? t("consentOptOutOn") : t("consentOptOutOff")}
+          </p>
           {user.consentShared && user.consentAt && (
             <p className="mt-1 text-[11px] text-ink-dim">
               {t("consentSince")} {formatDateLong(user.consentAt, lang)}
