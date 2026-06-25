@@ -30,10 +30,17 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 import app.models  # noqa: F401  匯入所有 model 進 Base.metadata
+from app.core.auth import issue_token
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import get_session, get_session_factory
 from app.main import app
+from app.models.behavior import User
+from types import SimpleNamespace
+
+# 整個測試 session 注入一把固定 AUTH_SECRET（避免缺 secret raise；勿用於正式）
+settings.auth_secret = "test-auth-secret-do-not-use-in-prod"
+settings.auth_token_ttl_hours = 168
 
 # 測試庫 URL：開發庫名加上 _test 後綴（postgresql+psycopg → 同步/非同步同一 driver）
 _BASE_URL = make_url(settings.database_url)
@@ -295,3 +302,46 @@ async def seeded():
     """植入合成資料並回傳 label → tender_id（用獨立 session，植入後即關閉）。"""
     async with TestSessionLocal() as session:
         return await seed_basic(session)
+
+
+@pytest.fixture
+def auth_headers():
+    """回 callable：傳 User 或 user_id，得到 Bearer headers。"""
+
+    def _make(user_or_uid) -> dict[str, str]:
+        uid = getattr(user_or_uid, "id", user_or_uid)
+        return {"Authorization": f"Bearer {issue_token(SimpleNamespace(id=int(uid)))}"}
+
+    return _make
+
+
+@pytest_asyncio.fixture
+async def default_user() -> User:
+    async with TestSessionLocal() as s:
+        u = User(
+            name="預設使用者",
+            email="default@hqdesign.tw",
+            role="member",
+            whitelist_active=True,
+            consent_shared=True,
+        )
+        s.add(u)
+        await s.commit()
+        await s.refresh(u)
+        return u
+
+
+@pytest_asyncio.fixture
+async def admin_user() -> User:
+    async with TestSessionLocal() as s:
+        u = User(
+            name="測試管理員",
+            email="admin@hqdesign.tw",
+            role="admin",
+            whitelist_active=True,
+            consent_shared=True,
+        )
+        s.add(u)
+        await s.commit()
+        await s.refresh(u)
+        return u
