@@ -12,8 +12,8 @@
                                     │ git pull（公開 repo）
   10:15 TW  ┌───────────────────────▼─────────────────────┐
 （本機執行）│ launchd → run_claude_daily.sh                 │
-            │   → claude -p "/tender-daily"                 │
-            │       → daily_pipeline.sh                     │
+            │   → daily_pipeline.sh（預設 direct 模式）     │
+            │     （可切 TENDER_PIPELINE_MODE=claude）      │
             │                                               │
             │  Layer A  ingest_daily_reports  建索引(去重)  │  需 DB
             │           enrich_details        抓 PCC 建檔   │  需 DB + PCC
@@ -29,19 +29,19 @@
 依專案 `CLAUDE.md`／後端 `README`：**雲端／沙箱環境連不到 PCC 招標網、本機 Ollama、本機 PostgreSQL**。因此：
 
 - 索引「發布」可由 GitHub Actions（雲端）完成 —— repo 已在做，只需把時間改 10:00。
-- 「抓 PCC 詳情建檔 + 灌向量」必須在**能連到 PCC／Ollama／DB 的本機**執行 —— 由 launchd 觸發 Claude Code headless 完成。
+- 「抓 PCC 詳情建檔 + 灌向量」必須在**能連到 PCC／Ollama／DB 的本機**執行 —— 由 launchd 觸發本機管線完成（預設 `direct` 直跑引擎，零 token；必要時可切 `claude` 模式）。
 
 管線對連不到的步驟採 **fail-soft**：連線受阻就跳過該步並記錄，索引仍會照建，待能連線時補跑即可。
 
 ## 檔案清單
 
-| 檔案                                                   | 作用                                                                               |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `tender-ai-backend/scripts/daily_pipeline.sh`          | 管線引擎（同步報表 → 預檢 → Layer A → Layer C）                                    |
-| `scripts/automation/tender-daily.command.md`           | Claude Code slash command `/tender-daily` 的定義（待複製到 `.claude/commands/`）   |
-| `scripts/automation/run_claude_daily.sh`               | launchd 包裝器：載入環境後跑 `claude -p /tender-daily`，無 claude 時退回直接跑引擎 |
-| `scripts/automation/com.hqdesign.tenderai.daily.plist` | launchd 排程，每日 10:15 觸發                                                      |
-| `scripts/automation/github-actions-publish-10am.yml`   | 給 `aiadminhq/tender-reports` 改發布時間為 10:00 的 cron 片段                      |
+| 檔案                                                   | 作用                                                                             |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `tender-ai-backend/scripts/daily_pipeline.sh`          | 管線引擎（同步報表 → 預檢 → Layer A → Layer C）                                  |
+| `scripts/automation/tender-daily.command.md`           | Claude Code slash command `/tender-daily` 的定義（待複製到 `.claude/commands/`） |
+| `scripts/automation/run_claude_daily.sh`               | launchd 包裝器：載入環境後跑管線（預設 `direct` 直跑引擎；可切 `claude` 模式）   |
+| `scripts/automation/com.hqdesign.tenderai.daily.plist` | launchd 排程，每日 10:15 觸發                                                    |
+| `scripts/automation/github-actions-publish-10am.yml`   | 給 `aiadminhq/tender-reports` 改發布時間為 10:00 的 cron 片段                    |
 
 ## 安裝（本機 macOS，一次性）
 
@@ -83,13 +83,14 @@ tail -f tender-ai-backend/data/pipeline-logs/daily-$(date +%Y%m%d).log
 
 ## 可調參數（環境變數）
 
-| 變數                | 預設                                              | 說明                                                                      |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------- |
-| `TENDER_AI_ROOT`    | 專案絕對路徑                                      | 專案根覆寫                                                                |
-| `REPORTS_REPO_URL`  | `https://github.com/aiadminhq/tender-reports.git` | 報表來源 repo                                                             |
-| `REPORTS_CACHE`     | `~/.cache/tender-ai/tender-reports`               | 外部報表 repo 的 git clone 快取位置（**預設在專案外**，見下「版控邊界」） |
-| `ENRICH_RATE_LIMIT` | `1.0`                                             | 每筆 PCC 抓取間隔秒數（禮貌爬取）                                         |
-| `ENRICH_LIMIT`      | （無）                                            | 單次 enrich 上限，除錯用                                                  |
+| 變數                   | 預設                                              | 說明                                                                         |
+| ---------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `TENDER_AI_ROOT`       | 專案絕對路徑                                      | 專案根覆寫                                                                   |
+| `TENDER_PIPELINE_MODE` | `direct`                                          | wrapper 執行方式：`direct` 直跑引擎（零 token）／`claude` 經 `/tender-daily` |
+| `REPORTS_REPO_URL`     | `https://github.com/aiadminhq/tender-reports.git` | 報表來源 repo                                                                |
+| `REPORTS_CACHE`        | `~/.cache/tender-ai/tender-reports`               | 外部報表 repo 的 git clone 快取位置（**預設在專案外**，見下「版控邊界」）    |
+| `ENRICH_RATE_LIMIT`    | `1.0`                                             | 每筆 PCC 抓取間隔秒數（禮貌爬取）                                            |
+| `ENRICH_LIMIT`         | （無）                                            | 單次 enrich 上限，除錯用                                                     |
 
 ## 版控邊界（重要）
 
