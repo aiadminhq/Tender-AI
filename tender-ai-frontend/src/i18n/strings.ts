@@ -36,6 +36,7 @@ export const STRINGS = {
     // semantic 語意搜尋 / evolution 自我進化（新頁）
     navSearch: "語意搜尋",
     navEvolution: "自我進化",
+    navDesignSystem: "設計系統",
     searchPageSub: "用自然語言找語意相近的標案",
     evolutionPageSub: "知識庫學習現況與手動觸發（聚合統計，對外去識別化）",
     searchPlaceholder: "描述你要找的標案，例如：校園網路設備汰換建置",
@@ -251,6 +252,9 @@ export const STRINGS = {
     tierMid: "中潛力",
     tierLow: "低潛力",
     budgetCeiling: "預算上限",
+    budgetRange: "預算區間",
+    budgetMinimum: "最低",
+    budgetMaximum: "最高",
     focusOnly: "只看重點",
     hideExcluded: "隱藏排除",
     clear: "清除",
@@ -743,6 +747,7 @@ export const STRINGS = {
     // semantic search / self-evolution (new pages)
     navSearch: "Semantic Search",
     navEvolution: "Self-Evolution",
+    navDesignSystem: "Design System",
     searchPageSub: "Find semantically similar tenders in natural language",
     evolutionPageSub:
       "Knowledge-base learning status & manual trigger (aggregated, de-identified externally)",
@@ -972,6 +977,9 @@ export const STRINGS = {
     tierMid: "Medium",
     tierLow: "Low",
     budgetCeiling: "Budget cap",
+    budgetRange: "Budget range",
+    budgetMinimum: "Minimum",
+    budgetMaximum: "Maximum",
     focusOnly: "Focus only",
     hideExcluded: "Hide excluded",
     clear: "Clear",
