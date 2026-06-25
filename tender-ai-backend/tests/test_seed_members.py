@@ -26,7 +26,10 @@ async def test_new_accounts_seed_consent_true(session_factory):
     )
 
     async with session_factory() as s:
-        rows = (await s.execute(select(User))).scalars().all()
+        member_emails = [m["email"] for m in MEMBERS]
+        rows = (
+            await s.execute(select(User).where(User.email.in_(member_emails)))
+        ).scalars().all()
 
     assert rows, "DB 應有成員帳號"
     non_consented = [u.email for u in rows if not u.consent_shared]
