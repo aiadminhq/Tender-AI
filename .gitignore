@@ -19,6 +19,9 @@ plans/**/preview.html
 # ── 其他專案產出（報表站台屬 tender-bot 產物，非本 repo 源碼）──
 tender-reports/
 
+# ── Node（任何層級的 node_modules 一律不入版控；含 repo 根與技能安裝產生的）──
+node_modules/
+
 # ── 前端（保險：巢狀 .gitignore 已涵蓋，這裡再兜一層）──
 tender-ai-frontend/node_modules/
 tender-ai-frontend/dist/
