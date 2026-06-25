@@ -34,7 +34,10 @@ describe("fetchTenders 分頁", () => {
   it("逐頁抓取直到取得全部 count 筆", async () => {
     const total = 450; // 200 + 200 + 50 → 3 頁
     const fetchMock = vi.fn(async (input: string) => {
-      const page = Number(new URL(input).searchParams.get("page"));
+      // API_BASE 在 dev 為相對路徑（/api/v1，區網分享走 vite proxy），故須給 base 才能解析。
+      const page = Number(
+        new URL(input, "http://localhost").searchParams.get("page"),
+      );
       const size = 200;
       const start = (page - 1) * size;
       const items = Array.from(
