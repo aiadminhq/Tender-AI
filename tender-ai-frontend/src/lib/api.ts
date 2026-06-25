@@ -48,11 +48,6 @@ export function setCurrentUserId(id: number | null): void {
   currentUserId = id;
 }
 
-/** 把 user_id（若已登入）併入請求 body。 */
-function withUser<T extends Record<string, unknown>>(body: T): T {
-  return currentUserId == null ? body : { ...body, user_id: currentUserId };
-}
-
 // 後端 TenderListItem（app/schemas/tender.py）對應欄位。
 interface TenderListItem {
   id: number;
@@ -759,7 +754,6 @@ export async function fetchAbandonedKeywordCandidates(opts?: {
   signal?: AbortSignal;
 }): Promise<AbandonedKeywordCandidates> {
   const params = new URLSearchParams();
-  if (currentUserId != null) params.set("user_id", String(currentUserId));
   if (opts?.minCount != null) params.set("min_count", String(opts.minCount));
   if (opts?.limit != null) params.set("limit", String(opts.limit));
   const q = params.toString();
@@ -831,7 +825,6 @@ export async function fetchUserDecisions(opts?: {
   signal?: AbortSignal;
 }): Promise<UserDecisions> {
   const params = new URLSearchParams();
-  if (currentUserId != null) params.set("user_id", String(currentUserId));
   if (opts?.limit != null) params.set("limit", String(opts.limit));
   const q = params.toString();
   const url = `${API_BASE}/me/tender-decisions${q ? `?${q}` : ""}`;
@@ -923,9 +916,11 @@ export async function postEvaluate(
     {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify(
-        withUser({ feasible, rationale: rationale?.trim() || null, criteria }),
-      ),
+      body: JSON.stringify({
+        feasible,
+        rationale: rationale?.trim() || null,
+        criteria,
+      }),
     },
   );
   if (!res.ok) throw new Error(`evaluate API ${res.status}`);
@@ -969,17 +964,16 @@ export interface PreferenceProfile {
 }
 
 /**
- * 抓取本人的「個人化偏好輪廓」（GET /me/preference-profile?user_id=）。
+ * 抓取本人的「個人化偏好輪廓」（GET /me/preference-profile）。
  * 後端從本人行為學出（衍生表、只讀），尚未學出時回空輪廓（不 404）。
  * 非 200（含未啟動／未登入）一律回 null，由呼叫端優雅退化（不顯示偏好卡）。
- * Layer B：只用本人資料、依登入帳號具名；未登入則省略 user_id，後端落到預設使用者。
+ * Layer B：只用本人資料，靠 Bearer token 識別身分（Phase 2）。
  */
 export async function fetchPreferenceProfile(
   signal?: AbortSignal,
 ): Promise<PreferenceProfile | null> {
   try {
-    const q = currentUserId == null ? "" : `?user_id=${currentUserId}`;
-    const res = await fetch(`${API_BASE}/me/preference-profile${q}`, {
+    const res = await fetch(`${API_BASE}/me/preference-profile`, {
       headers: authHeaders(),
       signal,
     });
@@ -1015,7 +1009,7 @@ export async function postKeywordOverride(
   const res = await fetch(`${API_BASE}/me/keywords`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify(withUser({ term, kind, action })),
+    body: JSON.stringify({ term, kind, action }),
     signal,
   });
   if (!res.ok) throw new Error(`keyword override API ${res.status}`);
@@ -1037,7 +1031,7 @@ async function postBehavior(
     await fetch(`${API_BASE}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify(withUser(body)),
+      body: JSON.stringify(body),
     });
   } catch {
     /* 盡力寫入，失敗不影響前端狀態 */
@@ -1094,8 +1088,7 @@ export async function fetchSavedSearches(
   signal?: AbortSignal,
 ): Promise<SavedSearch[]> {
   if (import.meta.env.VITE_USE_API === "false") return [];
-  const q = currentUserId == null ? "" : `?user_id=${currentUserId}`;
-  const res = await fetch(`${API_BASE}/saved-searches${q}`, {
+  const res = await fetch(`${API_BASE}/saved-searches`, {
     headers: authHeaders(),
     signal,
   });
@@ -1113,13 +1106,11 @@ export async function postSavedSearch(
   const res = await fetch(`${API_BASE}/saved-searches`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify(
-      withUser({
-        name,
-        query_text: filter.query || null,
-        filter_json: filter,
-      }),
-    ),
+    body: JSON.stringify({
+      name,
+      query_text: filter.query || null,
+      filter_json: filter,
+    }),
   });
   if (!res.ok) throw new Error(`saved-searches API ${res.status}`);
   return adaptSavedSearch((await res.json()) as SavedSearchOut);
