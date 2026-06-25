@@ -18,7 +18,7 @@ from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.errors import PermissionDenied
+from app.core.errors import AuthNotConfigured, PermissionDenied
 from app.db.session import get_session
 from app.models.behavior import User
 
@@ -35,7 +35,9 @@ def _b64url_decode(s: str) -> bytes:
 def _secret() -> bytes:
     secret = settings.auth_secret
     if not secret:
-        raise RuntimeError("AUTH_SECRET 未設定，拒絕簽發／驗證 token（避免空祕密誤上線）")
+        raise AuthNotConfigured(
+            "AUTH_SECRET 未設定，拒絕簽發／驗證 token（避免空祕密誤上線）"
+        )
     return secret.encode("utf-8")
 
 

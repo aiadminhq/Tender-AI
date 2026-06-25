@@ -351,3 +351,20 @@ async def test_login_returns_token(client):
     body = r.json()
     assert body["token"] and "." in body["token"]
     assert body["expires_at"]
+
+
+# --------------------------------------------------------------------------- #
+# final-review Important #1：AUTH_SECRET 缺值改 503
+# --------------------------------------------------------------------------- #
+async def test_missing_auth_secret_returns_503_not_500(client, monkeypatch):
+    """回歸 final-review Important #1：AUTH_SECRET 漏設時，需 token 的端點回可辨識的
+    503（而非不透明 500）。空 secret → _secret() 在觸及 DB 前即拋 AuthNotConfigured，
+    由 main.py handler 轉 503。"""
+    from app.core.config import settings as _settings
+
+    monkeypatch.setattr(_settings, "auth_secret", "")
+    resp = await client.get(
+        "/api/v1/me", headers={"Authorization": "Bearer dummy.token"}
+    )
+    assert resp.status_code == 503
+    assert "AUTH_SECRET" in resp.json()["detail"]

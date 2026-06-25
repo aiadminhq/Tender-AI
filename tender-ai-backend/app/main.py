@@ -2,16 +2,38 @@
 """FastAPI 入口：掛載 v1 查詢／行為 API，並以 X-API-Key 保護（設定後才啟用）。"""
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.v1 import api_router
 from app.core.config import settings
-from app.core.errors import DomainValidationError, EntityNotFound, PermissionDenied
+from app.core.errors import (
+    AuthNotConfigured,
+    DomainValidationError,
+    EntityNotFound,
+    PermissionDenied,
+)
 from app.core.security import require_api_key
 
-app = FastAPI(title="Tender AI API", version="0.1.0")
+logger = logging.getLogger("tender_ai")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 啟動期 fail-closed 體檢：AUTH_SECRET 漏設時即時告警（否則只會在每個需 token 的請求
+    # 才以 503 浮現，難以歸因）。不阻擋啟動——Layer A 唯讀端點與 /health 仍可服務。
+    if not settings.auth_secret:
+        logger.warning(
+            "AUTH_SECRET 未設定：登入無法簽發 token、所有需登入端點將回 503。"
+            "請於 .env 設定強隨機 AUTH_SECRET 後重啟。"
+        )
+    yield
+
+app = FastAPI(title="Tender AI API", version="0.1.0", lifespan=lifespan)
 
 # 前端（Vite 開發站）跨源呼叫：白名單由 CORS_ORIGINS 設定（預設本機 5173／5174），
 # 另以 CORS_ORIGIN_REGEX 放行本機任意埠（含 Claude Preview 代理動態埠）。
@@ -44,6 +66,13 @@ async def _domain_validation_handler(
     request: Request, exc: DomainValidationError
 ) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": exc.detail})
+
+
+@app.exception_handler(AuthNotConfigured)
+async def _auth_not_configured_handler(
+    request: Request, exc: AuthNotConfigured
+) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": exc.detail})
 
 
 @app.get("/health")
