@@ -15,6 +15,7 @@ playwright,故 CI 無需安裝即可跑。
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -191,3 +192,148 @@ async def test_launch_persistent_context_lazy_imports_playwright(monkeypatch):
 def test_unknown_source_rejected():
     with pytest.raises(ValueError):
         PlaywrightDetailScraper(source_name="NOPE")
+
+
+# --------------------------------------------------------------------------- #
+# run_playwright_enrich:離線驗證「預抓 → 快取 → shim → enrich 持久層」串接
+# (不連 DB、不開瀏覽器、不裝 playwright;以注入 + monkeypatch 取代 transport/DB)
+# --------------------------------------------------------------------------- #
+class _FakeSession:
+    """假 async session：只供 ``async with factory() as session`` 用,內容不被讀。"""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakeScraper:
+    """假 Playwright scraper：async CM,fetch_detail 依注入字典回 FetchResult 或丟例外。"""
+
+    def __init__(self, results: dict[str, FetchResult], fail: set[str] | None = None):
+        self._results = results
+        self._fail = fail or set()
+        self.fetched: list[str] = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def fetch_detail(self, case_pk: str) -> FetchResult:
+        self.fetched.append(case_pk)
+        if case_pk in self._fail:
+            raise RuntimeError(f"模擬導航/CAPTCHA 失敗:{case_pk}")
+        return self._results[case_pk]
+
+
+def _fr(case_pk: str, html: str) -> FetchResult:
+    return FetchResult(
+        source_name="PCC",
+        source_url=f"http://example/{case_pk}",
+        status_code=200,
+        content_type="text/html; charset=utf-8",
+        raw_content=html,
+        fetched_at=datetime(2026, 6, 25, tzinfo=timezone.utc),
+        source_revision_key=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_playwright_enrich_wires_cache_into_enrich(monkeypatch):
+    """預抓全部 case → 進快取 → shim 同步查快取餵給 enrich;且 ed.get_adapter 用完還原。"""
+    import app.jobs.enrich_details as ed
+    import app.jobs.scrape_detail_playwright as mod
+
+    full = _load("pcc_detail_full.html")
+    targets = [(101, "PCC-A", "PCC"), (102, "PCC-B", "PCC")]
+    results = {"PCC-A": _fr("PCC-A", full), "PCC-B": _fr("PCC-B", full)}
+    fake_scraper = _FakeScraper(results)
+
+    # _select_targets：回固定目標(不碰真 DB)
+    async def fake_select_targets(session, **kw):
+        return targets
+
+    # run_enrich：模擬持久層 —— 透過(被 monkeypatch 的)ed.get_adapter 取 shim,
+    # 對每個 case 同步呼叫 fetch_detail,證明拿到的是「預抓快取」裡那筆。
+    seen: dict[str, object] = {}
+
+    async def fake_run_enrich(**kw):
+        adapter = ed.get_adapter("PCC")          # 應為 shim,而非真 PCCAdapter
+        seen["adapter"] = adapter
+        seen["A"] = adapter.fetch_detail("PCC-A")
+        seen["B"] = adapter.fetch_detail("PCC-B")
+        # 快取未命中 → shim 視為 transport 失敗(交 enrich 記 fetch_fail)
+        seen["miss_raised"] = False
+        try:
+            adapter.fetch_detail("PCC-MISSING")
+        except RuntimeError:
+            seen["miss_raised"] = True
+        return {
+            "run_id": 1, "targeted": kw.get("limit") or len(targets),
+            "unchanged": 0, "new_revisions": 2, "failed": 0, "captcha": 0,
+            "deferred": 0, "attachments_archived": 0, "interior_hits": 0,
+            "aborted_on_captcha": False,
+        }
+
+    monkeypatch.setattr(ed, "_select_targets", fake_select_targets)
+    monkeypatch.setattr(ed, "run_enrich", fake_run_enrich)
+
+    real_get_adapter = ed.get_adapter  # 用完要還原成這個
+    stats = await mod.run_playwright_enrich(
+        source="PCC",
+        rate_limit_s=0.0,
+        session_factory=lambda: _FakeSession(),
+        scraper_factory=lambda: fake_scraper,
+    )
+
+    # 兩案都被預抓進快取
+    assert fake_scraper.fetched == ["PCC-A", "PCC-B"]
+    # shim(非真 adapter)被餵進 enrich,且回的是預抓那筆 FetchResult
+    assert seen["adapter"] is not real_get_adapter("PCC")
+    assert seen["A"] is results["PCC-A"]
+    assert seen["B"] is results["PCC-B"]
+    # 快取未命中 → shim 丟 RuntimeError(讓 enrich 記 fetch_fail,不假裝成功)
+    assert seen["miss_raised"] is True
+    # run_enrich 的統計被原樣回傳
+    assert stats["new_revisions"] == 2
+    # 關鍵:ed.get_adapter 在 finally 還原(不污染後續測試/呼叫)
+    assert ed.get_adapter is real_get_adapter
+
+
+@pytest.mark.asyncio
+async def test_run_playwright_enrich_no_targets_skips_browser(monkeypatch):
+    """無目標時不開瀏覽器(scraper_factory 不被呼叫),仍正常跑 enrich 回統計。"""
+    import app.jobs.enrich_details as ed
+    import app.jobs.scrape_detail_playwright as mod
+
+    async def fake_select_targets(session, **kw):
+        return []
+
+    async def fake_run_enrich(**kw):
+        return {
+            "run_id": 2, "targeted": 0, "unchanged": 0, "new_revisions": 0,
+            "failed": 0, "captcha": 0, "deferred": 0, "attachments_archived": 0,
+            "interior_hits": 0, "aborted_on_captcha": False,
+        }
+
+    monkeypatch.setattr(ed, "_select_targets", fake_select_targets)
+    monkeypatch.setattr(ed, "run_enrich", fake_run_enrich)
+
+    scraper_called = False
+
+    def boom_factory():
+        nonlocal scraper_called
+        scraper_called = True
+        raise AssertionError("無目標不應建立 scraper")
+
+    stats = await mod.run_playwright_enrich(
+        source="PCC",
+        session_factory=lambda: _FakeSession(),
+        scraper_factory=boom_factory,
+    )
+
+    assert scraper_called is False
+    assert stats["targeted"] == 0

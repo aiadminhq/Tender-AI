@@ -27,7 +27,15 @@ session),開詳情頁;若偵測到 CAPTCHA 就**停下等人工**在那個瀏覽
 * ``PCC_PLAYWRIGHT_CHANNEL``:``chrome``(預設)/ ``msedge`` / 空(用 bundled chromium)。
 
 執行(本機手動;對齊 enrich_details.py 風格):
+    # 預設:抓回並「入庫」(走 enrich 持久層;人工只需過一次 CAPTCHA)
     uv run python -m app.jobs.scrape_detail_playwright --source PCC --limit 50
+    uv run python -m app.jobs.scrape_detail_playwright --all
+    # 只抓取與印出、不入庫(除錯/驗證瀏覽器能否過 CAPTCHA 用)
+    uv run python -m app.jobs.scrape_detail_playwright --dry-run --limit 5
+
+安裝(本機一次性;CI/測試不需,走 monkeypatch):
+    uv pip install playwright          # 或 uv sync --extra browser
+    uv run playwright install chromium
 """
 from __future__ import annotations
 
@@ -309,9 +317,125 @@ async def run_scrape(
     return stats
 
 
+def _default_session_factory():
+    """延後 import DB session(避免離線 import 本模組時拉起 DB 設定)。"""
+    from app.db.session import AsyncSessionLocal
+
+    return AsyncSessionLocal
+
+
+# --------------------------------------------------------------------------- #
+# 與 enrich job 串接:把 run_enrich 的 transport 換成 Playwright persistent context
+# --------------------------------------------------------------------------- #
+async def run_playwright_enrich(
+    *,
+    source: str = "PCC",
+    only_missing: bool = True,
+    limit: int | None = None,
+    ttl_hours: int = 24,
+    trigger: str = "manual",
+    rate_limit_s: float = 1.0,
+    profile_dir: Path | None = None,
+    headless: bool | None = None,
+    channel: str | None = None,
+    now: datetime | None = None,
+    session_factory=None,
+    scraper_factory=None,
+) -> dict:
+    """以 Playwright persistent context 取代預設 transport,跑既有 ``enrich_details.run_enrich`` 持久層。
+
+    與 ``scrape_detail_cdp.run_cdp_enrich`` **同構**:
+      1) 先選目標(``enrich_details._select_targets``),取 case_pk 清單。
+      2) 開「**一個**」persistent context(人工只需過一次 CAPTCHA),逐筆預抓 HTML 進快取。
+      3) 建一個 ``fetch_detail`` 改查快取的 shim adapter,monkeypatch 進 ``enrich_details``
+         的 ``get_adapter``,藉此**完全重用** snapshot → revision → 失敗帳本 → CAPTCHA 分流
+         持久層(不複製持久層)。
+
+    注意:enrich job 內部以 **同步** ``adapter.fetch_detail`` 呼叫,而 Playwright 是 async;
+    故與 CDP 同樣採「先預抓進快取、shim 同步查快取」的作法,避免在同一 event loop 內阻塞。
+
+    ``scraper_factory`` / ``session_factory`` 為測試注入點(預設真瀏覽器 / 真 DB session)。
+    """
+    from app.jobs import enrich_details as ed
+
+    now = now or datetime.now(timezone.utc)
+
+    # 1) 先選目標(只取 case_pk;CLI 用,測試以注入的 session_factory 走假庫)
+    factory = session_factory or _default_session_factory()
+    async with factory() as session:
+        targets = await ed._select_targets(
+            session,
+            only_missing=only_missing,
+            source=source,
+            ttl_hours=ttl_hours,
+            now=now,
+            limit=limit,
+        )
+    case_pks = [pk for (_tid, pk, _src) in targets]
+
+    # 2) 用同一 persistent context 把全部 HTML 預抓進快取(人工只解一次 CAPTCHA;逐筆節流)
+    cache: dict[str, FetchResult] = {}
+    if case_pks:
+        make_scraper = scraper_factory or (
+            lambda: PlaywrightDetailScraper(
+                source_name=source,
+                profile_dir=profile_dir,
+                headless=headless,
+                channel=channel,
+            )
+        )
+        async with make_scraper() as scraper:
+            for idx, pk in enumerate(case_pks):
+                if idx and rate_limit_s:
+                    await asyncio.sleep(rate_limit_s)
+                try:
+                    cache[pk] = await scraper.fetch_detail(pk)
+                except Exception as exc:  # noqa: BLE001 — 個別失敗讓 enrich 記 fetch_fail
+                    print(f"  ⚠ Playwright 抓取 {pk} 失敗:{exc}", file=sys.stderr)
+
+    # 3) shim adapter:同步 fetch_detail 查快取(查不到 → 視為 transport 失敗,交 enrich 記帳)
+    base_adapter = get_adapter(source)
+    if base_adapter is None:
+        raise ValueError(f"未知來源:{source}")
+
+    class _PlaywrightShimAdapter:
+        source_name = base_adapter.source_name
+        base_url = base_adapter.base_url
+        supports_detail_enrich = True
+
+        def detail_url(self, case_pk: str) -> str:
+            return base_adapter.detail_url(case_pk)
+
+        def fetch_detail(self, case_pk: str) -> FetchResult:
+            fr = cache.get(case_pk)
+            if fr is None:
+                raise RuntimeError(
+                    f"Playwright 預抓未取得 {case_pk}(導航/CAPTCHA 失敗)"
+                )
+            return fr
+
+    shim = _PlaywrightShimAdapter()
+    original_get_adapter = ed.get_adapter
+    ed.get_adapter = lambda name: shim if name == source else original_get_adapter(name)
+    try:
+        # rate_limit 設 0:節流已在預抓階段做過,持久層不需再睡
+        return await ed.run_enrich(
+            only_missing=only_missing,
+            limit=limit,
+            source=source,
+            ttl_hours=ttl_hours,
+            trigger=trigger,
+            rate_limit_s=0.0,
+            now=now,
+            session_factory=session_factory,
+        )
+    finally:
+        ed.get_adapter = original_get_adapter
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="PCC 詳情抓取(Playwright persistent context;人工過 CAPTCHA 一次後批次抓)"
+        description="PCC 詳情抓取(Playwright persistent context;人工過 CAPTCHA 一次後批次抓並入庫)"
     )
     ap.add_argument("--source", default="PCC", help="來源(目前僅 PCC 支援詳情)")
     ap.add_argument("--limit", type=int, default=None, help="目標上限")
@@ -320,19 +444,55 @@ def main() -> None:
         help="所有支援來源標的全跑(預設只 new ∪ stale ∪ retriable)",
     )
     ap.add_argument("--ttl-hours", type=int, default=24, help="stale TTL 小時(預設 24)")
+    ap.add_argument(
+        "--trigger", default="manual", choices=["manual", "daily"],
+        help="執行觸發來源(寫入 crawl_run)",
+    )
+    ap.add_argument(
+        "--rate-limit", type=float, default=1.0, help="每筆抓取間隔秒數(預設 1.0)",
+    )
+    ap.add_argument(
+        "--dry-run", action="store_true",
+        help="只抓取與印出、不入庫(除錯/驗證瀏覽器能否過 CAPTCHA;不走 enrich 持久層)",
+    )
     args = ap.parse_args()
 
+    if args.dry_run:
+        stats = asyncio.run(
+            run_scrape(
+                source=args.source,
+                limit=args.limit,
+                only_missing=not args.all,
+                ttl_hours=args.ttl_hours,
+            )
+        )
+        print(
+            f"抓取完成(dry-run,未入庫)｜來源 {stats['source']}"
+            f"｜目標 {stats['targeted']}｜取得 {stats['fetched']}",
+        )
+        return
+
     stats = asyncio.run(
-        run_scrape(
+        run_playwright_enrich(
             source=args.source,
-            limit=args.limit,
             only_missing=not args.all,
+            limit=args.limit,
             ttl_hours=args.ttl_hours,
+            trigger=args.trigger,
+            rate_limit_s=args.rate_limit,
         )
     )
     print(
-        f"抓取完成｜來源 {stats['source']}｜目標 {stats['targeted']}｜取得 {stats['fetched']}",
+        f"Playwright enrich 完成(run #{stats['run_id']}）｜目標 {stats['targeted']}"
+        f"｜新版 {stats['new_revisions']}｜未變 {stats['unchanged']}"
+        f"｜附件 {stats['attachments_archived']}｜室內命中 {stats['interior_hits']}"
+        f"｜失敗 {stats['failed']}（含 CAPTCHA {stats['captcha']}）"
     )
+    if stats["aborted_on_captcha"]:
+        print(
+            "⚠ 仍撞 CAPTCHA:表示瀏覽器 session 的驗證已過期或人工未在時限內解。"
+            "請在彈出的瀏覽器視窗重新手動過一次 CAPTCHA 後再跑。"
+        )
 
 
 if __name__ == "__main__":
