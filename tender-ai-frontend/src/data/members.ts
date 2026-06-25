@@ -28,14 +28,6 @@ const RAW: SeedInput[] = [
     consentShared: true,
   },
   {
-    id: 2,
-    name: "David Wu",
-    email: "david@hqdesign.tw",
-    role: "member",
-    whitelistActive: true,
-    consentShared: true,
-  },
-  {
     id: 3,
     name: "Aaron Lin",
     email: "aaron@hqdesign.tw",

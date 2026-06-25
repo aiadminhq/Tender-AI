@@ -35,7 +35,12 @@ import { ACTIVITY } from "@/data/activity";
 import { USERS, userById } from "@/data/users";
 import { SEED_MEMBERS } from "@/data/members";
 import { useAuth } from "@/store/auth-context";
-import { authDisplay, fetchAccounts, setWhitelist } from "@/lib/auth-api";
+import {
+  authDisplay,
+  deleteAccount,
+  fetchAccounts,
+  setWhitelist,
+} from "@/lib/auth-api";
 import {
   fetchTenders,
   postAccept,
@@ -1652,9 +1657,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [isAdmin],
   );
 
-  const removeMember = useCallback((id: number) => {
-    setMembers((prev) => prev.filter((m) => m.id !== id));
-  }, []);
+  const removeMember = useCallback(
+    (id: number) => {
+      let target: Member | undefined;
+      setMembers((prev) => {
+        target = prev.find((m) => m.id === id);
+        return prev.filter((m) => m.id !== id);
+      });
+      // 前端優先：本地已移除；live+admin 再把刪除落地後端（失敗不阻塞）。
+      // 不落地後端，hydration 會於重整時把帳號併回（復活）——本修法的根因。
+      if (
+        target?.email &&
+        isAdmin &&
+        import.meta.env.VITE_USE_API !== "false"
+      ) {
+        void deleteAccount(target.email);
+      }
+    },
+    [isAdmin],
+  );
 
   const setBoardView = useCallback((patch: Partial<BoardView>) => {
     setBoardViewState((prev) => ({ ...prev, ...patch }));

@@ -125,3 +125,53 @@ async def test_admin_whitelist_provision_and_list(client):
 
     rows = (await client.get(WHITELIST, headers=ADMIN)).json()
     assert any(u["email"] == "leo@hqdesign.tw" for u in rows)
+
+
+# --------------------------------------------------------------------------- #
+# DELETE /admin/whitelist/{email}（移除帳號；管理員）
+# 名單管理：UI 刪除須真正落地後端，否則重整時 hydration 會把帳號併回（復活）。
+# --------------------------------------------------------------------------- #
+async def test_admin_delete_requires_admin_role_403(client):
+    """非管理員（缺 X-User-Role: admin）→ 403。"""
+    r = await client.delete(f"{WHITELIST}/someone@hqdesign.tw")
+    assert r.status_code == 403
+
+
+async def test_admin_delete_rejects_foreign_domain_422(client):
+    """信箱非 @hqdesign.tw → 422（合作範圍邊界，與開通對稱）。"""
+    r = await client.delete(f"{WHITELIST}/outsider@gmail.com", headers=ADMIN)
+    assert r.status_code == 422
+
+
+async def test_admin_delete_unknown_404(client):
+    """查無此帳號 → 404。"""
+    r = await client.delete(f"{WHITELIST}/ghost@hqdesign.tw", headers=ADMIN)
+    assert r.status_code == 404
+
+
+async def test_admin_delete_removes_account(client):
+    """開通新帳號後刪除 → 204，且不再出現在列表（落地後端，重整不復活）。"""
+    created = await client.post(
+        WHITELIST,
+        json={"email": "tmp@hqdesign.tw", "whitelist_active": True},
+        headers=ADMIN,
+    )
+    assert created.status_code == 200
+
+    d = await client.delete(f"{WHITELIST}/tmp@hqdesign.tw", headers=ADMIN)
+    assert d.status_code == 204
+
+    rows = (await client.get(WHITELIST, headers=ADMIN)).json()
+    assert all(u["email"] != "tmp@hqdesign.tw" for u in rows)
+
+
+async def test_admin_delete_refuses_system_default_403(client, db_session):
+    """系統佔位帳號（name=default）為保護對象、不可刪 → 403（即使具 @hqdesign 信箱）。"""
+    from app.models.behavior import User
+
+    u = User(name="default", email="default-sys@hqdesign.tw", role="member")
+    db_session.add(u)
+    await db_session.commit()
+
+    r = await client.delete(f"{WHITELIST}/default-sys@hqdesign.tw", headers=ADMIN)
+    assert r.status_code == 403

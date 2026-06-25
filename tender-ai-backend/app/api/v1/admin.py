@@ -53,6 +53,24 @@ async def set_whitelist(
     return WhitelistOut.model_validate(user)
 
 
+@router.delete(
+    "/whitelist/{email}",
+    status_code=204,
+    dependencies=[Depends(require_admin)],
+)
+async def delete_account(
+    email: str,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """自名單移除帳號（連帶清除其 Layer B 衍生列；ON DELETE CASCADE）。
+
+    信箱非 @hqdesign.tw → 422；查無帳號 → 404；系統佔位帳號 → 403。
+    成功回 204（無內容）。前端刪除須真正落地，否則重整時 hydration 會復活帳號。
+    """
+    await asvc.delete_account(session, email)
+    await session.commit()
+
+
 @router.post(
     "/users/{user_id}/password",
     response_model=MeOut,

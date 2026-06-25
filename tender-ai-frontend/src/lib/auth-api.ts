@@ -310,5 +310,24 @@ export async function setWhitelist(
   }
 }
 
+/** DELETE /admin/whitelist/{email}：管理員自名單移除帳號（best-effort，暫以 X-User-Role 把關）。
+ *  成功（204）回 true；非 admin（403）／網域不符（422）／查無（404）／後端不可達皆回 false。
+ *  前端優先：本地 members 仍為事實來源，此呼叫僅在 live+admin 時把刪除落地後端，
+ *  使重整時 hydration 不再把帳號併回（復活）。失敗不阻塞本地移除。 */
+export async function deleteAccount(email: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/admin/whitelist/${encodeURIComponent(email)}`,
+      {
+        method: "DELETE",
+        headers: { "X-User-Role": "admin", ...authHeaders() },
+      },
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // FilterState 僅為型別重匯出佔位，避免 lint 對未使用 import 報錯時的循環顧慮。
 export type { FilterState };
