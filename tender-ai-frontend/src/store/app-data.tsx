@@ -1692,9 +1692,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (cancelled || !rows || !rows.length) return;
         setMembers((prev) => {
           const emailless = prev.filter((m) => !m.email);
+          // 後端＝白名單帳號的真實來源。剔除「種子來源（正 id）但後端已不存在」的
+          // 殘留 email 成員（如先前的示範假帳號 aaron@/jamie@/yvonne@），讓刪除真正
+          // 落地、不再於重整時復活。本地剛新增、尚未落地後端者為負 id，一律保留。
+          const backendEmails = new Set(
+            rows.filter((r) => r.email).map((r) => r.email!.toLowerCase()),
+          );
           const byEmail = new Map<string, Member>();
           for (const m of prev) {
-            if (m.email) byEmail.set(m.email.toLowerCase(), m);
+            if (!m.email) continue;
+            const key = m.email.toLowerCase();
+            if (m.id > 0 && !backendEmails.has(key)) continue;
+            byEmail.set(key, m);
           }
           for (const r of rows) {
             if (!r.email) continue;

@@ -18,6 +18,9 @@ interface SeedInput {
 }
 
 // id 用小正整數（對齊後端 users.id 的形狀）；live+admin hydration 會以真實 id 覆寫。
+// 僅保留一筆真實帳號作為離線／首載的前端優先種子；真實團隊名單由 fetchAccounts()
+// 於 live+admin 時併入。先前的示範假帳號（aaron@/jamie@/yvonne@）已移除，並由
+// app-data.tsx hydration 剔除殘留於 localStorage 的種子假帳號（見該處 prune 註解）。
 const RAW: SeedInput[] = [
   {
     id: 1,
@@ -26,32 +29,6 @@ const RAW: SeedInput[] = [
     role: "admin",
     whitelistActive: true,
     consentShared: true,
-  },
-  {
-    id: 3,
-    name: "Aaron Lin",
-    email: "aaron@hqdesign.tw",
-    role: "member",
-    whitelistActive: true,
-    consentShared: true,
-  },
-  {
-    // 已開通白名單、但本人尚未同意行為共享（展示兩段式同意的差異）。
-    id: 4,
-    name: "Jamie Tsai",
-    email: "jamie@hqdesign.tw",
-    role: "member",
-    whitelistActive: true,
-    consentShared: false,
-  },
-  {
-    // 尚未開通白名單 → 不會出現在指派選單（展示 Issue #1 的名單過濾）。
-    id: 5,
-    name: "Yvonne Chang",
-    email: "yvonne@hqdesign.tw",
-    role: "member",
-    whitelistActive: false,
-    consentShared: false,
   },
 ];
 
