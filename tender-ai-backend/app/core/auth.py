@@ -14,7 +14,13 @@ import hmac
 import json
 import time
 
+from fastapi import Depends, Header, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
+from app.core.errors import PermissionDenied
+from app.db.session import get_session
+from app.models.behavior import User
 
 
 def _b64url_encode(raw: bytes) -> str:
@@ -69,3 +75,29 @@ def decode_token(token: str) -> dict | None:
     except (TypeError, ValueError):
         return None
     return payload
+
+
+async def get_current_user(
+    authorization: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    """從 Bearer token 推導使用者身分；無/壞/過期/查無 uid → 401；whitelist_active=False → 403。"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少 Bearer token")
+    token = authorization[len("Bearer "):].strip()
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token 無效或已過期")
+    user = await session.get(User, int(payload["uid"]))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="查無此使用者")
+    if not user.whitelist_active:
+        raise PermissionDenied("帳號未在白名單或已停用，請洽管理員")
+    return user
+
+
+async def require_admin_user(user: User = Depends(get_current_user)) -> User:
+    """確認使用者為管理員；否則 403。"""
+    if user.role != "admin":
+        raise PermissionDenied("需要管理員權限")
+    return user

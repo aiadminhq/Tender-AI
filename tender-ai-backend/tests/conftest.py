@@ -30,8 +30,11 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 import app.models  # noqa: F401  匯入所有 model 進 Base.metadata
-from app.core.auth import issue_token
+from app.core.auth import get_current_user, issue_token, require_admin_user
 from app.core.config import settings
+from app.core.errors import PermissionDenied
+from fastapi import Depends, FastAPI
+from fastapi.responses import JSONResponse
 from app.db.base import Base
 from app.db.session import get_session, get_session_factory
 from app.main import app
@@ -345,3 +348,32 @@ async def admin_user() -> User:
         await s.commit()
         await s.refresh(u)
         return u
+
+
+@pytest_asyncio.fixture
+async def auth_probe_client():
+    """最小探針 app，專用於單元測試 get_current_user / require_admin_user dependency。"""
+    probe = FastAPI()
+
+    async def _probe_permission_denied(request, exc):
+        return JSONResponse(status_code=403, content={"detail": exc.detail})
+
+    probe.add_exception_handler(PermissionDenied, _probe_permission_denied)
+
+    async def _override_session():
+        async with TestSessionLocal() as s:
+            yield s
+
+    probe.dependency_overrides[get_session] = _override_session
+
+    @probe.get("/whoami")
+    async def _whoami(user: User = Depends(get_current_user)):
+        return {"id": user.id, "role": user.role}
+
+    @probe.get("/admin-only")
+    async def _admin_only(user: User = Depends(require_admin_user)):
+        return {"ok": True, "id": user.id}
+
+    transport = ASGITransport(app=probe)
+    async with AsyncClient(transport=transport, base_url="http://probe") as c:
+        yield c
