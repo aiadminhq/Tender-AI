@@ -31,7 +31,7 @@ async def decisions_data(db_session, seeded):
     - low ：承接（備標中）＋同時 saved/star → 優先序 accepted 勝 starred。
     - tmu ：僅收藏（saved），無快照 → starred、tier=None。
     """
-    user = User(name="承辦小明", email="ming@hqdesign.tw")
+    user = User(name="承辦小明", email="ming@hqdesign.tw", whitelist_active=True)
     db_session.add(user)
     await db_session.flush()
 
@@ -68,10 +68,11 @@ async def decisions_data(db_session, seeded):
     return {"user": user.id, "high": high, "mid": mid, "low": low, "tmu": tmu}
 
 
-async def test_dispositions_and_priority(client, decisions_data):
+async def test_dispositions_and_priority(client, decisions_data, auth_headers):
     """三處置正確分流，且優先序 skipped>accepted>starred。"""
     r = await client.get(
-        f"{BASE}/me/tender-decisions", params={"user_id": decisions_data["user"]}
+        f"{BASE}/me/tender-decisions",
+        headers=auth_headers(decisions_data["user"]),
     )
     assert r.status_code == 200
     body = r.json()
@@ -85,10 +86,11 @@ async def test_dispositions_and_priority(client, decisions_data):
     assert disp[decisions_data["tmu"]] == "starred"  # 僅收藏
 
 
-async def test_skipped_reason_sources_and_by(client, decisions_data):
+async def test_skipped_reason_sources_and_by(client, decisions_data, auth_headers):
     """淘汰理由：pass payload.reason 優先；無則退取評估 rationale。by 為具名帳號。"""
     r = await client.get(
-        f"{BASE}/me/tender-decisions", params={"user_id": decisions_data["user"]}
+        f"{BASE}/me/tender-decisions",
+        headers=auth_headers(decisions_data["user"]),
     )
     items = {d["tender_id"]: d for d in r.json()["decisions"]}
 
@@ -100,10 +102,11 @@ async def test_skipped_reason_sources_and_by(client, decisions_data):
     assert mid["reason"] == "利潤太低"  # 無事件理由 → 退取評估 rationale
 
 
-async def test_tier_and_deadline_hydrated(client, decisions_data):
+async def test_tier_and_deadline_hydrated(client, decisions_data, auth_headers):
     """tier 取最新快照、deadline 取 ISO；無快照標案 tier 為 None。"""
     r = await client.get(
-        f"{BASE}/me/tender-decisions", params={"user_id": decisions_data["user"]}
+        f"{BASE}/me/tender-decisions",
+        headers=auth_headers(decisions_data["user"]),
     )
     items = {d["tender_id"]: d for d in r.json()["decisions"]}
 
@@ -115,7 +118,7 @@ async def test_tier_and_deadline_hydrated(client, decisions_data):
     assert tmu["tier"] is None  # 無快照
 
 
-async def test_readonly_writes_nothing(client, decisions_data, db_session):
+async def test_readonly_writes_nothing(client, decisions_data, db_session, auth_headers):
     """紅線：呼叫唯讀端點後，DB 不得新增任何權重／狀態／事件／評估。"""
 
     async def counts():
@@ -140,7 +143,8 @@ async def test_readonly_writes_nothing(client, decisions_data, db_session):
 
     before = await counts()
     r = await client.get(
-        f"{BASE}/me/tender-decisions", params={"user_id": decisions_data["user"]}
+        f"{BASE}/me/tender-decisions",
+        headers=auth_headers(decisions_data["user"]),
     )
     assert r.status_code == 200
     after = await counts()
@@ -149,9 +153,12 @@ async def test_readonly_writes_nothing(client, decisions_data, db_session):
     assert before[0] == 0  # 全程零負權重（系統不得自動產生負分）
 
 
-async def test_no_decisions_returns_empty(client, seeded):
+async def test_no_decisions_returns_empty(client, seeded, default_user, auth_headers):
     """無任何處置行為 → 回空清單、counts 皆 0（用內建 seeded，無行為）。"""
-    r = await client.get(f"{BASE}/me/tender-decisions")
+    r = await client.get(
+        f"{BASE}/me/tender-decisions",
+        headers=auth_headers(default_user),
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["counts"] == {"accepted": 0, "starred": 0, "skipped": 0}

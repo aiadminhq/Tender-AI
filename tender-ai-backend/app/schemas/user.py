@@ -70,8 +70,6 @@ class LoginOut(BaseModel):
 class PasswordChangeIn(BaseModel):
     """本人修改密碼（設定頁）：須帶舊密碼驗證後才換新。"""
 
-    # Phase 1 信任邊界：本人身分由 body 帶入、未驗證；Phase 2 改由 session 推導
-    user_id: int | None = None
     old_password: str
     new_password: str
 
@@ -85,8 +83,6 @@ class AdminPasswordIn(BaseModel):
 class ConsentIn(BaseModel):
     """本人設定／撤回共享同意（第 2 段）。"""
 
-    # Phase 1：本人身分由 body 帶入（不可信）；Phase 2 改由 session 推導後忽略此值
-    user_id: int | None = None
     consent_shared: bool
 
 

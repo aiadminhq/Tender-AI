@@ -2,19 +2,21 @@
 """登入／改密／管理員重置 API 測試（Phase 2 認證）。
 
 對照本次需求：
-  POST /api/v1/auth/login                     信箱＋密碼驗證身分（輕量，不簽 token）
-  PUT  /api/v1/me/password                    本人改密（須舊密碼）
+  POST /api/v1/auth/login                     信箱＋密碼驗證身分
+  PUT  /api/v1/me/password                    本人改密（須舊密碼，token 認身分）
   POST /api/v1/admin/users/{id}/password      管理員重置（require_admin）
   app.jobs.seed_members.seed_members          種子 9 位成員（冪等）
 
-信任邊界：沿用 Phase 1——身分由 body 帶入、未驗證；管理權限暫以 X-User-Role
-header 把關。密碼以 pbkdf2_sha256 雜湊，明文不落地。
+Phase 2：身分由 token 推導；/me/* 端點須帶 Authorization: Bearer <token>。
+密碼以 pbkdf2_sha256 雜湊，明文不落地。
 """
 from __future__ import annotations
 
+from app.core.auth import issue_token
 from app.core.security import hash_password, verify_password
 from app.jobs.seed_members import MEMBERS, seed_members
 from app.services.account import DEFAULT_SEED_PASSWORD
+from types import SimpleNamespace
 
 LOGIN = "/api/v1/auth/login"
 ME = "/api/v1/me"
@@ -66,7 +68,7 @@ async def test_seed_members_creates_named_accounts(client, session_factory):
 
 
 async def test_seed_members_is_idempotent_and_keeps_changed_password(
-    client, session_factory
+    client, session_factory, auth_headers
 ):
     await seed_members(session_factory)
     # 某成員自行改密
@@ -78,10 +80,10 @@ async def test_seed_members_is_idempotent_and_keeps_changed_password(
     chg = await client.put(
         ME_PASSWORD,
         json={
-            "user_id": me["id"],
             "old_password": DEFAULT_SEED_PASSWORD,
             "new_password": "newpass1",
         },
+        headers=auth_headers(me["id"]),
     )
     assert chg.status_code == 200
 
@@ -118,7 +120,7 @@ async def test_login_unknown_email_403(client):
 
 
 async def test_login_password_is_default_flag_false_after_change(
-    client, session_factory
+    client, session_factory, auth_headers
 ):
     await seed_members(session_factory)
     me = (
@@ -130,10 +132,10 @@ async def test_login_password_is_default_flag_false_after_change(
     await client.put(
         ME_PASSWORD,
         json={
-            "user_id": me["id"],
             "old_password": DEFAULT_SEED_PASSWORD,
             "new_password": "strongpass",
         },
+        headers=auth_headers(me["id"]),
     )
     r = await client.post(
         LOGIN, json={"email": "david.tsai@hqdesign.tw", "password": "strongpass"}
@@ -145,7 +147,7 @@ async def test_login_password_is_default_flag_false_after_change(
 # --------------------------------------------------------------------------- #
 # GET /me（重整／自動登入路徑也須帶 password_is_default — 回歸測試）
 # --------------------------------------------------------------------------- #
-async def test_me_carries_password_is_default_true_for_seed(client, session_factory):
+async def test_me_carries_password_is_default_true_for_seed(client, session_factory, auth_headers):
     """GET /me 須由伺服器依儲存雜湊推導 password_is_default。
 
     回歸：先前 MeOut 不帶此欄位，導致前端重整／自動登入後「建議修改密碼」提示消失。
@@ -157,14 +159,14 @@ async def test_me_carries_password_is_default_true_for_seed(client, session_fact
             json={"email": "ivy.chang@hqdesign.tw", "password": DEFAULT_SEED_PASSWORD},
         )
     ).json()
-    # 模擬重整：不重新登入，僅以 user_id 取 /me
-    r = await client.get(ME, params={"user_id": me["id"]})
+    # 模擬重整：不重新登入，以 token 取 /me
+    r = await client.get(ME, headers=auth_headers(me["id"]))
     assert r.status_code == 200
     assert r.json()["password_is_default"] is True
 
 
 async def test_me_password_is_default_flips_false_after_change(
-    client, session_factory
+    client, session_factory, auth_headers
 ):
     await seed_members(session_factory)
     me = (
@@ -176,21 +178,21 @@ async def test_me_password_is_default_flips_false_after_change(
     chg = await client.put(
         ME_PASSWORD,
         json={
-            "user_id": me["id"],
             "old_password": DEFAULT_SEED_PASSWORD,
             "new_password": "strongpass",
         },
+        headers=auth_headers(me["id"]),
     )
     assert chg.status_code == 200
     # 改密回應本身即應為 False
     assert chg.json()["password_is_default"] is False
     # 重整再取 /me 仍為 False（不再殘留提示）
-    r = await client.get(ME, params={"user_id": me["id"]})
+    r = await client.get(ME, headers=auth_headers(me["id"]))
     assert r.json()["password_is_default"] is False
 
 
 async def test_me_password_is_default_true_again_after_admin_reset_to_default(
-    client, session_factory
+    client, session_factory, auth_headers
 ):
     """管理員把密碼重置回預設 admin 時，/me 應重新顯示 True。"""
     await seed_members(session_factory)
@@ -204,12 +206,12 @@ async def test_me_password_is_default_true_again_after_admin_reset_to_default(
     await client.put(
         ME_PASSWORD,
         json={
-            "user_id": me["id"],
             "old_password": DEFAULT_SEED_PASSWORD,
             "new_password": "strongpass",
         },
+        headers=auth_headers(me["id"]),
     )
-    assert (await client.get(ME, params={"user_id": me["id"]})).json()[
+    assert (await client.get(ME, headers=auth_headers(me["id"]))).json()[
         "password_is_default"
     ] is False
     # 管理員重置回預設密碼 → 再度 True
@@ -219,7 +221,7 @@ async def test_me_password_is_default_true_again_after_admin_reset_to_default(
         headers=ADMIN,
     )
     assert rst.status_code == 200
-    assert (await client.get(ME, params={"user_id": me["id"]})).json()[
+    assert (await client.get(ME, headers=auth_headers(me["id"]))).json()[
         "password_is_default"
     ] is True
 
@@ -227,7 +229,7 @@ async def test_me_password_is_default_true_again_after_admin_reset_to_default(
 # --------------------------------------------------------------------------- #
 # PUT /me/password（本人改密）
 # --------------------------------------------------------------------------- #
-async def test_change_password_wrong_old_403(client, session_factory):
+async def test_change_password_wrong_old_403(client, session_factory, auth_headers):
     await seed_members(session_factory)
     me = (
         await client.post(
@@ -237,12 +239,13 @@ async def test_change_password_wrong_old_403(client, session_factory):
     ).json()
     r = await client.put(
         ME_PASSWORD,
-        json={"user_id": me["id"], "old_password": "wrong", "new_password": "abcd"},
+        json={"old_password": "wrong", "new_password": "abcd"},
+        headers=auth_headers(me["id"]),
     )
     assert r.status_code == 403
 
 
-async def test_change_password_too_short_422(client, session_factory):
+async def test_change_password_too_short_422(client, session_factory, auth_headers):
     await seed_members(session_factory)
     me = (
         await client.post(
@@ -253,10 +256,10 @@ async def test_change_password_too_short_422(client, session_factory):
     r = await client.put(
         ME_PASSWORD,
         json={
-            "user_id": me["id"],
             "old_password": DEFAULT_SEED_PASSWORD,
             "new_password": "ab",
         },
+        headers=auth_headers(me["id"]),
     )
     assert r.status_code == 422
 

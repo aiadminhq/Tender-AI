@@ -72,7 +72,6 @@ class ManualKeywordIn(BaseModel):
     或撤回先前的手動新增）。``kind=negative`` 即「人工迴避」合規路徑。
     """
 
-    user_id: int | None = None  # Phase 1：未驗證；Phase 2 改由 session 推導
     term: str = Field(min_length=1, max_length=128)
     kind: Literal["positive", "negative", "engaged"]
     action: Literal["add", "remove"]

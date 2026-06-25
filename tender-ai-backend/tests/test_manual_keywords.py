@@ -96,7 +96,7 @@ async def test_upsert_toggles_excluded_in_place(db_session, user):
 @pytest.fixture
 async def learned(db_session):
     """團隊線學習關鍵字（build_criteria_profile 讀全表）＋一位使用者。"""
-    u = User(name="alex", email="alex@hqdesign.tw", role="member")
+    u = User(name="alex", email="alex@hqdesign.tw", role="member", whitelist_active=True)
     db_session.add_all([
         u,
         KeywordWeight(term="工程", polarity="positive", weight=0.8),
@@ -106,10 +106,11 @@ async def learned(db_session):
     return u
 
 
-async def test_post_add_positive_keyword_appears(client, learned):
+async def test_post_add_positive_keyword_appears(client, learned, auth_headers):
     resp = await client.post(
         f"{ME_BASE}/me/keywords",
-        json={"user_id": learned.id, "term": "監造", "kind": "positive", "action": "add"},
+        json={"term": "監造", "kind": "positive", "action": "add"},
+        headers=auth_headers(learned.id),
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -117,20 +118,22 @@ async def test_post_add_positive_keyword_appears(client, learned):
     assert "工程" in body["top_keywords_positive"]  # 學習詞仍在
 
 
-async def test_post_remove_learned_keyword_disappears(client, learned):
+async def test_post_remove_learned_keyword_disappears(client, learned, auth_headers):
     resp = await client.post(
         f"{ME_BASE}/me/keywords",
-        json={"user_id": learned.id, "term": "工程", "kind": "positive", "action": "remove"},
+        json={"term": "工程", "kind": "positive", "action": "remove"},
+        headers=auth_headers(learned.id),
     )
     assert resp.status_code == 200, resp.text
     assert "工程" not in resp.json()["top_keywords_positive"]
 
 
-async def test_post_add_avoid_keyword_is_human_negative_path(client, learned):
+async def test_post_add_avoid_keyword_is_human_negative_path(client, learned, auth_headers):
     """手動迴避＝合規的人工負分路徑：term 進 top_keywords_negative。"""
     resp = await client.post(
         f"{ME_BASE}/me/keywords",
-        json={"user_id": learned.id, "term": "拆除", "kind": "negative", "action": "add"},
+        json={"term": "拆除", "kind": "negative", "action": "add"},
+        headers=auth_headers(learned.id),
     )
     assert resp.status_code == 200, resp.text
     assert "拆除" in resp.json()["top_keywords_negative"]

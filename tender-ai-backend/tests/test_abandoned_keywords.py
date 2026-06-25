@@ -32,7 +32,7 @@ async def abandoned_data(db_session):
     - t_eng 未被淘汰（控制組），其專屬詞（工程/道路）不得進候選。
     - 正向詞「清潔」應被排除；已手動迴避詞「委外」應被排除。
     """
-    user = User(name="tester", email="tester@hqdesign.tw")
+    user = User(name="tester", email="tester@hqdesign.tw", whitelist_active=True)
     db_session.add(user)
     source = Source(name="PCC", base_url="https://web.pcc.gov.tw")
     db_session.add(source)
@@ -81,11 +81,12 @@ async def abandoned_data(db_session):
     return {"user": user.id, "lab1": t_lab1.id, "lab2": t_lab2.id, "eng": t_eng.id}
 
 
-async def test_aggregates_roots_from_abandoned_titles(client, abandoned_data):
+async def test_aggregates_roots_from_abandoned_titles(client, abandoned_data, auth_headers):
     """「勞務」出現在兩件被淘汰的標案 → count==2，附示例標題。"""
     r = await client.get(
         f"{BASE}/me/abandoned-keyword-candidates",
-        params={"user_id": abandoned_data["user"], "min_count": 2},
+        params={"min_count": 2},
+        headers=auth_headers(abandoned_data["user"]),
     )
     assert r.status_code == 200
     body = r.json()
@@ -98,11 +99,12 @@ async def test_aggregates_roots_from_abandoned_titles(client, abandoned_data):
     assert terms["勞務"]["kind"] in ("word", "root")
 
 
-async def test_excludes_positive_and_already_avoided(client, abandoned_data):
+async def test_excludes_positive_and_already_avoided(client, abandoned_data, auth_headers):
     """正向詞（清潔）與已手動迴避詞（委外）皆不出現在候選。"""
     r = await client.get(
         f"{BASE}/me/abandoned-keyword-candidates",
-        params={"user_id": abandoned_data["user"], "min_count": 1},
+        params={"min_count": 1},
+        headers=auth_headers(abandoned_data["user"]),
     )
     body = r.json()
     terms = {c["term"] for c in body["candidates"]}
@@ -110,11 +112,12 @@ async def test_excludes_positive_and_already_avoided(client, abandoned_data):
     assert "委外" not in terms  # 已迴避：不重複建議
 
 
-async def test_non_abandoned_tender_not_polluting(client, abandoned_data):
+async def test_non_abandoned_tender_not_polluting(client, abandoned_data, auth_headers):
     """未被淘汰的工程案專屬詞（工程/道路）不得進候選。"""
     r = await client.get(
         f"{BASE}/me/abandoned-keyword-candidates",
-        params={"user_id": abandoned_data["user"], "min_count": 1},
+        params={"min_count": 1},
+        headers=auth_headers(abandoned_data["user"]),
     )
     body = r.json()
     terms = {c["term"] for c in body["candidates"]}
@@ -122,11 +125,12 @@ async def test_non_abandoned_tender_not_polluting(client, abandoned_data):
     assert "道路" not in terms
 
 
-async def test_min_count_filters_singletons(client, abandoned_data):
+async def test_min_count_filters_singletons(client, abandoned_data, auth_headers):
     """min_count=2 時，只出現一次的字根（如「承攬」「委外」）被濾除。"""
     r = await client.get(
         f"{BASE}/me/abandoned-keyword-candidates",
-        params={"user_id": abandoned_data["user"], "min_count": 2},
+        params={"min_count": 2},
+        headers=auth_headers(abandoned_data["user"]),
     )
     body = r.json()
     for c in body["candidates"]:
@@ -135,7 +139,7 @@ async def test_min_count_filters_singletons(client, abandoned_data):
     assert "承攬" not in terms  # 僅 t_lab2 出現
 
 
-async def test_readonly_writes_no_negative_weight(client, abandoned_data, db_session):
+async def test_readonly_writes_no_negative_weight(client, abandoned_data, db_session, auth_headers):
     """紅線：呼叫唯讀端點後，DB 不得新增任何負權重或自動迴避詞。"""
     neg_kw_before = (
         await db_session.execute(
@@ -153,7 +157,8 @@ async def test_readonly_writes_no_negative_weight(client, abandoned_data, db_ses
 
     r = await client.get(
         f"{BASE}/me/abandoned-keyword-candidates",
-        params={"user_id": abandoned_data["user"], "min_count": 1},
+        params={"min_count": 1},
+        headers=auth_headers(abandoned_data["user"]),
     )
     assert r.status_code == 200
 
@@ -173,9 +178,12 @@ async def test_readonly_writes_no_negative_weight(client, abandoned_data, db_ses
     assert manual_neg_after == manual_neg_before == 1
 
 
-async def test_no_abandoned_returns_empty(client, seeded):
+async def test_no_abandoned_returns_empty(client, seeded, default_user, auth_headers):
     """無任何淘汰行為 → 回空候選、abandoned_count=0（用內建 seeded，無 pass/放棄）。"""
-    r = await client.get(f"{BASE}/me/abandoned-keyword-candidates")
+    r = await client.get(
+        f"{BASE}/me/abandoned-keyword-candidates",
+        headers=auth_headers(default_user),
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["abandoned_count"] == 0
