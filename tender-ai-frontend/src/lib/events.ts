@@ -1,6 +1,7 @@
 // 使用者行為埋點：fire-and-forget 送到後端 POST /events。
 // 沿用 api.ts 的 API_BASE。不阻塞 UI、catch 吞錯（比照 fetchTenders 容錯）。
 // VITE_USE_API === "false" 全 mock 不打 API；VITE_TRACK === "false" 可單獨關埋點。
+import { getToken } from "@/lib/auth-token";
 
 // api.ts 未 export API_BASE，比照其定義一份。
 const API_BASE =
@@ -58,10 +59,16 @@ export function trackEvent(type: EventType, opts: TrackOptions = {}): void {
   }
   if (opts.payload) body.payload = opts.payload;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   try {
     void fetch(`${API_BASE}/events`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
       keepalive: true, // 卸載時（dwell）仍能送達
     }).catch(() => {
@@ -96,10 +103,16 @@ export async function trackEventAwait(
   }
   if (opts.payload) body.payload = opts.payload;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   try {
     const res = await fetch(`${API_BASE}/events`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
     return res.ok;

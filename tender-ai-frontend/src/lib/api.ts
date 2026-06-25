@@ -1,5 +1,6 @@
 // 後端 API 對接：抓真實標案，映射成前端 Tender 契約。
 // 失敗（後端未啟動／網路錯誤）時拋出，由呼叫端 fallback 回 mock。
+import { getToken } from "@/lib/auth-token";
 import type {
   Category,
   CategorySignal,
@@ -23,10 +24,15 @@ const API_BASE =
   (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
 
 // 選用 API 金鑰：設定 VITE_API_KEY 時帶上 X-API-Key（dev/staging 可不設）。
+// Phase 2：有 Bearer token 時一併帶上 Authorization header。
 // 金鑰僅由環境注入，永不寫入版控。
 function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
   const key = import.meta.env.VITE_API_KEY as string | undefined;
-  return key ? { "X-API-Key": key } : {};
+  if (key) headers["X-API-Key"] = key;
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
 }
 
 // ── 登入身分（Layer B 具名回寫） ─────────────────────────────────────

@@ -1,9 +1,9 @@
 // 認證 API 對接（Phase 2 輕量登入）：信箱＋密碼驗證身分、本人改密、管理員重置。
 // 後端 app/api/v1/{auth,me,admin}.py。
 //
-// 信任邊界（沿用後端 Phase 1）：登入只驗證憑證、不簽 token；身分存於前端
-// localStorage，管理權限暫以 `X-User-Role: admin` header 把關（可偽造，待 Phase 2
-// 改伺服器端 session 強制）。密碼明文僅於送出當下存在於記憶體，不落地、不寫版控。
+// Phase 2：帶 Bearer token（HMAC-signed，由登入後 setToken 存入 localStorage）。
+// 密碼明文僅於送出當下存在於記憶體，不落地、不寫版控。
+import { getToken } from "@/lib/auth-token";
 import type { FilterState } from "@/types/domain";
 
 const API_BASE =
@@ -12,8 +12,12 @@ const API_BASE =
   (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
 
 function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
   const key = import.meta.env.VITE_API_KEY as string | undefined;
-  return key ? { "X-API-Key": key } : {};
+  if (key) headers["X-API-Key"] = key;
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
 }
 
 // 後端 LoginOut / MeOut（app/schemas/user.py，snake_case）。
