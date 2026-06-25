@@ -132,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const enterMock = useCallback(() => {
+    if (!import.meta.env.DEV) return;
     setUser(MOCK_USER);
     setStatus("mock");
     remove(STORAGE_KEY); // 示範身分不留存
