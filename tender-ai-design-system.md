@@ -13,18 +13,20 @@ author: claude-cowork
 > 改編自 Framer 的 `DESIGN.md`（暗色 canvas、單一藍 accent、surface lift、pill、Inter Variable），但**重新適配為「資料型 app」與「繁體中文」介面**。
 > 兩條鐵則（使用者要求）：**① 中文不用很大的字——字級全面收斂、無海報級 display；② 絕對不用襯線字（serif）——Latin 與 CJK 一律 sans。**
 
+> 📍 **現況（2026-06-25）**：本檔為 v0.1 基線。線上設計已演進為 **Knowvio 語彙**——**淺色為預設主題**、主色改為 **橙 `#f97316`**（取代原藍 accent；暗色仍保留），並加入**分層 elevation**（rest→hover→overlay）與 **ease-out 動效**曲線。**token 真值以 `tender-ai-frontend/src/index.css` 為準**；下方 §2 已補上 elevation／motion token，其餘色彩/字級原則仍適用。
+
 ---
 
 ## 1. 與 Framer 原系統的關鍵差異
 
-| 面向 | Framer（行銷站） | Tender AI（資料 app） |
-|---|---|---|
-| 字級 | 海報級（display 110/85/62px） | **收斂**：最大標題 24–28px，資料 13–15px |
-| 字距 | display 拉到 -5.5px | **僅 Latin 微負字距；CJK 字距 = 0**（中文不套負 tracking） |
-| 字體 | GT Walsheim + Inter | Inter（Latin）+ **Noto Sans TC / PingFang TC**（CJK），皆 sans，**無 serif** |
-| 顏色 | 單色 + 1 藍 + 漸層卡 | 同基底，但**新增克制的語意色**（潛力分級必要） |
-| 漸層 | 招牌氛圍卡 | **僅用於可行性/最優先強調**，不鋪整段 |
-| 主題 | 只有暗色 | **暗色為主、附 light token**（雙主題鎖定需求） |
+| 面向 | Framer（行銷站）              | Tender AI（資料 app）                                                        |
+| ---- | ----------------------------- | ---------------------------------------------------------------------------- |
+| 字級 | 海報級（display 110/85/62px） | **收斂**：最大標題 24–28px，資料 13–15px                                     |
+| 字距 | display 拉到 -5.5px           | **僅 Latin 微負字距；CJK 字距 = 0**（中文不套負 tracking）                   |
+| 字體 | GT Walsheim + Inter           | Inter（Latin）+ **Noto Sans TC / PingFang TC**（CJK），皆 sans，**無 serif** |
+| 顏色 | 單色 + 1 藍 + 漸層卡          | 同基底，但**新增克制的語意色**（潛力分級必要）                               |
+| 漸層 | 招牌氛圍卡                    | **僅用於可行性/最優先強調**，不鋪整段                                        |
+| 主題 | 只有暗色                      | **暗色為主、附 light token**（雙主題鎖定需求）                               |
 
 保留 Framer 精神：暗色 canvas 即留白、用 **surface lift（canvas→surface-1→surface-2）** 表達層級、**pill 按鈕**、**藍色只當訊號**（連結/focus/selected）。
 
@@ -33,63 +35,127 @@ author: claude-cowork
 ## 2. Design Tokens（CSS variables，可直接複製）
 
 ```css
-:root, [data-theme="dark"] {
+:root,
+[data-theme="dark"] {
   /* surface */
-  --canvas:#090909; --surface-1:#141414; --surface-2:#1c1c1c;
-  --hairline:#262626; --hairline-soft:#1a1a1a;
+  --canvas: #090909;
+  --surface-1: #141414;
+  --surface-2: #1c1c1c;
+  --hairline: #262626;
+  --hairline-soft: #1a1a1a;
   /* ink（層級以 ink→ink-muted 為主，資料密集再用 ink-dim） */
-  --ink:#ffffff; --ink-muted:#9b9b9b; --ink-dim:#6b6b6b;
+  --ink: #ffffff;
+  --ink-muted: #9b9b9b;
+  --ink-dim: #6b6b6b;
   /* signal accent（只用於連結/focus/selected） */
-  --accent:#0099ff; --accent-ring:rgba(0,153,255,.30);
+  --accent: #0099ff;
+  --accent-ring: rgba(0, 153, 255, 0.3);
   /* 語意：潛力分級／狀態（克制使用） */
-  --tier-high:#22c55e;   /* 🟢 高潛力 ≤14 */
-  --tier-mid:#f5a623;    /* 🟡 中潛力 15–30 */
-  --tier-low:#ff5577;    /* 🔴 低潛力 ≥31 */
-  --priority:#7c6bff;    /* ⭐ 期間最優先（violet，取自 Framer 漸層族） */
-  --success:#22c55e; --danger:#ff5577;
+  --tier-high: #22c55e; /* 🟢 高潛力 ≤14 */
+  --tier-mid: #f5a623; /* 🟡 中潛力 15–30 */
+  --tier-low: #ff5577; /* 🔴 低潛力 ≥31 */
+  --priority: #7c6bff; /* ⭐ 期間最優先（violet，取自 Framer 漸層族） */
+  --success: #22c55e;
+  --danger: #ff5577;
   /* 可行性分數漸層（唯一允許的漸層用途之一） */
-  --feasibility:linear-gradient(90deg,#22c55e,#0099ff);
+  --feasibility: linear-gradient(90deg, #22c55e, #0099ff);
   /* on-color */
-  --on-primary:#000000;
+  --on-primary: #000000;
 }
 
 [data-theme="light"] {
-  --canvas:#f7f8fa; --surface-1:#ffffff; --surface-2:#eef1f5;
-  --hairline:#e2e6ec; --hairline-soft:#eef1f5;
-  --ink:#161b22; --ink-muted:#5b6573; --ink-dim:#8a93a3;
-  --accent:#0a6cff; --accent-ring:rgba(10,108,255,.25);
-  --tier-high:#16a34a; --tier-mid:#c77700; --tier-low:#dc2626;
-  --priority:#5b46e0; --success:#16a34a; --danger:#dc2626;
-  --feasibility:linear-gradient(90deg,#16a34a,#0a6cff);
-  --on-primary:#ffffff;
+  --canvas: #f7f8fa;
+  --surface-1: #ffffff;
+  --surface-2: #eef1f5;
+  --hairline: #e2e6ec;
+  --hairline-soft: #eef1f5;
+  --ink: #161b22;
+  --ink-muted: #5b6573;
+  --ink-dim: #8a93a3;
+  --accent: #0a6cff;
+  --accent-ring: rgba(10, 108, 255, 0.25);
+  --tier-high: #16a34a;
+  --tier-mid: #c77700;
+  --tier-low: #dc2626;
+  --priority: #5b46e0;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --feasibility: linear-gradient(90deg, #16a34a, #0a6cff);
+  --on-primary: #ffffff;
 }
 
-:root{
+:root {
   /* radius（沿用 Framer） */
-  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px; --r-pill:999px;
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
   /* spacing（4 基準，較適合資料密度，略調 Framer 的 5 基準） */
-  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px;
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
   /* type families（無 serif） */
-  --font-sans:"Inter","Noto Sans TC","PingFang TC","Microsoft JhengHei",
-              system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-num:"Inter",ui-monospace,"SF Mono",monospace; /* tabular 數字 */
+  --font-sans:
+    "Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  --font-num: "Inter", ui-monospace, "SF Mono", monospace; /* tabular 數字 */
 }
 ```
+
+**Elevation／Motion token（2026-06-25 Knowvio 補；真值見 `src/index.css`）**
+
+```css
+/* 分層 elevation：rest 靜置 → hover 抬升 → overlay 浮層。
+   房規：rest 守「僅些微陰影」；hover 用負 spread（blur<16px）收成俐落抬升，
+   不觸 ghost-card 暈染反模式；overlay 給浮層明確漂浮感。 */
+[data-theme="light"] {
+  /* 淺色（預設主題） */
+  --elev-rest:
+    0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 1px rgba(16, 24, 40, 0.04);
+  --elev-hover:
+    0 6px 16px -6px rgba(16, 24, 40, 0.16),
+    0 2px 5px -2px rgba(16, 24, 40, 0.08);
+  --elev-overlay:
+    0 24px 48px -12px rgba(16, 24, 40, 0.22),
+    0 8px 16px -8px rgba(16, 24, 40, 0.12);
+}
+[data-theme="dark"] {
+  /* 暗色（吃光，較高 key alpha＋負 spread） */
+  --elev-rest: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elev-hover:
+    0 6px 16px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --elev-overlay:
+    0 24px 48px -12px rgba(0, 0, 0, 0.7), 0 8px 16px -8px rgba(0, 0, 0, 0.5);
+}
+:root {
+  /* 動效曲線（ease-out 為主，自然減速、無回彈） */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+```
+
+> 用法：靜置卡片用 `--elev-rest`、hover 抬升換 `--elev-hover`、抽屜/對話框/選單等浮層用 `--elev-overlay`；過場套 `--ease-out-quart`（一般）或 `--ease-out-quint`（較長距離位移）。§4「深度」段所述的舊 light-edge 表述以此 token 取代。
 
 ---
 
 ## 3. Typography（CJK 適配、無大字、無 serif）
 
-| Token | size / weight / line | tracking | 用途 |
-|---|---|---|---|
-| `display` | 24px / 600 / 1.2 | Latin -0.4px・**CJK 0** | 頁面主標題（最大就到這） |
-| `title` | 18px / 600 / 1.3 | Latin -0.3px・CJK 0 | 區塊標題、卡片標題 |
-| `subtitle` | 16px / 500 / 1.4 | 0 | 次標、抽屜標題 |
-| `body` | 15px / 400 / 1.5 | 0 | 內文、標案名稱 |
-| `body-sm` | 13px / 400 / 1.5 | 0 | 次要資訊、機關列 |
-| `caption` | 12px / 500 / 1.3 | 0 | 標籤、meta、表頭 |
-| `micro` | 11px / 500 / 1.3 | 0 | 角標、footnote |
-| `num` | 15px / 600・`font-variant-numeric:tabular-nums` | 0 | 預算、天數、分數 |
+| Token      | size / weight / line                            | tracking                | 用途                     |
+| ---------- | ----------------------------------------------- | ----------------------- | ------------------------ |
+| `display`  | 24px / 600 / 1.2                                | Latin -0.4px・**CJK 0** | 頁面主標題（最大就到這） |
+| `title`    | 18px / 600 / 1.3                                | Latin -0.3px・CJK 0     | 區塊標題、卡片標題       |
+| `subtitle` | 16px / 500 / 1.4                                | 0                       | 次標、抽屜標題           |
+| `body`     | 15px / 400 / 1.5                                | 0                       | 內文、標案名稱           |
+| `body-sm`  | 13px / 400 / 1.5                                | 0                       | 次要資訊、機關列         |
+| `caption`  | 12px / 500 / 1.3                                | 0                       | 標籤、meta、表頭         |
+| `micro`    | 11px / 500 / 1.3                                | 0                       | 角標、footnote           |
+| `num`      | 15px / 600・`font-variant-numeric:tabular-nums` | 0                       | 預算、天數、分數         |
 
 實作規則：
 
@@ -119,6 +185,7 @@ author: claude-cowork
 - **empty-state**：置中圖標 + 一句 + 「放寬條件」`button-secondary`。
 
 ### 深度（沿用 Framer）
+
 0 平面（canvas 上文字）；1 `--surface-1` lift；2 `rgba(255,255,255,.08)` 0.5px 上緣 + `rgba(0,0,0,.35) 0 10px 30px`（浮卡/抽屜）；3 `--accent-ring` 1px 環（focus/selected）。
 
 ---
@@ -137,4 +204,4 @@ author: claude-cowork
 
 ---
 
-*實作參考：同資料夾 `prototype/index.html`（本系統的可互動靜態原型）。*
+_實作參考：同資料夾 `prototype/index.html`（本系統的可互動靜態原型）。_

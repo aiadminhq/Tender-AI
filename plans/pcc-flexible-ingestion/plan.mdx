@@ -2,6 +2,8 @@
 
 # PCC 彈性搜尋、多 transport 抓取與現有資料庫注入計畫
 
+> 📍 現況（2026-06-25）：🔲 規劃中。彈性匯入尚未落地；現以既有 `app/jobs/ingest_daily_reports.py`／`backfill.py` 為主。需能連 PCC 的環境推進。最新進度以 docs/governance/05-進度與白話術語.md 進度表為準。
+
 目標是把政府電子採購網（PCC）的搜尋條件從硬編碼改為可重用的 typed criteria，先以「**履約地點為台北市／新北市、預算不超過 5,000 萬、截止日距 Asia/Taipei 今日 1–10 天**」作為預設 profile，再把命中標案冪等寫入既有 PostgreSQL Corpus。列表沿用 HTTP adapter；詳情新增 Playwright persistent context、CDP attach 與 OpenCLI 診斷備案，但所有 transport 最終都回到既有 `FetchResult` → `detail_parser` → revision-first DB 流程，不建立第二套 parser 或資料 sink。
 
 本計畫是核准門檻；核准前只新增此規劃文件，不修改後端原始碼或資料庫。

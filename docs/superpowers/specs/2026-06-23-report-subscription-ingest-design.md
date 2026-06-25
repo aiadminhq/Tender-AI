@@ -3,6 +3,9 @@
 > 日期：2026-06-23 ｜ 分支：`claude/busy-sagan-gm197s`
 > 目標：讓 Tender AI 從舊系統 `aiadminhq/tender-reports` **持續訂閱**每日報表、**全量回填歷史**、**入庫**，並對**未截止/近期**標案做詳情抓取，鋪好「最終接管爬蟲」的資料底。
 
+> **狀態（2026-06-25 補注）**：🔲 規劃中（尚未實作）。`sync_reports`／`daily_pipeline` 等尚未落地；現有 `app/jobs/ingest_daily_reports.py` 為既有匯入路徑。待排程與 Stage 1 開工。
+> 本規格為設計當時記錄，內文不再回改；最新行為以程式碼與 `docs/governance/05-進度與白話術語.md` 進度表為準。
+
 ---
 
 ## 1. 背景與問題

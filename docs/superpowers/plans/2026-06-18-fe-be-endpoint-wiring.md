@@ -1,5 +1,7 @@
 # 前端串接後端剩餘端點 Implementation Plan
 
+> 📍 現況（2026-06-25）：🟢 主要端點已串。標案／推理／行為／決策回顧／關鍵字候選等端點前後端已接；登入（Phase 2）尚未做。最新進度以 docs/governance/05-進度與白話術語.md 進度表為準。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 把前端尚未串接的後端端點接上——列表分頁（讓全部 1125 筆可見，現僅 200 筆）與 saved-searches（GET/POST 完全未接），使前後端整合完整可運轉。

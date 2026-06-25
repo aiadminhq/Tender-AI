@@ -6,6 +6,9 @@
 - 對應頁面：`tender-ai-frontend/src/pages/swipe-page.tsx`（速覽配對）
 - 與既有 `2026-06-24-judgment-actions-realtime-learning-design.md`（清單/焦點列）為**不同表面、不同語意**：本案**不覆寫**負分人工專屬紅線。
 
+> **狀態（2026-06-25 補注）**：✅ 已實作（2026-06-24）。速覽配對判斷原因對話框＋關鍵字歸因入庫（ABCD）；`GET /tenders/{tender_id}/keyword-candidates`、`SwipeDecisionDialog`。本路徑**堅守**負分人工專屬紅線（系統只建議，需本人確認才寫負分）。對應 commit `474273f`、`7f56ff0`。
+> 本規格為設計當時記錄，內文不再回改；最新行為以程式碼與 `docs/governance/05-進度與白話術語.md` 進度表為準。
+
 ---
 
 ## 1. 目標（來自本人需求，A/B/C/D）

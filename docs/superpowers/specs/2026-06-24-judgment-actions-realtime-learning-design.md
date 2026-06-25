@@ -4,6 +4,9 @@
 - 分支：`claude/busy-sagan-gm197s`
 - 範圍：be（評估 API、即時學習）／fe（焦點列 enrich、清單三鈕、原因表單）／data（KeywordWeightRevision）／docs（治理＋記憶覆寫）
 
+> **狀態（2026-06-25 補注）**：✅ 已實作（2026-06-24）。標案三分判斷（✓可行／✗不可行／⭐精選）＋大致原因表單；`POST /tenders/{tender_id}/evaluate` 觸發 `realtime_learn.learn_after_evaluation(allow_auto_negative=True)`——此為 owner 知情覆寫（負分人工專屬紅線的唯一例外），保留 append-only／consent-aware／具名／可回退安全網。對應 commit `4eb4146`。
+> 本規格為設計當時記錄，內文不再回改；最新行為以程式碼與 `docs/governance/05-進度與白話術語.md` 進度表為準。
+
 ---
 
 ## 1. 目標（來自本人需求）
