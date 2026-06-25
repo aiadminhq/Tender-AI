@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { AbandonedRoots } from "./abandoned-roots";
 import { KeywordEditor } from "./keyword-editor";
+import { LearnedWeights } from "./learned-weights";
 import { RulesWorkspace } from "./rules-workspace";
 
 export function RulesPanel() {
@@ -35,6 +36,13 @@ export function RulesPanel() {
         </Button>
       </div>
 
+      <div className="flex flex-col gap-1">
+        <h2 className="text-[15px] font-semibold text-ink">
+          {t("rulesMyKeywords")}
+        </h2>
+        <p className="text-[12px] text-ink-muted">{t("rulesMyKeywordsDesc")}</p>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <KeywordEditor
           list="focus"
@@ -61,6 +69,8 @@ export function RulesPanel() {
           accent="danger"
         />
       </div>
+
+      <LearnedWeights />
 
       <AbandonedRoots />
 
