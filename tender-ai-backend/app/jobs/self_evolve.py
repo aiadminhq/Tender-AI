@@ -34,6 +34,11 @@ from sqlalchemy import select
 
 from app.db.session import AsyncSessionLocal
 from app.jobs.learn_keywords import learn_keywords
+from app.jobs.learn_tier_thresholds import (
+    DEFAULT_MIN_SUPPORT as TIER_MIN_SUPPORT,
+    run_learn_tier_thresholds,
+)
+from app.jobs.score_team_feasibility import run_score_team_feasibility
 from app.models.behavior import Evaluation, User
 from app.models.knowledge import KeywordWeightRevision
 
@@ -98,11 +103,20 @@ async def run_self_evolution(
     session_factory=None,
     min_support: int = 2,
     include_category_features: bool = True,
+    tier_min_support: int = TIER_MIN_SUPPORT,
 ) -> dict:
-    """檢查閘；達標（或 force）才委派 `learn_keywords` 重學一次。
+    """檢查閘；達標（或 force）才依序重學一輪：權重 → 物化分數 → 校準分帶門檻。
 
-    回傳 ``{"gate": {...}, "did_evolve": bool, "learn": {...} | None}``。
-    ``gate.should_evolve`` 只反映「門檻＋有新增」；``force`` 體現在 ``did_evolve``。
+    觸發後的鏈（皆 offline／冪等，單一事實來源、不重寫各 job 邏輯）：
+
+    1. ``learn_keywords``：consent-aware 重學關鍵字權重。
+    2. ``score_team_feasibility``：用新權重重新物化 ``Tender.feasibility_team``，
+       讓查詢端分帶讀到最新分數。
+    3. ``learn_tier_thresholds``：以信心校準從新分數學出 ``c_high`` / ``c_low``。
+
+    回傳 ``{"gate", "did_evolve", "learn", "score", "tier_thresholds"}``；未觸發時
+    後三者為 ``None``。``gate.should_evolve`` 只反映「門檻＋有新增」；``force`` 體現在
+    ``did_evolve``。
     """
     factory = session_factory or AsyncSessionLocal
 
@@ -111,14 +125,27 @@ async def run_self_evolution(
 
     did_evolve = bool(force or gate["should_evolve"])
     learn = None
+    score = None
+    tier_thresholds = None
     if did_evolve:
         learn = await learn_keywords(
             session_factory=factory,
             min_support=min_support,
             include_category_features=include_category_features,
         )
+        # 權重已更新 → 重新物化分數，再據此校準分帶門檻（順序不可顛倒）。
+        score = await run_score_team_feasibility(session_factory=factory)
+        tier_thresholds = await run_learn_tier_thresholds(
+            session_factory=factory, min_support=tier_min_support
+        )
 
-    return {"gate": gate, "did_evolve": did_evolve, "learn": learn}
+    return {
+        "gate": gate,
+        "did_evolve": did_evolve,
+        "learn": learn,
+        "score": score,
+        "tier_thresholds": tier_thresholds,
+    }
 
 
 def main() -> None:
