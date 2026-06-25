@@ -4,16 +4,15 @@
   GET  /api/v1/admin/whitelist   列出所有帳號與其白名單／同意狀態
   POST /api/v1/admin/whitelist   開通／停用白名單帳號（只改 whitelist_active）
 
-**Phase 1 暫時性權限檢查**：以 header `X-User-Role: admin` 把關（標 TODO）；
-非管理員 403、信箱非 @hqdesign.tw 422。Phase 2 改由伺服器端 session 推導 role
-並強制驗證，忽略 header 帶入值。管理員**不得**改任何人的 consent_shared。
+**Phase 2 token-derived 權限檢查**：以 Bearer token 推導 admin role（`require_admin_user`）；
+非管理員或無效 token 403/401；信箱非 @hqdesign.tw 422。管理員**不得**改任何人的 consent_shared。
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import PermissionDenied
+from app.core.auth import require_admin_user
 from app.db.session import get_session
 from app.schemas.user import AdminPasswordIn, MeOut, WhitelistIn, WhitelistOut
 from app.services import account as asvc
@@ -21,16 +20,10 @@ from app.services import account as asvc
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-# TODO(Phase 2): 改由 session 推導 role 並伺服器端強制；目前僅暫時性 header 檢查
-async def require_admin(x_user_role: str | None = Header(default=None)) -> None:
-    if x_user_role != "admin":
-        raise PermissionDenied("admin role required")
-
-
 @router.get(
     "/whitelist",
     response_model=list[WhitelistOut],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_admin_user)],
 )
 async def list_whitelist(
     session: AsyncSession = Depends(get_session),
@@ -42,7 +35,7 @@ async def list_whitelist(
 @router.post(
     "/whitelist",
     response_model=WhitelistOut,
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_admin_user)],
 )
 async def set_whitelist(
     body: WhitelistIn,
@@ -56,7 +49,7 @@ async def set_whitelist(
 @router.delete(
     "/whitelist/{email}",
     status_code=204,
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_admin_user)],
 )
 async def delete_account(
     email: str,
@@ -74,7 +67,7 @@ async def delete_account(
 @router.post(
     "/users/{user_id}/password",
     response_model=MeOut,
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_admin_user)],
 )
 async def admin_set_password(
     user_id: int,

@@ -5,10 +5,9 @@
   GET  /api/v1/me                     帳戶＋白名單＋同意狀態
   PUT  /api/v1/me/consent             本人設定／撤回（前置：須先在白名單內）
   GET  /api/v1/me/preference-profile  尚未學出時回空輪廓、不 404
-  GET/POST /api/v1/admin/whitelist    管理員（暫以 X-User-Role: admin 把關）
+  GET/POST /api/v1/admin/whitelist    管理員（Phase 2：token 推導 role）
 
-Phase 2：/me/* 端點身分由 token 推導；consent body 移除 user_id。
-管理員端點仍以 X-User-Role header 把關（Task 7 改 token）。
+Phase 2：/me/* 與 /admin/* 端點身分均由 token 推導；consent body 移除 user_id。
 """
 from __future__ import annotations
 
@@ -16,7 +15,6 @@ ME = "/api/v1/me"
 CONSENT = "/api/v1/me/consent"
 PROFILE = "/api/v1/me/preference-profile"
 WHITELIST = "/api/v1/admin/whitelist"
-ADMIN = {"X-User-Role": "admin"}
 
 
 # --------------------------------------------------------------------------- #
@@ -61,13 +59,13 @@ async def test_consent_requires_whitelist_403(client):
     assert r.status_code == 403
 
 
-async def test_consent_after_whitelist_sets_consent_at(client, auth_headers):
+async def test_consent_after_whitelist_sets_consent_at(client, admin_user, auth_headers):
     """v2：先由管理員開通白名單，本人同意 → consent_shared=True、consent_at 落地。"""
     # 第 1 段：管理員開通
     w = await client.post(
         WHITELIST,
         json={"email": "ivy@hqdesign.tw", "whitelist_active": True},
-        headers=ADMIN,
+        headers=auth_headers(admin_user),
     )
     assert w.status_code == 200
     uid = w.json()["id"]
@@ -101,34 +99,49 @@ async def test_preference_profile_empty_not_404(client, default_user, auth_heade
 
 
 # --------------------------------------------------------------------------- #
-# admin /whitelist（暫時性 X-User-Role 把關 + 網域驗證）
+# admin /whitelist（Phase 2 token 把關 + 網域驗證）
 # --------------------------------------------------------------------------- #
-async def test_admin_whitelist_requires_admin_role_403(client):
-    """v4：非管理員（缺 X-User-Role: admin）→ 403。"""
-    r = await client.get(WHITELIST)
+async def test_whitelist_requires_admin_token(client, admin_user, default_user, auth_headers):
+    # 一般 member token → 403
+    r = await client.get("/api/v1/admin/whitelist", headers=auth_headers(default_user))
     assert r.status_code == 403
-    r2 = await client.post(
-        WHITELIST, json={"email": "ken@hqdesign.tw", "whitelist_active": True}
+    # admin token → 200
+    r2 = await client.get("/api/v1/admin/whitelist", headers=auth_headers(admin_user))
+    assert r2.status_code == 200
+
+
+async def test_whitelist_rejects_fake_header(client, default_user):
+    # 偽造 X-User-Role 不再有效（無 token）→ 401
+    r = await client.get("/api/v1/admin/whitelist", headers={"X-User-Role": "admin"})
+    assert r.status_code == 401
+
+
+async def test_admin_whitelist_requires_admin_role_403(client, default_user, auth_headers):
+    """v4：非管理員（member token）→ 403。"""
+    r = await client.post(
+        WHITELIST,
+        json={"email": "ken@hqdesign.tw", "whitelist_active": True},
+        headers=auth_headers(default_user),
     )
-    assert r2.status_code == 403
+    assert r.status_code == 403
 
 
-async def test_admin_whitelist_rejects_foreign_domain_422(client):
+async def test_admin_whitelist_rejects_foreign_domain_422(client, admin_user, auth_headers):
     """v4：信箱非 @hqdesign.tw → 422（合作範圍邊界）。"""
     r = await client.post(
         WHITELIST,
         json={"email": "outsider@gmail.com", "whitelist_active": True},
-        headers=ADMIN,
+        headers=auth_headers(admin_user),
     )
     assert r.status_code == 422
 
 
-async def test_admin_whitelist_provision_and_list(client):
+async def test_admin_whitelist_provision_and_list(client, admin_user, auth_headers):
     """v4：開通新帳號（pre-provision）後出現在列表，且只動 whitelist_active。"""
     r = await client.post(
         WHITELIST,
         json={"email": "leo@hqdesign.tw", "whitelist_active": True},
-        headers=ADMIN,
+        headers=auth_headers(admin_user),
     )
     assert r.status_code == 200
     created = r.json()
@@ -136,7 +149,7 @@ async def test_admin_whitelist_provision_and_list(client):
     assert created["whitelist_active"] is True
     assert created["consent_shared"] is False  # 管理員不得碰同意
 
-    rows = (await client.get(WHITELIST, headers=ADMIN)).json()
+    rows = (await client.get(WHITELIST, headers=auth_headers(admin_user))).json()
     assert any(u["email"] == "leo@hqdesign.tw" for u in rows)
 
 
@@ -144,41 +157,51 @@ async def test_admin_whitelist_provision_and_list(client):
 # DELETE /admin/whitelist/{email}（移除帳號；管理員）
 # 名單管理：UI 刪除須真正落地後端，否則重整時 hydration 會把帳號併回（復活）。
 # --------------------------------------------------------------------------- #
-async def test_admin_delete_requires_admin_role_403(client):
-    """非管理員（缺 X-User-Role: admin）→ 403。"""
-    r = await client.delete(f"{WHITELIST}/someone@hqdesign.tw")
+async def test_admin_delete_requires_admin_role_403(client, default_user, auth_headers):
+    """非管理員（member token）→ 403。"""
+    r = await client.delete(
+        f"{WHITELIST}/someone@hqdesign.tw", headers=auth_headers(default_user)
+    )
     assert r.status_code == 403
 
 
-async def test_admin_delete_rejects_foreign_domain_422(client):
+async def test_admin_delete_rejects_foreign_domain_422(client, admin_user, auth_headers):
     """信箱非 @hqdesign.tw → 422（合作範圍邊界，與開通對稱）。"""
-    r = await client.delete(f"{WHITELIST}/outsider@gmail.com", headers=ADMIN)
+    r = await client.delete(
+        f"{WHITELIST}/outsider@gmail.com", headers=auth_headers(admin_user)
+    )
     assert r.status_code == 422
 
 
-async def test_admin_delete_unknown_404(client):
+async def test_admin_delete_unknown_404(client, admin_user, auth_headers):
     """查無此帳號 → 404。"""
-    r = await client.delete(f"{WHITELIST}/ghost@hqdesign.tw", headers=ADMIN)
+    r = await client.delete(
+        f"{WHITELIST}/ghost@hqdesign.tw", headers=auth_headers(admin_user)
+    )
     assert r.status_code == 404
 
 
-async def test_admin_delete_removes_account(client):
+async def test_admin_delete_removes_account(client, admin_user, auth_headers):
     """開通新帳號後刪除 → 204，且不再出現在列表（落地後端，重整不復活）。"""
     created = await client.post(
         WHITELIST,
         json={"email": "tmp@hqdesign.tw", "whitelist_active": True},
-        headers=ADMIN,
+        headers=auth_headers(admin_user),
     )
     assert created.status_code == 200
 
-    d = await client.delete(f"{WHITELIST}/tmp@hqdesign.tw", headers=ADMIN)
+    d = await client.delete(
+        f"{WHITELIST}/tmp@hqdesign.tw", headers=auth_headers(admin_user)
+    )
     assert d.status_code == 204
 
-    rows = (await client.get(WHITELIST, headers=ADMIN)).json()
+    rows = (await client.get(WHITELIST, headers=auth_headers(admin_user))).json()
     assert all(u["email"] != "tmp@hqdesign.tw" for u in rows)
 
 
-async def test_admin_delete_refuses_system_default_403(client, db_session):
+async def test_admin_delete_refuses_system_default_403(
+    client, db_session, admin_user, auth_headers
+):
     """系統佔位帳號（name=default）為保護對象、不可刪 → 403（即使具 @hqdesign 信箱）。"""
     from app.models.behavior import User
 
@@ -186,5 +209,7 @@ async def test_admin_delete_refuses_system_default_403(client, db_session):
     db_session.add(u)
     await db_session.commit()
 
-    r = await client.delete(f"{WHITELIST}/default-sys@hqdesign.tw", headers=ADMIN)
+    r = await client.delete(
+        f"{WHITELIST}/default-sys@hqdesign.tw", headers=auth_headers(admin_user)
+    )
     assert r.status_code == 403

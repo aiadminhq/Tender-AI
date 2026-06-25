@@ -22,7 +22,6 @@ LOGIN = "/api/v1/auth/login"
 ME = "/api/v1/me"
 ME_PASSWORD = "/api/v1/me/password"
 WHITELIST = "/api/v1/admin/whitelist"
-ADMIN = {"X-User-Role": "admin"}
 
 
 def _admin_password_url(user_id: int) -> str:
@@ -192,7 +191,7 @@ async def test_me_password_is_default_flips_false_after_change(
 
 
 async def test_me_password_is_default_true_again_after_admin_reset_to_default(
-    client, session_factory, auth_headers
+    client, session_factory, admin_user, auth_headers
 ):
     """管理員把密碼重置回預設 admin 時，/me 應重新顯示 True。"""
     await seed_members(session_factory)
@@ -218,7 +217,7 @@ async def test_me_password_is_default_true_again_after_admin_reset_to_default(
     rst = await client.post(
         _admin_password_url(me["id"]),
         json={"new_password": DEFAULT_SEED_PASSWORD},
-        headers=ADMIN,
+        headers=auth_headers(admin_user),
     )
     assert rst.status_code == 200
     assert (await client.get(ME, headers=auth_headers(me["id"]))).json()[
@@ -267,7 +266,9 @@ async def test_change_password_too_short_422(client, session_factory, auth_heade
 # --------------------------------------------------------------------------- #
 # POST /admin/users/{id}/password（管理員重置）
 # --------------------------------------------------------------------------- #
-async def test_admin_reset_requires_admin_role_403(client, session_factory):
+async def test_admin_reset_requires_admin_role_403(
+    client, session_factory, default_user, auth_headers
+):
     await seed_members(session_factory)
     me = (
         await client.post(
@@ -276,12 +277,16 @@ async def test_admin_reset_requires_admin_role_403(client, session_factory):
         )
     ).json()
     r = await client.post(
-        _admin_password_url(me["id"]), json={"new_password": "reset123"}
+        _admin_password_url(me["id"]),
+        json={"new_password": "reset123"},
+        headers=auth_headers(default_user),
     )
     assert r.status_code == 403
 
 
-async def test_admin_reset_password_then_login(client, session_factory):
+async def test_admin_reset_password_then_login(
+    client, session_factory, admin_user, auth_headers
+):
     await seed_members(session_factory)
     me = (
         await client.post(
@@ -293,7 +298,7 @@ async def test_admin_reset_password_then_login(client, session_factory):
     r = await client.post(
         _admin_password_url(me["id"]),
         json={"new_password": "reset123"},
-        headers=ADMIN,
+        headers=auth_headers(admin_user),
     )
     assert r.status_code == 200
     # 舊密碼失效、新密碼可登入
@@ -310,9 +315,11 @@ async def test_admin_reset_password_then_login(client, session_factory):
     ).status_code == 200
 
 
-async def test_admin_reset_unknown_user_404(client):
+async def test_admin_reset_unknown_user_404(client, admin_user, auth_headers):
     r = await client.post(
-        _admin_password_url(99999), json={"new_password": "reset123"}, headers=ADMIN
+        _admin_password_url(99999),
+        json={"new_password": "reset123"},
+        headers=auth_headers(admin_user),
     )
     assert r.status_code == 404
 
