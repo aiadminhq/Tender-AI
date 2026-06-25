@@ -46,8 +46,15 @@ log()  { printf '%s | %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "${LOG_
 step() { log "──────── $* ────────"; }
 
 # 步驟結果收集（給 summary.json）
-declare -A RESULT
-mark() { RESULT["$1"]="$2"; }   # mark <step> <ok|skip|fail>
+# 註：macOS 內建 bash 為 3.2，無關聯陣列（declare -A）。改用前綴變數 + 間接展開，
+#     確保 launchd 無論落到哪個 bash 都能跑。步驟名僅含 [a-z_]，皆為合法變數名。
+RESULT_sync=na
+RESULT_ingest_daily_reports=na
+RESULT_enrich_details=na
+RESULT_backfill_category=na
+RESULT_embed_tenders=na
+mark()       { eval "RESULT_$1=\$2"; }   # mark <step> <ok|skip|fail>
+get_result() { eval "printf '%s' \"\${RESULT_$1:-na}\""; }
 
 log "▶ Tender AI 每日管線啟動（${DATE_TAG}）"
 log "  PROJECT_ROOT = ${PROJECT_ROOT}"
@@ -156,7 +163,7 @@ step "完成摘要"
   printf '  "steps": {'
   first=1
   for k in sync ingest_daily_reports enrich_details backfill_category embed_tenders; do
-    v="${RESULT[$k]:-na}"
+    v="$(get_result "$k")"
     [ ${first} -eq 0 ] && printf ', '
     printf '"%s": "%s"' "$k" "$v"; first=0
   done
@@ -170,6 +177,6 @@ log "■ 管線結束"
 
 # 任一核心步驟 fail → 回傳非 0（方便 launchd / CI 監看），但連線跳過不算失敗
 for k in ingest_daily_reports enrich_details backfill_category embed_tenders; do
-  [ "${RESULT[$k]:-na}" = "fail" ] && exit 2
+  [ "$(get_result "$k")" = "fail" ] && exit 2
 done
 exit 0
