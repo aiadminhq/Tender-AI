@@ -17,6 +17,7 @@ import { SearchPage } from "@/pages/search-page";
 import { EvolutionPage } from "@/pages/evolution-page";
 import { KnowvioDashboardPage } from "@/pages/knowvio-dashboard-page";
 import { DesignSystemPage } from "@/pages/design-system";
+import { ChartsPage } from "@/pages/charts-page";
 import { AnnotationLayer } from "@/components/annotate/annotation-layer";
 
 export default function App() {
@@ -56,6 +57,10 @@ export default function App() {
           {/* 設計系統展示頁（dev-only，正式 build 不含） */}
           {import.meta.env.DEV && (
             <Route path="design-system" element={<DesignSystemPage />} />
+          )}
+          {/* 圖表藝廊（dev-only，正式 build 不含） */}
+          {import.meta.env.DEV && (
+            <Route path="charts" element={<ChartsPage />} />
           )}
           <Route path="*" element={<DashboardPage />} />
         </Route>

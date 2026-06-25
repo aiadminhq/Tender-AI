@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Activity,
+  BarChart3,
   ChevronDown,
   LogOut,
   Palette,
@@ -200,6 +201,13 @@ export function Sidebar() {
                 key: "navDesignSystem",
                 icon: Palette,
               }}
+              meta={{ tag: "dev" }}
+            />
+          )}
+          {/* 圖表藝廊：dev-only 入口（與 App.tsx route gate 一致；正式 build 不顯示） */}
+          {import.meta.env.DEV && (
+            <SidebarLink
+              item={{ to: "/charts", key: "navCharts", icon: BarChart3 }}
               meta={{ tag: "dev" }}
             />
           )}
