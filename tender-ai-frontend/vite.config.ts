@@ -21,5 +21,16 @@ export default defineConfig(({ command }) => {
         "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
+    // 區網分享（讓同網段同事，如 David，連 http://<本機LAN-IP>:5173 操作本站）：
+    // - host:true → 綁 0.0.0.0/[::]（原本只綁 [::1] loopback，區網不可達）。
+    // - proxy → 前端走相對 /api，由 dev server 端代理回本機後端 127.0.0.1:8000。
+    //   因此「後端與 Ollama 都不必對區網開埠、也不必改 CORS」，AI 算力全留在本機；
+    //   區網上唯一對外的只有這個 Vite dev server。用完關掉即收回。
+    server: {
+      host: true,
+      proxy: {
+        "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      },
+    },
   };
 });

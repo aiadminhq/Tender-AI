@@ -7,7 +7,8 @@ import type { Tier } from "@/types/domain";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "http://localhost:8000/api/v1";
+  // 區網分享：dev 走相對 /api/v1（由 vite proxy 轉本機後端），靜態 build 維持絕對 localhost。
+  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
 
 function authHeaders(): Record<string, string> {
   const key = import.meta.env.VITE_API_KEY as string | undefined;
