@@ -27,6 +27,7 @@ export function serializeFilter(filter: FilterState): string {
   if (filter.query) p.set("q", filter.query);
   if (filter.sources.length) p.set("src", filter.sources.join(","));
   if (filter.tiers.length) p.set("tier", filter.tiers.join(","));
+  if (filter.minBudget != null) p.set("budgetMin", String(filter.minBudget));
   if (filter.maxBudget != null) p.set("budget", String(filter.maxBudget));
   if (filter.focusOnly) p.set("focus", "1");
   if (!filter.hideExcluded) p.set("showExcluded", "1");
@@ -73,6 +74,11 @@ export function parseFilter(search: string, base: FilterState): FilterState {
   if (budget != null) {
     const n = Number(budget);
     if (Number.isFinite(n)) next.maxBudget = n;
+  }
+  const budgetMin = p.get("budgetMin");
+  if (budgetMin != null) {
+    const n = Number(budgetMin);
+    if (Number.isFinite(n)) next.minBudget = n;
   }
 
   if (p.get("focus") === "1") next.focusOnly = true;

@@ -374,6 +374,8 @@ export interface FilterState {
   query: string;
   sources: SourceKey[];
   tiers: Tier[];
+  /** 預算下限（TWD），null = 不限 */
+  minBudget: number | null;
   /** 預算上限（TWD），null = 不限 */
   maxBudget: number | null;
   /** 只看命中重點關鍵字 */

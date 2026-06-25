@@ -6,6 +6,7 @@ const DEFAULT: FilterState = {
   query: "",
   sources: [],
   tiers: [],
+  minBudget: null,
   maxBudget: null,
   focusOnly: false,
   hideExcluded: true,
@@ -31,6 +32,7 @@ describe("url-filter", () => {
       query: "教室 整修",
       sources: ["PCC", "TMU"],
       tiers: ["high"],
+      minBudget: 1_000_000,
       maxBudget: 8_000_000,
       focusOnly: true,
       hideExcluded: false,
@@ -53,6 +55,7 @@ describe("url-filter", () => {
 
   it("忽略未知 key、容錯壞值", () => {
     const r = parseFilter("?bogus=x&maxBudget=notnum&sort=weird", DEFAULT);
+    expect(r.minBudget).toBeNull();
     expect(r.maxBudget).toBeNull();
     expect(r.sort).toBe("score");
   });

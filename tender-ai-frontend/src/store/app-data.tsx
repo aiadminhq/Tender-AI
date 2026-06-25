@@ -76,6 +76,7 @@ const DEFAULT_FILTER: FilterState = {
   query: "",
   sources: [],
   tiers: [],
+  minBudget: null,
   maxBudget: null,
   focusOnly: false,
   hideExcluded: true,
@@ -554,6 +555,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (filter.sources.length && !filter.sources.includes(t.source))
         return false;
       if (filter.tiers.length && !filter.tiers.includes(t.tier)) return false;
+      if (filter.minBudget != null && t.budget < filter.minBudget) return false;
       if (filter.maxBudget != null && t.budget > filter.maxBudget) return false;
       if (filter.focusOnly && !hasFocus(t)) return false;
       if (filter.hideExcluded && isExcluded(t)) return false;
@@ -645,6 +647,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           debouncedTrack("apply_filter", {
             sources: next.sources,
             tiers: next.tiers,
+            minBudget: next.minBudget,
             maxBudget: next.maxBudget,
             focusOnly: next.focusOnly,
             hideExcluded: next.hideExcluded,
@@ -810,8 +813,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const applySavedSearch = useCallback(
     (id: number) => {
       const found = savedSearches.find((s) => s.id === id);
-      // filter 存整份 FilterState，setFilter 以 patch 覆蓋全鍵 → 等同完整套用。
-      if (found) setFilter(found.filter);
+      // 舊 saved search 可能缺新增欄位；先併預設值再套用，避免殘留上一組篩選。
+      if (found) setFilter({ ...DEFAULT_FILTER, ...found.filter });
     },
     [savedSearches, setFilter],
   );

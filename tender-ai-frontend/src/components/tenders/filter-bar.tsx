@@ -1,4 +1,13 @@
-import { useMemo, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { Eye, EyeOff, Target, X, Link2, Save } from "lucide-react";
 import type { Category, SortKey, SourceKey, Tier } from "@/types/domain";
 import type { TextKey } from "@/i18n/strings";
@@ -11,8 +20,10 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { serializeFilter } from "@/lib/url-filter";
 
-const BUDGET_MAX = 15_000_000;
-const BUDGET_STEP = 500_000;
+const BUDGET_MIN = 1_000_000;
+const BUDGET_MAX = 50_000_000;
+const BUDGET_STEP = 1_000_000;
+const BUDGET_BUCKETS = 42;
 
 // 一次顯示的標籤 chips 上限（超過則隱藏於可捲動區，避免 filter-bar 爆量）
 const TAG_VISIBLE_MAX = 12;
@@ -69,6 +80,200 @@ function Divider() {
   return <span className="hidden h-5 w-px shrink-0 bg-hairline lg:block" />;
 }
 
+function clampBudget(value: number): number {
+  return Math.min(BUDGET_MAX, Math.max(BUDGET_MIN, value));
+}
+
+function valueToPercent(value: number): number {
+  return ((value - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
+}
+
+function pointerToBudget(clientX: number, rect: DOMRect): number {
+  const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  const raw = BUDGET_MIN + pct * (BUDGET_MAX - BUDGET_MIN);
+  return clampBudget(Math.round(raw / BUDGET_STEP) * BUDGET_STEP);
+}
+
+function BudgetRangeSlider({
+  minValue,
+  maxValue,
+  buckets,
+  onChange,
+  minLabel,
+  maxLabel,
+  minTitle,
+  maxTitle,
+  rangeLabel,
+}: {
+  minValue: number;
+  maxValue: number;
+  buckets: number[];
+  onChange: (next: [number, number]) => void;
+  minLabel: string;
+  maxLabel: string;
+  minTitle: string;
+  maxTitle: string;
+  rangeLabel: string;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<"min" | "max" | null>(null);
+
+  const minPercent = valueToPercent(minValue);
+  const maxPercent = valueToPercent(maxValue);
+
+  const commit = useCallback(
+    (thumb: "min" | "max", nextValue: number) => {
+      const clamped = clampBudget(nextValue);
+      if (thumb === "min") {
+        onChange([Math.min(clamped, maxValue - BUDGET_STEP), maxValue]);
+      } else {
+        onChange([minValue, Math.max(clamped, minValue + BUDGET_STEP)]);
+      }
+    },
+    [maxValue, minValue, onChange],
+  );
+
+  const moveThumb = useCallback(
+    (thumb: "min" | "max", clientX: number) => {
+      const rect = trackRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      commit(thumb, pointerToBudget(clientX, rect));
+    },
+    [commit],
+  );
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onPointerMove = (event: PointerEvent) =>
+      moveThumb(dragging, event.clientX);
+    const onPointerUp = () => setDragging(null);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [dragging, moveThumb]);
+
+  const handleTrackPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = trackRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const next = pointerToBudget(event.clientX, rect);
+    const thumb =
+      Math.abs(next - minValue) <= Math.abs(next - maxValue) ? "min" : "max";
+    commit(thumb, next);
+    setDragging(thumb);
+  };
+
+  const handleKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    thumb: "min" | "max",
+  ) => {
+    let delta: number;
+    if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+      delta = -BUDGET_STEP;
+    } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+      delta = BUDGET_STEP;
+    } else if (event.key === "PageDown") {
+      delta = -BUDGET_STEP * 5;
+    } else if (event.key === "PageUp") {
+      delta = BUDGET_STEP * 5;
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      commit(thumb, thumb === "min" ? BUDGET_MIN : minValue + BUDGET_STEP);
+      return;
+    } else if (event.key === "End") {
+      event.preventDefault();
+      commit(thumb, thumb === "min" ? maxValue - BUDGET_STEP : BUDGET_MAX);
+      return;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    commit(thumb, (thumb === "min" ? minValue : maxValue) + delta);
+  };
+
+  return (
+    <div className="w-[19rem] max-w-full space-y-2 rounded-md bg-surface-2/60 px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="whitespace-nowrap text-[12px] text-ink-muted">
+          {rangeLabel}
+        </span>
+        <span className="tnum truncate text-[12px] font-medium text-ink">
+          {minLabel} – {maxLabel}
+        </span>
+      </div>
+
+      <div
+        ref={trackRef}
+        className="relative h-10 touch-none select-none"
+        onPointerDown={handleTrackPointerDown}
+      >
+        <div className="absolute inset-x-0 bottom-1 top-0 flex items-end gap-px">
+          {buckets.map((height, index) => {
+            const pct = buckets.length <= 1 ? 0 : (index / (buckets.length - 1)) * 100;
+            const selected = pct >= minPercent && pct <= maxPercent;
+            return (
+              <span
+                key={index}
+                className={cn(
+                  "min-w-0 flex-1 rounded-t-sm transition-colors",
+                  selected ? "bg-ink" : "bg-hairline",
+                )}
+                style={{ height: `${Math.max(12, height * 100)}%` }}
+              />
+            );
+          })}
+        </div>
+        <div
+          className="absolute bottom-0 top-0 border-l border-r border-signal/40"
+          style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
+        />
+        {(["min", "max"] as const).map((thumb) => {
+          const isMin = thumb === "min";
+          const value = isMin ? minValue : maxValue;
+          const percent = isMin ? minPercent : maxPercent;
+          return (
+            <button
+              key={thumb}
+              type="button"
+              role="slider"
+              aria-label={isMin ? minTitle : maxTitle}
+              aria-valuemin={isMin ? BUDGET_MIN : minValue + BUDGET_STEP}
+              aria-valuemax={isMin ? maxValue - BUDGET_STEP : BUDGET_MAX}
+              aria-valuenow={value}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                setDragging(thumb);
+              }}
+              onKeyDown={(event) => handleKeyDown(event, thumb)}
+              className={cn(
+                "absolute top-1/2 z-10 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-card shadow-[var(--elev-rest)] transition-transform",
+                "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+                dragging === thumb && "scale-110",
+              )}
+              style={{ left: `${percent}%` }}
+            />
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-md border border-border bg-card px-2 py-1.5">
+          <p className="text-[10px] text-ink-dim">{minTitle}</p>
+          <p className="tnum text-[12px] font-semibold text-ink">{minLabel}</p>
+        </div>
+        <div className="rounded-md border border-border bg-card px-2 py-1.5">
+          <p className="text-[10px] text-ink-dim">{maxTitle}</p>
+          <p className="tnum text-[12px] font-semibold text-ink">{maxLabel}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FilterBar() {
   const { t, lang } = useApp();
   const {
@@ -118,10 +323,40 @@ export function FilterBar() {
     return [...seen];
   }, [tenders]);
 
+  const budgetBuckets = useMemo(() => {
+    const buckets = Array.from({ length: BUDGET_BUCKETS }, () => 0);
+    for (const tender of tenders) {
+      const budget = clampBudget(tender.budget);
+      const index = Math.min(
+        BUDGET_BUCKETS - 1,
+        Math.max(
+          0,
+          Math.floor(
+            ((budget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) *
+              BUDGET_BUCKETS,
+          ),
+        ),
+      );
+      buckets[index] += 1;
+    }
+    const max = Math.max(...buckets, 1);
+    return buckets.map((count) => count / max);
+  }, [tenders]);
+
+  const selectedMinBudget = clampBudget(filter.minBudget ?? BUDGET_MIN);
+  const selectedMaxBudget = clampBudget(filter.maxBudget ?? BUDGET_MAX);
+  const sliderMinBudget = clampBudget(
+    Math.min(selectedMinBudget, selectedMaxBudget - BUDGET_STEP),
+  );
+  const sliderMaxBudget = clampBudget(
+    Math.max(selectedMaxBudget, sliderMinBudget + BUDGET_STEP),
+  );
+
   const active =
     !!filter.query ||
     filter.sources.length > 0 ||
     filter.tiers.length > 0 ||
+    filter.minBudget != null ||
     filter.maxBudget != null ||
     filter.focusOnly ||
     !filter.hideExcluded ||
@@ -213,32 +448,23 @@ export function FilterBar() {
 
       <Divider />
 
-      {/* 預算上限 */}
-      <div className="flex items-center gap-2">
-        <span className="whitespace-nowrap text-[12px] text-ink-muted">
-          {t("budgetCeiling")}
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={BUDGET_MAX}
-          step={BUDGET_STEP}
-          value={filter.maxBudget ?? BUDGET_MAX}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            setFilter({ maxBudget: v >= BUDGET_MAX ? null : v });
-          }}
-          aria-label={t("budgetCeiling")}
-          className="h-1 w-28 cursor-pointer accent-signal"
-        />
-        <span className="tnum w-16 text-[12px] font-medium text-ink">
-          {filter.maxBudget == null
-            ? lang === "en"
-              ? "Any"
-              : "不限"
-            : formatBudget(filter.maxBudget, lang)}
-        </span>
-      </div>
+      {/* 預算區間 */}
+      <BudgetRangeSlider
+        minValue={sliderMinBudget}
+        maxValue={sliderMaxBudget}
+        buckets={budgetBuckets}
+        minLabel={formatBudget(sliderMinBudget, lang)}
+        maxLabel={formatBudget(sliderMaxBudget, lang)}
+        minTitle={t("budgetMinimum")}
+        maxTitle={t("budgetMaximum")}
+        rangeLabel={t("budgetRange")}
+        onChange={([min, max]) =>
+          setFilter({
+            minBudget: min <= BUDGET_MIN ? null : min,
+            maxBudget: max >= BUDGET_MAX ? null : max,
+          })
+        }
+      />
 
       <Divider />
 

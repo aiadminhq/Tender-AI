@@ -78,6 +78,7 @@ const FILTER: FilterState = {
   query: "醫院",
   sources: ["PCC"],
   tiers: ["high"],
+  minBudget: null,
   maxBudget: null,
   focusOnly: false,
   hideExcluded: true,
