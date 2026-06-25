@@ -5,7 +5,10 @@
 - 帳號 ＝ 信箱；預設密碼一律 "admin"（雜湊後落地，明文不存）。
 - 角色：christian.wu / aaron.chang = admin，其餘 = member。
 - whitelist_active = True：管理員（本次建檔的行為）開通合作範圍（第 1 段同意）。
-  consent_shared 保持 False——第 2 段「本人同意」不可代為，須各自於設定頁按下。
+- 同意模型（2026-06-25 團隊協議，opt-out）：
+    白名單（@hqdesign.tw）帳號登入操作本站即視為同意共享其資訊與行為。
+    新建帳號 consent_shared=True；既有帳號不觸碰（永不覆蓋個人 opt-out），
+    與「密碼僅在未設定時才寫」哲學一致。個人可於設定頁退出共享。
 
 冪等（idempotent）：以 email upsert。
 - 帳號不存在 → 建立並設預設密碼。
@@ -65,6 +68,7 @@ async def seed_members(
                     email=email,
                     role=m["role"],
                     whitelist_active=True,
+                    consent_shared=True,   # 團隊協議：登入操作即同意（opt-out，可於設定頁退出）
                     password_hash=hash_password(DEFAULT_SEED_PASSWORD),
                 )
                 session.add(user)

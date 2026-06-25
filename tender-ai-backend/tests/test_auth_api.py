@@ -53,7 +53,7 @@ async def test_seed_members_creates_named_accounts(client, session_factory):
     stats = await seed_members(session_factory)
     assert stats["created"] == len(MEMBERS)
 
-    # christian.wu 為 admin、已開通白名單、未自動同意，且能以預設密碼登入
+    # christian.wu 為 admin、已開通白名單、新建帳號 consent_shared=True（opt-out 協議），且能以預設密碼登入
     r = await client.post(
         LOGIN,
         json={"email": "christian.wu@hqdesign.tw", "password": DEFAULT_SEED_PASSWORD},
@@ -62,7 +62,7 @@ async def test_seed_members_creates_named_accounts(client, session_factory):
     body = r.json()
     assert body["role"] == "admin"
     assert body["whitelist_active"] is True
-    assert body["consent_shared"] is False
+    assert body["consent_shared"] is True   # 2026-06-25 團隊協議：新建帳號預設 opt-out（True），可於設定頁退出
     assert body["password_is_default"] is True
 
 
