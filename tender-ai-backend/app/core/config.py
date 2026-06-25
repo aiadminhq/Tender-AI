@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # 簡易後端保護
     app_api_key: str = ""
 
+    # 鑑權簽章祕密（無安全預設；必須由 .env 或環境變數提供）
+    auth_secret: str = ""
+    # Token 有效時數（預設 7 天）
+    auth_token_ttl_hours: int = 168
+
     # 前端跨源呼叫允許來源（逗號分隔字串）；預設本機 Vite 開發埠（5173／5174）
     cors_origins: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"
