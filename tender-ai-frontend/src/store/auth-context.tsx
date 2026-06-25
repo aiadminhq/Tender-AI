@@ -1,11 +1,11 @@
-// 登入身分 context（Phase 2 輕量登入）：信箱＋密碼驗證後，把身分存於 localStorage、
-// 並把 user_id 注入 api.ts（Layer B 具名回寫）。
+// 登入身分 context（Phase 2 真鑑權）：信箱＋密碼驗證後，後端簽發 HMAC token，
+// 前端存於 localStorage（auth-token），之後請求帶 Authorization: Bearer。
 //
 // 兩種登入態：
-//   - "authed"：以白名單帳號通過後端驗證，行為依登入帳號具名回寫。
-//   - "mock" ：後端不可達時的退化／示範模式，維持離線可用；不注入 user_id（不具名）。
-// 信任邊界（沿用後端 Phase 1）：前端不持有 token，身分可被竄改；管理權限暫以
-// X-User-Role header 把關。待 Phase 2 改伺服器端 session 強制。
+//   - "authed"：以白名單帳號通過後端驗證，行為依登入帳號具名回寫（token 帶 uid）。
+//   - "mock" ：後端不可達時的退化／示範模式，維持離線可用；不存 token、不具名。
+// 信任邊界：身分／角色／白名單一律由後端依 token 推導（不再信任前端帶入的 user_id／X-User-Role）。
+// 開站以 GET /me 重新核對（fail-closed）：token 失效／帳號停用 → fetchMe 回 null → 自動登出清 token。
 import {
   createContext,
   useCallback,
@@ -23,6 +23,7 @@ import {
 } from "@/lib/auth-api";
 import { setCurrentUserId } from "@/lib/api";
 import { load, remove, save } from "@/lib/storage";
+import { getToken, setToken, clearToken } from "@/lib/auth-token";
 
 const STORAGE_KEY = "auth-user"; // tender:auth-user
 
@@ -75,22 +76,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUserId(status === "authed" && user ? user.id : null);
   }, [status, user]);
 
-  // 還原的身分以 GET /me 重新核對（帳號可能已停用／改密）；後端不可達則沿用快取身分。
+  // 還原的身分以 GET /me 重新核對（fail-closed）：token 失效／帳號停用 → 自動登出清 token。
   useEffect(() => {
-    if (status !== "loading" || !user) return;
     let alive = true;
-    void fetchMe(user.id).then((fresh) => {
-      if (!alive) return;
-      if (fresh) {
-        setUser(fresh);
-        save(STORAGE_KEY, fresh);
+    void (async () => {
+      if (!getToken()) {
+        setStatus("anonymous");
+        return;
       }
-      setStatus("authed"); // 後端不可達（fresh=null）仍沿用快取身分，維持登入
-    });
+      const me = await fetchMe(); // 靠 Bearer，失敗／401 回 null
+      if (!alive) return;
+      if (!me) {
+        // token 失效／帳號停用 → fail-closed 登出
+        clearToken();
+        remove(STORAGE_KEY);
+        setUser(null);
+        setStatus("anonymous");
+        return;
+      }
+      setUser(me);
+      save(STORAGE_KEY, me);
+      setStatus("authed");
+    })();
     return () => {
       alive = false;
     };
-    // 僅在首次 loading 時核對一次
+    // 僅在掛載時核對一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -99,7 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 憑證錯誤 → 回 false；網路錯誤 → 由 apiLogin 拋 LoginError("network")，
       // 交呼叫端（登入頁）決定是否提示「改用示範模式」。
       try {
-        const u = await apiLogin(email, password);
+        const { user: u, token } = await apiLogin(email, password);
+        setToken(token);
         setUser(u);
         save(STORAGE_KEY, u);
         setStatus("authed");
@@ -126,9 +138,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    clearToken();
+    remove(STORAGE_KEY);
     setUser(null);
     setStatus("anonymous");
-    remove(STORAGE_KEY);
   }, []);
 
   const refreshUser = useCallback(
@@ -144,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateConsent = useCallback(
     async (consentShared: boolean): Promise<boolean> => {
       if (status !== "authed" || !user) return false;
-      const res = await apiSetConsent(user.id, consentShared);
+      const res = await apiSetConsent(consentShared);
       if (!res) return false;
       const next: AuthUser = {
         ...user,
