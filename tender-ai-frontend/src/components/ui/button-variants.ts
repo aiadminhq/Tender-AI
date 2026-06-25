@@ -1,8 +1,9 @@
 import { cva } from "class-variance-authority";
 
-// 主行動 = 白 pill（primary）；其餘為「抬升非變色」的中性表面。
+// 主行動 = 實心 primary（圓角矩形 12px／rounded-xl）；其餘為「抬升非變色」的中性表面。
+// 圓角統一收斂為 12px（owner 2026-06-25 決策：較 pill 小一階、按鈕家族一致）；icon 鈕另用 rounded-md。
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium outline-none transition-[transform,box-shadow,background-color,border-color,color] duration-150 ease-out-quart hover:-translate-y-px active:translate-y-0 active:scale-[.97] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring/45 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl font-medium outline-none transition-[transform,box-shadow,background-color,border-color,color] duration-150 ease-out-quart hover:-translate-y-px active:translate-y-0 active:scale-[.97] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0 focus-visible:ring-2 focus-visible:ring-ring/45 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
