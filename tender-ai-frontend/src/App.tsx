@@ -16,6 +16,8 @@ import { AssistantPage } from "@/pages/assistant-page";
 import { SearchPage } from "@/pages/search-page";
 import { EvolutionPage } from "@/pages/evolution-page";
 import { KnowvioDashboardPage } from "@/pages/knowvio-dashboard-page";
+import { DesignSystemPage } from "@/pages/design-system";
+import { AnnotationLayer } from "@/components/annotate/annotation-layer";
 
 export default function App() {
   const { status } = useAuth();
@@ -51,9 +53,15 @@ export default function App() {
           <Route path="rules" element={<RulesPage />} />
           <Route path="decisions" element={<DecisionReviewPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          {/* 設計系統展示頁（dev-only，正式 build 不含） */}
+          {import.meta.env.DEV && (
+            <Route path="design-system" element={<DesignSystemPage />} />
+          )}
           <Route path="*" element={<DashboardPage />} />
         </Route>
       </Routes>
+      {/* 全站設計標註層（dev-only）：掛在 Routes 外，涵蓋所有路由 */}
+      {import.meta.env.DEV && <AnnotationLayer />}
     </BrowserRouter>
   );
 }

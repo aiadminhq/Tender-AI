@@ -48,5 +48,8 @@ tender-ai-frontend/dist/
 # ── 設計參考圖庫（本機靈感素材，非源碼；視覺方向已被 plans/uiux-v2-draft.html 吸收）──
 Dashboar UI REF/
 
+# ── 設計標註 round-trip 收件匣（開發期工具產物，由前端標註層寫入供 CLI 讀取，不入版控）──
+design-feedback/
+
 # ── 本機工具設定（Preview MCP launch 設定，機器相關）──
 tender-ai-frontend/.claude/

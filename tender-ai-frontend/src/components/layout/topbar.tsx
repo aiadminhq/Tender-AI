@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { BrandMark } from "@/components/brand";
 import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 import { PushBell } from "@/components/push/push-bell";
+import { AnnotationToggle } from "@/components/annotate/annotation-toggle";
 import { AccountMenu } from "./account-menu";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,8 @@ export function Topbar() {
             {lang === "zh" ? "EN" : "中"}
           </span>
         </Button>
+        {/* 設計標註工具（dev-only，正式 build 不含） */}
+        {import.meta.env.DEV && <AnnotationToggle />}
         <PushBell />
         <AssistantLauncher />
         <AccountMenu />
