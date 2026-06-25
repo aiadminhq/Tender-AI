@@ -32,6 +32,12 @@
   --priority: #7c6bff;
   --success: #22c55e;
   --danger: #ff5577;
+  /* chart 分類色盤（沿用既有語意 token，避免引入陌生色；暗色） */
+  --chart-1: var(--signal); /* 藍 */
+  --chart-2: var(--tier-high); /* 綠 */
+  --chart-3: var(--tier-mid); /* 琥珀 */
+  --chart-4: var(--priority); /* 紫 */
+  --chart-5: var(--tier-low); /* 桃紅 */
   /* 可行性漸層（唯一允許漸層用途之一） */
   --feasibility-from: #22c55e;
   --feasibility-to: #0099ff;
@@ -89,6 +95,12 @@
   --priority: #6d5be0;
   --success: #16a34a;
   --danger: #dc2626;
+  /* chart 分類色盤（沿用既有語意 token；淺色） */
+  --chart-1: var(--signal); /* 橙 */
+  --chart-2: var(--tier-high); /* 綠 */
+  --chart-3: var(--tier-mid); /* 琥珀 */
+  --chart-4: var(--priority); /* 紫 */
+  --chart-5: var(--tier-low); /* 紅 */
   --feasibility-from: #16a34a;
   --feasibility-to: #f97316;
   --on-primary: #ffffff;
@@ -153,6 +165,13 @@
   --color-priority: var(--priority);
   --color-success: var(--success);
   --color-danger: var(--danger);
+
+  /* chart 分類色盤暴露成 Tailwind 工具類（bg-chart-1 等），亦供 recharts var() 取用 */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: var(--radius);
