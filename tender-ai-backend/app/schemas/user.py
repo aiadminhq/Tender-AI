@@ -46,10 +46,11 @@ class LoginIn(BaseModel):
 
 
 class LoginOut(BaseModel):
-    """登入成功後回傳的帳戶資料（輕量機制：前端據此記住身分）。
+    """登入成功後回傳的帳戶資料（Phase 2：含 HMAC token）。
 
     `password_is_default` 為 True 表示仍是預設密碼（admin），前端據此於設定頁
-    提示「建議修改密碼」（不強制）。後端不回傳任何 token／密碼。
+    提示「建議修改密碼」（不強制）。
+    `token` 為 Phase 2 stateless HMAC token，`expires_at` 為 UTC 到期時間。
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -62,6 +63,8 @@ class LoginOut(BaseModel):
     consent_shared: bool
     consent_at: datetime | None
     password_is_default: bool = False
+    token: str = ""
+    expires_at: datetime | None = None
 
 
 class PasswordChangeIn(BaseModel):

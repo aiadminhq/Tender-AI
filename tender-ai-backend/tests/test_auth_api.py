@@ -312,3 +312,32 @@ async def test_admin_reset_unknown_user_404(client):
         _admin_password_url(99999), json={"new_password": "reset123"}, headers=ADMIN
     )
     assert r.status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# Phase 2：登入成功簽發 token
+# --------------------------------------------------------------------------- #
+async def test_login_returns_token(client):
+    from app.models.behavior import User
+    from tests.conftest import TestSessionLocal
+
+    async with TestSessionLocal() as s:
+        u = User(
+            name="登入測試",
+            email="login@hqdesign.tw",
+            role="member",
+            whitelist_active=True,
+            consent_shared=True,
+            password_hash=hash_password("admin"),
+        )
+        s.add(u)
+        await s.commit()
+
+    r = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "login@hqdesign.tw", "password": "admin"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["token"] and "." in body["token"]
+    assert body["expires_at"]
