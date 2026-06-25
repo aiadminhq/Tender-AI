@@ -1,0 +1,21 @@
+[17:05:57] +   0s  bytes= 43756  captcha=True
+[17:06:57] +  60s  bytes= 43744  captcha=True
+[17:07:57] + 120s  bytes= 43760  captcha=True
+[17:08:57] + 180s  bytes= 43759  captcha=True
+[17:09:58] + 240s  bytes= 43760  captcha=True
+[17:10:58] + 300s  bytes= 43761  captcha=True
+[17:11:58] + 360s  bytes= 43750  captcha=True
+[17:12:58] + 421s  bytes= 43756  captcha=True
+[17:13:58] + 481s  bytes= 43745  captcha=True
+[17:14:58] + 541s  bytes= 43755  captcha=True
+[17:15:58] + 601s  bytes= 43751  captcha=True
+[17:16:59] + 661s  bytes= 43755  captcha=True
+[17:17:59] + 721s  bytes= 43755  captcha=True
+[17:18:59] + 782s  bytes= 43751  captcha=True
+[17:19:59] + 842s  bytes= 43750  captcha=True
+[17:20:59] + 902s  bytes= 43755  captcha=True
+[17:22:00] + 962s  bytes= 43758  captcha=True
+[17:23:00] +1022s  bytes= 43752  captcha=True
+[17:24:00] +1082s  bytes= 43750  captcha=True
+[17:25:00] +1143s  bytes= 43756  captcha=True
+>>> still blocked after 20 min

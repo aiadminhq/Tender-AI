@@ -1,0 +1,6 @@
+{
+  "date": "20260625",
+  "preflight": {"db": 1, "ollama": 1, "pcc": 1},
+  "steps": {"sync": "ok", "ingest_daily_reports": "ok", "enrich_details": "ok", "backfill_category": "ok", "embed_tenders": "ok"},
+  "log": "/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/data/pipeline-logs/daily-20260625.log"
+}
