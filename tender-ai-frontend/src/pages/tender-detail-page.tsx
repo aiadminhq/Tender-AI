@@ -28,6 +28,7 @@ import {
   formatDateLong,
   formatRelative,
   daysLeft,
+  isValidDate,
 } from "@/lib/format";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { Badge } from "@/components/ui/badge";
@@ -209,7 +210,8 @@ export function TenderDetailPage() {
   const starred = isStarred(view.id);
   const excluded = isExcluded(view);
   const reason = excluded ? excludeReasonOf(view) : undefined;
-  const dleft = daysLeft(view.deadline);
+  const validDeadline = isValidDate(view.deadline);
+  const dleft = validDeadline ? daysLeft(view.deadline) : 0;
   const deadlineTone =
     dleft < 0
       ? "text-ink-dim"
@@ -332,11 +334,13 @@ export function TenderDetailPage() {
               </Fact>
               <Fact label={t("colDeadline")} num>
                 {formatDateLong(view.deadline, lang)}
-                <span className={cn("ml-1.5 text-[11px]", deadlineTone)}>
-                  {dleft < 0
-                    ? t("deadlinePassed")
-                    : `${dleft} ${t("daysLeft")}`}
-                </span>
+                {validDeadline && (
+                  <span className={cn("ml-1.5 text-[11px]", deadlineTone)}>
+                    {dleft < 0
+                      ? t("deadlinePassed")
+                      : `${dleft} ${t("daysLeft")}`}
+                  </span>
+                )}
               </Fact>
               <Fact label={t("publishedAt")} num>
                 {formatDateLong(view.publishedAt, lang)}
@@ -413,9 +417,7 @@ export function TenderDetailPage() {
           <section className="rounded-xl border border-border bg-card p-5">
             <SectionLabel>{t("comments")}</SectionLabel>
             {comments.length === 0 ? (
-              <p className="text-[12px] text-ink-dim">
-                {lang === "en" ? "No notes yet" : "尚無註記"}
-              </p>
+              <p className="text-[12px] text-ink-dim">{t("notesEmpty")}</p>
             ) : (
               <ul className="space-y-2.5">
                 {comments.map((c) => (

@@ -25,16 +25,27 @@ export function formatInt(n: number, lang: Lang): string {
   return n.toLocaleString(locale(lang));
 }
 
-/** ISO date → 短日期（在地化 MM/DD） */
+/**
+ * ISO date 是否可被正確解析。後端 deadline_iso=null → adapt 給空字串，無效日期
+ * 餵進 Intl.DateTimeFormat.format(Invalid Date) 會拋 RangeError 進而讓整列／整頁崩潰，
+ * 故所有日期格式化前一律以此守衛（呼叫端需要布林判斷時亦直接複用，避免重複定義）。
+ */
+export function isValidDate(iso: string): boolean {
+  return Boolean(iso) && !Number.isNaN(new Date(iso).getTime());
+}
+
+/** ISO date → 短日期（在地化 MM/DD）；無效日期回 "—"，不拋例外。 */
 export function formatDate(iso: string, lang: Lang): string {
+  if (!isValidDate(iso)) return "—";
   return new Intl.DateTimeFormat(locale(lang), {
     month: "numeric",
     day: "numeric",
   }).format(new Date(iso));
 }
 
-/** ISO date → 完整日期（含年） */
+/** ISO date → 完整日期（含年）；無效日期回 "—"，不拋例外。 */
 export function formatDateLong(iso: string, lang: Lang): string {
+  if (!isValidDate(iso)) return "—";
   return new Intl.DateTimeFormat(locale(lang), {
     year: "numeric",
     month: "long",

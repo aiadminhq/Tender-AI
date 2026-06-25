@@ -9,6 +9,14 @@ export function TrendChart() {
   const { trend7d } = useAppData();
 
   const n = trend7d.length;
+  // 空資料守衛：n===0 時 pts[n-1] 為 undefined，後續取 .x/.v 會丟 TypeError 崩潰。
+  if (n === 0) {
+    return (
+      <div className="flex h-28 items-center justify-center text-[12px] text-ink-dim">
+        {t("noData")}
+      </div>
+    );
+  }
   const max = Math.max(...trend7d, 1);
   const fmt = new Intl.DateTimeFormat(lang === "en" ? "en-US" : "zh-TW", {
     month: "numeric",

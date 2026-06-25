@@ -114,8 +114,8 @@ export function Topbar() {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            aria-label={t("theme")}
-            title={t("theme")}
+            aria-label={t("toggleTheme")}
+            title={t("toggleTheme")}
             className="rounded-md text-ink-muted hover:bg-ink/5 hover:text-ink"
           >
             {theme === "dark" ? (
@@ -128,8 +128,8 @@ export function Topbar() {
             variant="ghost"
             size="icon"
             onClick={toggleLang}
-            aria-label={t("language")}
-            title={t("language")}
+            aria-label={t("toggleLang")}
+            title={t("toggleLang")}
             className="rounded-md text-ink-muted hover:bg-ink/5 hover:text-ink"
           >
             <span className="text-[11px] font-semibold">

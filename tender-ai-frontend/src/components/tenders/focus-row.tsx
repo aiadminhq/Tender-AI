@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ArrowRight, Eye } from "lucide-react";
 import type { Tender } from "@/types/domain";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
-import { formatBudget, formatDateLong } from "@/lib/format";
+import { formatBudget, formatDateLong, isValidDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   Fact,
@@ -35,10 +35,10 @@ export function FocusRow({
   const { feasOf } = useAppData();
   const navigate = useNavigate();
   const score = feasOf(tender).score;
-  const dleft = tender.deadline ? daysLeft(tender.deadline) : null;
+  const dleft = isValidDate(tender.deadline) ? daysLeft(tender.deadline) : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--card-shadow)]">
       {/* 精簡 header：左側可點切換展開（R1/R2）；右側三分判斷鈕（收合即顯，需求 b）。 */}
       <div className="flex items-center gap-2 px-4 py-2.5">
         <button

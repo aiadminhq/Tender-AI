@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Eye, EyeOff } from "lucide-react";
 
 export function AdminUserPasswords() {
   const { t } = useApp();
@@ -20,6 +21,7 @@ export function AdminUserPasswords() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [doneFor, setDoneFor] = useState<string | null>(null);
+  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -38,6 +40,7 @@ export function AdminUserPasswords() {
     setPw("");
     setErr(null);
     setDoneFor(null);
+    setShowPw(false);
   }
 
   async function confirmReset(row: AccountRow) {
@@ -68,7 +71,7 @@ export function AdminUserPasswords() {
   return (
     <div className="space-y-1">
       {doneFor && (
-        <p className="mb-2 text-[12px] font-medium text-success">
+        <p role="status" className="mb-2 text-[12px] font-medium text-success">
           {t("adminResetDone").replace("{name}", doneFor)}
         </p>
       )}
@@ -102,17 +105,32 @@ export function AdminUserPasswords() {
                 <p className="mb-2 text-[12px] text-ink-muted">
                   {t("adminResetFor").replace("{name}", row.name)}
                 </p>
-                <Input
-                  type="text"
-                  autoComplete="off"
-                  value={pw}
-                  onChange={(e) => {
-                    setPw(e.target.value);
-                    setErr(null);
-                  }}
-                  disabled={busy}
-                  placeholder={t("pwNew")}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPw ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={pw}
+                    onChange={(e) => {
+                      setPw(e.target.value);
+                      setErr(null);
+                    }}
+                    disabled={busy}
+                    placeholder={t("pwNew")}
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    aria-label={showPw ? t("pwHide") : t("pwShow")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-ink-dim outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ring/45"
+                  >
+                    {showPw ? (
+                      <EyeOff size={15} strokeWidth={1.6} />
+                    ) : (
+                      <Eye size={15} strokeWidth={1.6} />
+                    )}
+                  </button>
+                </div>
                 {err && (
                   <p
                     role="alert"

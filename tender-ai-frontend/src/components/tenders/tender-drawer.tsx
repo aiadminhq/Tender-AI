@@ -20,6 +20,7 @@ import {
   formatDateLong,
   formatRelative,
   daysLeft,
+  isValidDate,
 } from "@/lib/format";
 import { trackEvent } from "@/lib/events";
 import {
@@ -156,7 +157,8 @@ export function TenderDrawer({
           .map((b) => `${b.delta >= 0 ? "+" : ""}${b.delta} ${b.label}`)
           .join("  ")
       : t("feasDefault");
-  const dleft = tender ? daysLeft(tender.deadline) : 0;
+  const validDeadline = !!tender && isValidDate(tender.deadline);
+  const dleft = tender && validDeadline ? daysLeft(tender.deadline) : 0;
   const deadlineTone =
     dleft < 0
       ? "text-ink-dim"
@@ -292,11 +294,13 @@ export function TenderDrawer({
                 </Fact>
                 <Fact label={t("colDeadline")} num>
                   {formatDateLong(tender.deadline, lang)}
-                  <span className={cn("ml-1.5 text-[11px]", deadlineTone)}>
-                    {dleft < 0
-                      ? t("deadlinePassed")
-                      : `${dleft} ${t("daysLeft")}`}
-                  </span>
+                  {validDeadline && (
+                    <span className={cn("ml-1.5 text-[11px]", deadlineTone)}>
+                      {dleft < 0
+                        ? t("deadlinePassed")
+                        : `${dleft} ${t("daysLeft")}`}
+                    </span>
+                  )}
                 </Fact>
                 {tender.caseNo && (
                   <Fact label={t("caseNo")} num>
@@ -451,9 +455,7 @@ export function TenderDrawer({
               <div>
                 <SectionLabel>{t("comments")}</SectionLabel>
                 {comments.length === 0 ? (
-                  <p className="text-[12px] text-ink-dim">
-                    {lang === "en" ? "No notes yet" : "尚無註記"}
-                  </p>
+                  <p className="text-[12px] text-ink-dim">{t("notesEmpty")}</p>
                 ) : (
                   <ul className="space-y-2.5">
                     {comments.map((c) => (
