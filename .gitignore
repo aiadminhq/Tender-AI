@@ -63,3 +63,12 @@ design-feedback/
 
 # ── 本機工具設定（Preview MCP launch 設定，機器相關）──
 tender-ai-frontend/.claude/
+
+# ── design-sync 建置產物（可重建，不入版控；durable 的 config/NOTES/barrel/previews 仍入庫）──
+ds-bundle/
+.ds-sync/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules/
+# Tailwind 4 編譯出的完整 CSS（cssEntry heal 用，可重新產生）
+tender-ai-frontend/.design-sync-tw.css
