@@ -217,6 +217,12 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 > P2 應最早上線——讓 David 操作從第一天就被記錄，後續學習才有燃料。
 
+### 10.1 巨觀三階段路線圖（選對案 → 備好標 → 送得出）
+
+上表的 P1–P5 整體構成巨觀路線圖的 **Phase 1「選對案」**（現況幾近完成）。其後規劃 **Phase 2「備好標」**（公司知識庫 Layer D ＋ 需求抽取器 ＋ 資格清單/欄位回填/規格比對/文案生成四元件，目標備標 60–80%）與 **Phase 3「送得出」**（半自動人機協作上傳，憑證簽章與送出必為人工）。三階段以「承接」動作串成流水線，並新增公司機密的 **Layer D**（永不外流／不進公開 repo）。
+
+完整設計見 `docs/superpowers/specs/2026-06-27-three-phase-product-roadmap-design.md`。
+
 ---
 
 ## 11. 風險與待決
@@ -233,6 +239,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 - **詞彙**：潛力分級（🟢≤14/🟡15–30/🔴≥31）、⭐ 期間最優先、承接（David 決定投入備標）、可行性分數（學習迴圈輸出）。
 - **相關檔案**：`design-handoff-claude-design.md`、`規劃-後台資料庫與RAG學習迴圈.md`、`tender-reports/`（歷史資料 32 份）、`tender-bot/CLAUDE.md`（技術約束）、`plans/tender-ai-integrated-roadmap/`（整合視覺計畫：雙語詳情 wireframe／prototype 與字體・視覺房規）。
+- **assistant-ui UX 規劃**：`docs/superpowers/specs/2026-06-27-assistant-ui-tender-assistant-ux-design.md`（不串接後端的流程、情境、問題類型與 UI 優化藍圖）。
 - **assistant-ui 技術依據**：[官方文件](https://www.assistant-ui.com/docs)、[安裝說明](https://www.assistant-ui.com/docs/installation)、[AI SDK v6 runtime](https://www.assistant-ui.com/docs/runtimes/ai-sdk/v6)、[GitHub（MIT）](https://github.com/assistant-ui/assistant-ui)。
 - **查證附記**：截圖標案「醫院衛浴更新與感控改善工程」經 PCC 全文檢索查證為 demo 資料，非真實標案。
 
