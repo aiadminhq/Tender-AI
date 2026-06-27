@@ -9,6 +9,7 @@ import {
   streamAssistantChat,
   fetchAssistantThreads,
   fetchAssistantThread,
+  type AssistantThreadSummary,
   type AssistantSource,
   type ChatMessage,
   type PreferenceSuggestion,
@@ -30,6 +31,9 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [threads, setThreads] = useState<AssistantThreadSummary[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   // agentic（CLI 大腦）暫態狀態：「正在查詢…」狀態行。收到下一筆 delta 或 done 即清空，
   // 不寫入對話文字（見 lib/assistant.ts ProgressEvent）。非 CLI 大腦不會送 progress，恆為 null。
   const [progress, setProgress] = useState<string | null>(null);
@@ -43,38 +47,72 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
   // 「目前正在檢視的標案」放 ref：使用者可能在對話途中切換標案，send 時讀最新值即可，
   // 不必把它列入 send 的依賴而頻繁重建 callback。
   const focusRef = useRef<string | null>(focusTenderId ?? null);
-  focusRef.current = focusTenderId ?? null;
 
   // 卸載 / 關閉時中止進行中的串流。
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  // 掛載時 hydrate 最近一串對話，讓使用者回到上次對話脈絡。純 mock 模式
-  // （fetchAssistantThreads 回 []）或尚無對話時不動作，維持空白起始。
+  useEffect(() => {
+    focusRef.current = focusTenderId ?? null;
+  }, [focusTenderId]);
+
+  const refreshThreads = useCallback(async (query?: string) => {
+    setThreadsLoading(true);
+    try {
+      const next = await fetchAssistantThreads(query);
+      setThreads(next);
+      return next;
+    } catch {
+      setThreads([]);
+      return [];
+    } finally {
+      setThreadsLoading(false);
+    }
+  }, []);
+
+  const loadThread = useCallback(async (threadId: string) => {
+    const detail = await fetchAssistantThread(threadId);
+    if (!detail) return false;
+    abortRef.current?.abort();
+    setProgress(null);
+    setStreaming(false);
+    threadIdRef.current = detail.id;
+    setActiveThreadId(detail.id);
+    setDraft("");
+    setTurns(
+      detail.turns.map((tn) => ({
+        role: tn.role,
+        text: tn.text,
+        sources: tn.sources,
+      })),
+    );
+    inputRef.current?.focus();
+    return true;
+  }, []);
+
+  const newChat = useCallback(() => {
+    abortRef.current?.abort();
+    setProgress(null);
+    setStreaming(false);
+    setTurns([]);
+    setDraft("");
+    threadIdRef.current = null;
+    setActiveThreadId(null);
+    inputRef.current?.focus();
+  }, []);
+
+  // 掛載時 hydrate 最近一串對話，讓使用者回到上次對話脈絡；同時保留歷史清單供 UI 查詢。
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const threads = await fetchAssistantThreads();
-        const latest = threads[0];
-        if (!latest || cancelled) return;
-        const detail = await fetchAssistantThread(latest.id);
-        if (!detail || cancelled) return;
-        threadIdRef.current = detail.id;
-        setTurns(
-          detail.turns.map((tn) => ({
-            role: tn.role,
-            text: tn.text,
-            sources: tn.sources,
-          })),
-        );
-      } catch {
-        // hydrate 失敗不影響使用：維持空白、可正常開新對話。
-      }
+      const recent = await refreshThreads();
+      const latest = recent[0];
+      if (!latest || cancelled) return;
+      await loadThread(latest.id);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadThread, refreshThreads]);
 
   const patchLastAssistant = useCallback((patch: Partial<Turn>) => {
     setTurns((prev) => {
@@ -115,7 +153,10 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
           history,
           {
             onMeta: (_scope, sources, threadId) => {
-              if (threadId) threadIdRef.current = threadId;
+              if (threadId) {
+                threadIdRef.current = threadId;
+                setActiveThreadId(threadId);
+              }
               patchLastAssistant({ sources });
             },
             onText: (full) => {
@@ -132,6 +173,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
             onDone: () => {
               setProgress(null);
               setStreaming(false);
+              void refreshThreads();
             },
           },
           ctrl.signal,
@@ -148,7 +190,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
         setStreaming(false);
       }
     },
-    [turns, streaming, patchLastAssistant, t, scope],
+    [turns, streaming, patchLastAssistant, refreshThreads, t, scope],
   );
 
   // 中止進行中的串流但保留已產生的對話（供 assistant-ui onCancel 串接）。
@@ -159,14 +201,8 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
   }, []);
 
   const clear = useCallback(() => {
-    abortRef.current?.abort();
-    setProgress(null);
-    setStreaming(false);
-    setTurns([]);
-    setDraft("");
-    threadIdRef.current = null; // 清空＝開新對話串，下次提問由後端產生新 thread_id。
-    inputRef.current?.focus();
-  }, []);
+    newChat();
+  }, [newChat]);
 
   // 確認後才記：使用者按「好」→ POST 一筆具名 state_preference 事件（fire-and-forget），
   // 按「不用」→ 僅關閉 chip、不入庫。兩者都把該回合的偏好狀態定下來避免重複詢問。
@@ -226,6 +262,10 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
     t("assistantSuggest2"),
     t("assistantSuggest3"),
     t("assistantSuggest4"),
+    t("assistantSuggest5"),
+    t("assistantSuggest6"),
+    t("assistantSuggest7"),
+    t("assistantSuggest8"),
   ];
 
   return {
@@ -237,6 +277,12 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
     send,
     stop,
     clear,
+    newChat,
+    loadThread,
+    refreshThreads,
+    threads,
+    threadsLoading,
+    activeThreadId,
     onSourceClick,
     resolvePreference,
     suggestions,

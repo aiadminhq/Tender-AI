@@ -30,7 +30,7 @@ import {
   SectionLabel,
   SimilarCasesList,
 } from "@/components/tenders/detail-bits";
-import { useAssistantBridge } from "./assistant-runtime-provider";
+import { useAssistantBridge } from "./assistant-bridge";
 
 interface AssistantContextPanelProps {
   /** 目前正在檢視的標案 id；null（首頁等非標案頁）→ 空態。 */
@@ -53,11 +53,14 @@ export function AssistantContextPanel({
 
   useEffect(() => {
     if (!view) {
-      setSimilar([]);
+      queueMicrotask(() => {
+        setSimilar([]);
+        setSimilarLoading(false);
+      });
       return;
     }
     const ac = new AbortController();
-    setSimilarLoading(true);
+    queueMicrotask(() => setSimilarLoading(true));
     fetchSimilarTenders(view.id, 4, ac.signal)
       .then((items) => setSimilar(items))
       .catch(() => {

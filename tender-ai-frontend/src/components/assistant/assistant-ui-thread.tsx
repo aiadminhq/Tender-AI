@@ -3,10 +3,10 @@
 // Button 與設計語彙——不採官方 MarkdownText/TooltipIconButton，亦捨棄附件／推理／工具群組／
 // 分支切換／聽寫等本專案用不到的零件。浮窗 Modal 與整頁指揮中心共用此元件。
 //
-// 設計約束（見專案 CLAUDE.md house style／DESIGN.md）：單色面 + 單一 signal 強調色，
-// 類別差異一律靠「icon 形狀」而非彩色色票（不得疊加第二個彩色 accent）。
+// 設計約束：維持白底與既有字體/間距；使用者明確要求 CTA 以不同色彩 + icon 區分。
 import { useMemo, useState } from "react";
 import {
+  ArrowUp,
   BookOpen,
   Check,
   ChevronRight,
@@ -18,6 +18,7 @@ import {
   GraduationCap,
   Lightbulb,
   Loader2,
+  MessageSquareText,
   ScanSearch,
   SendHorizontal,
   Sparkles,
@@ -41,9 +42,9 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RichText } from "./rich-text";
 import {
-  useAssistantBridge,
   type AssistantCustomMeta,
 } from "./assistant-runtime-provider";
+import { useAssistantBridge } from "./assistant-bridge";
 
 // 來源類別 → i18n 字串鍵 + 代表 icon。類別差異只靠 icon 形狀承載（單色系不疊第二個彩色）。
 // 知識庫類另渲染 signal 微調色（與標案的中性 accent 區隔，沿用既有語彙）。
@@ -63,6 +64,93 @@ const SUGGEST_ICONS: LucideIcon[] = [
   GitCompareArrows,
   Clock,
   GraduationCap,
+  ScanSearch,
+  FileText,
+  BookOpen,
+  Lightbulb,
+];
+
+const PROMPT_GROUPS: {
+  title: TextKey;
+  hint: TextKey;
+  icon: LucideIcon;
+  indexes: number[];
+  tone: "amber" | "sky" | "emerald";
+}[] = [
+  {
+    title: "assistantPromptDecision",
+    hint: "assistantPromptDecisionHint",
+    icon: TrendingUp,
+    indexes: [0, 2, 4],
+    tone: "amber",
+  },
+  {
+    title: "assistantPromptCompare",
+    hint: "assistantPromptCompareHint",
+    icon: GitCompareArrows,
+    indexes: [1, 5],
+    tone: "sky",
+  },
+  {
+    title: "assistantPromptExplain",
+    hint: "assistantPromptExplainHint",
+    icon: BookOpen,
+    indexes: [3, 6, 7],
+    tone: "emerald",
+  },
+];
+
+const COMPOSER_SHORTCUTS: {
+  label: TextKey;
+  prompt: TextKey;
+  icon: LucideIcon;
+  tone: "sky" | "amber" | "emerald";
+}[] = [
+  {
+    label: "assistantModeSearch",
+    prompt: "assistantSuggest1",
+    icon: ScanSearch,
+    tone: "sky",
+  },
+  {
+    label: "assistantModeCompare",
+    prompt: "assistantAskCompare",
+    icon: GitCompareArrows,
+    tone: "amber",
+  },
+  {
+    label: "assistantModeBrief",
+    prompt: "assistantAskFit",
+    icon: MessageSquareText,
+    tone: "emerald",
+  },
+];
+
+const CTA_TONES = {
+  amber: {
+    shell: "border-amber-200 bg-white hover:border-amber-300 hover:shadow-[0_14px_28px_-22px_rgba(180,83,9,.7)]",
+    icon: "bg-amber-50 text-amber-700",
+    row: "hover:border-amber-200 hover:bg-amber-50",
+    arrow: "text-amber-600",
+  },
+  sky: {
+    shell: "border-sky-200 bg-white hover:border-sky-300 hover:shadow-[0_14px_28px_-22px_rgba(2,132,199,.7)]",
+    icon: "bg-sky-50 text-sky-700",
+    row: "hover:border-sky-200 hover:bg-sky-50",
+    arrow: "text-sky-600",
+  },
+  emerald: {
+    shell: "border-emerald-200 bg-white hover:border-emerald-300 hover:shadow-[0_14px_28px_-22px_rgba(4,120,87,.7)]",
+    icon: "bg-emerald-50 text-emerald-700",
+    row: "hover:border-emerald-200 hover:bg-emerald-50",
+    arrow: "text-emerald-600",
+  },
+};
+
+const FOLLOWUP_TONES = [
+  "border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300",
+  "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:border-sky-300",
+  "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300",
 ];
 
 const isNewChatView = (s: AssistantState) => s.thread.messages.length === 0;
@@ -88,7 +176,7 @@ export function AssistantUIThread() {
   const { t } = useApp();
 
   return (
-    <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col bg-transparent">
+    <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col bg-white">
       <ThreadPrimitive.Viewport
         turnAnchor="top"
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4"
@@ -104,7 +192,7 @@ export function AssistantUIThread() {
         </AuiIf>
       </ThreadPrimitive.Viewport>
 
-      <ThreadPrimitive.ViewportFooter className="border-t border-border px-4 py-3">
+      <ThreadPrimitive.ViewportFooter className="border-t border-border bg-white px-4 py-3">
         <Composer placeholder={t("assistantPlaceholder")} />
       </ThreadPrimitive.ViewportFooter>
     </ThreadPrimitive.Root>
@@ -116,30 +204,92 @@ function ThreadEmpty() {
   const { t } = useApp();
   const { suggestions } = useAssistantBridge();
   return (
-    <div className="space-y-4 py-2">
-      <p className="text-[13px] leading-relaxed text-ink-muted">
-        {t("assistantEmpty")}
-      </p>
-      <div className="flex flex-col gap-2">
-        {suggestions.map((s, i) => {
-          const Icon = SUGGEST_ICONS[i] ?? Sparkles;
+    <div className="space-y-4 py-1">
+      <div className="rounded-xl border border-orange-100 bg-white px-4 py-4 shadow-[0_14px_30px_-26px_rgba(234,88,12,.55)]">
+        <div className="flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700">
+            <Sparkles size={17} />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-[14px] font-semibold leading-tight text-ink">
+              {t("assistantWorkbenchTitle")}
+            </h2>
+            <p className="text-[12px] leading-relaxed text-ink-muted">
+              {t("assistantEmpty")}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {PROMPT_GROUPS.map((group) => {
+          const GroupIcon = group.icon;
+          const tone = CTA_TONES[group.tone];
+          const prompts = group.indexes
+            .map((index) => suggestions[index])
+            .filter(Boolean);
+          if (prompts.length === 0) return null;
+
           return (
-            <ThreadPrimitive.Suggestion
-              key={s}
-              prompt={s}
-              send
-              clearComposer
-              className="group flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[13px] text-foreground/90 transition-all hover:border-signal/40 hover:bg-accent hover:shadow-[0_1px_2px_rgba(0,0,0,.06)] active:scale-[.99]"
+            <section
+              key={group.title}
+              className={cn(
+                "rounded-xl border p-2.5 transition-all hover:-translate-y-0.5",
+                tone.shell,
+              )}
             >
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-accent text-ink-muted transition-colors group-hover:text-signal">
-                <Icon size={14} />
-              </span>
-              <span className="min-w-0 flex-1">{s}</span>
-              <ChevronRight
-                size={14}
-                className="shrink-0 text-ink-dim opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-              />
-            </ThreadPrimitive.Suggestion>
+              <div className="mb-2 flex items-center gap-2 px-1">
+                <span
+                  className={cn(
+                    "grid h-6 w-6 shrink-0 place-items-center rounded-md",
+                    tone.icon,
+                  )}
+                >
+                  <GroupIcon size={13} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-medium text-foreground/90">
+                    {t(group.title)}
+                  </p>
+                  <p className="truncate text-[10px] text-ink-dim">
+                    {t(group.hint)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {prompts.map((s, i) => {
+                  const Icon = SUGGEST_ICONS[group.indexes[i]] ?? Sparkles;
+                  return (
+                    <ThreadPrimitive.Suggestion
+                      key={s}
+                      prompt={s}
+                      send
+                      clearComposer
+                      className={cn(
+                        "group flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left text-[12px] text-foreground/90 transition-all hover:-translate-y-0.5 active:translate-y-0 active:scale-[.99]",
+                        tone.row,
+                      )}
+                    >
+                      <Icon
+                        size={13}
+                        className={cn(
+                          "shrink-0 transition-colors",
+                          tone.arrow,
+                        )}
+                      />
+                      <span className="min-w-0 flex-1">{s}</span>
+                      <ArrowUp
+                        size={12}
+                        className={cn(
+                          "shrink-0 rotate-45 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100",
+                          tone.arrow,
+                        )}
+                      />
+                    </ThreadPrimitive.Suggestion>
+                  );
+                })}
+              </div>
+            </section>
           );
         })}
       </div>
@@ -156,23 +306,26 @@ function ThreadFollowups() {
     t("assistantFollowup3"),
   ];
   return (
-    <div className="ml-[38px] space-y-2 pt-0.5">
+    <div className="ml-[38px] space-y-2 rounded-xl border border-border bg-white p-2.5 shadow-[0_10px_24px_-24px_rgba(15,23,42,.45)]">
       <div className="flex items-center gap-1.5 text-[11px] font-medium text-ink-dim">
         <Lightbulb size={12} className="shrink-0" />
         {t("assistantFollowupTitle")}
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {followups.map((f) => (
+        {followups.map((f, i) => (
           <ThreadPrimitive.Suggestion
             key={f}
             prompt={f}
             send
             clearComposer
-            className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] text-ink-muted transition-all hover:border-signal/40 hover:bg-accent hover:text-foreground/90 active:scale-[.97]"
+            className={cn(
+              "group inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_20px_-18px_rgba(15,23,42,.55)] active:translate-y-0 active:scale-[.97]",
+              FOLLOWUP_TONES[i] ?? FOLLOWUP_TONES[0],
+            )}
           >
             <CornerDownRight
               size={12}
-              className="shrink-0 text-ink-dim transition-colors group-hover:text-signal"
+              className="shrink-0 opacity-80 transition-transform group-hover:translate-x-0.5"
             />
             {f}
           </ThreadPrimitive.Suggestion>
@@ -208,7 +361,7 @@ function UserMessage() {
   const text = useMessageText();
   return (
     <MessagePrimitive.Root className="flex justify-end">
-      <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-[13px] leading-relaxed text-primary-foreground">
+      <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-slate-900 px-3.5 py-2 text-[13px] leading-relaxed text-white">
         {text}
       </div>
     </MessagePrimitive.Root>
@@ -253,7 +406,7 @@ function AssistantMessage() {
         {text ? (
           <div
             className={cn(
-              "rounded-2xl rounded-tl-sm bg-card px-3.5 py-2.5",
+              "rounded-xl rounded-tl-sm border border-border bg-card px-3.5 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,.03)]",
               error && "text-danger",
             )}
           >
@@ -264,7 +417,7 @@ function AssistantMessage() {
             )}
           </div>
         ) : (
-          <div className="inline-flex items-center gap-2 rounded-2xl rounded-tl-sm bg-card px-3.5 py-2.5 text-[12px] text-ink-muted">
+          <div className="inline-flex items-center gap-2 rounded-xl rounded-tl-sm border border-border bg-card px-3.5 py-2.5 text-[12px] text-ink-muted">
             <Loader2 size={13} className="animate-spin text-signal" />
             {loadingLabel}
           </div>
@@ -298,7 +451,7 @@ function SourceSection({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-xl border border-border bg-card/60 px-3 py-2 text-left transition-colors hover:bg-accent"
+        className="flex w-full items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-left transition-colors hover:border-sky-200 hover:bg-sky-50"
       >
         <ChevronRight
           size={14}
@@ -307,8 +460,13 @@ function SourceSection({
             open && "rotate-90",
           )}
         />
-        <span className="text-[12px] text-ink-muted">
-          {t("assistantSourcesCount").replace("{n}", String(sources.length))}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-[12px] text-ink-muted">
+            {t("assistantSourcesCount").replace("{n}", String(sources.length))}
+          </span>
+          <span className="truncate text-[10px] text-ink-dim">
+            {t("assistantEvidenceHint")}
+          </span>
         </span>
         {!open && (
           <span className="ml-auto flex items-center gap-1">
@@ -409,8 +567,8 @@ function SourceChip({
 
   // icon 容器：知識庫用 signal 微調色（與標案的中性 accent 區隔，沿用既有語彙），其餘中性。
   const iconCls = isKnowledge
-    ? "bg-signal/12 text-signal"
-    : "bg-accent text-ink-muted";
+    ? "bg-orange-50 text-orange-700"
+    : "bg-slate-100 text-slate-600";
   // 次行：知識庫顯示 heading，標案類顯示資料源（source）。
   const sub = isKnowledge ? source.heading : source.source;
 
@@ -439,7 +597,7 @@ function SourceChip({
     </>
   );
   const cls =
-    "flex items-center gap-2.5 rounded-xl border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:border-signal/40 hover:bg-accent";
+    "flex items-center gap-2.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-left transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:bg-sky-50 hover:shadow-[0_10px_22px_-18px_rgba(15,23,42,.55)] active:translate-y-0";
   return !isKnowledge && source.url ? (
     <a
       href={source.url}
@@ -461,29 +619,56 @@ function SourceChip({
 function Composer({ placeholder }: { placeholder: string }) {
   const { t } = useApp();
   return (
-    <ComposerPrimitive.Root className="flex items-end gap-2">
-      <ComposerPrimitive.Input
-        autoFocus
-        rows={1}
-        submitOnEnter
-        placeholder={placeholder}
-        aria-label={placeholder}
-        className="max-h-32 min-h-[40px] flex-1 resize-none rounded-md border border-border bg-canvas px-3 py-2 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-dim focus:border-signal/50"
-      />
-      <AuiIf condition={(s: AssistantState) => !s.thread.isRunning}>
-        <ComposerPrimitive.Send asChild>
-          <Button size="icon" variant="primary" title={t("assistantSend")}>
-            <SendHorizontal size={16} />
-          </Button>
-        </ComposerPrimitive.Send>
-      </AuiIf>
-      <AuiIf condition={(s: AssistantState) => s.thread.isRunning}>
-        <ComposerPrimitive.Cancel asChild>
-          <Button size="icon" variant="outline" title={t("assistantThinking")}>
-            <Square size={15} />
-          </Button>
-        </ComposerPrimitive.Cancel>
-      </AuiIf>
-    </ComposerPrimitive.Root>
+    <div className="space-y-2">
+      <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+        {COMPOSER_SHORTCUTS.map(({ label, prompt, icon: Icon, tone }) => {
+          const color =
+            tone === "sky"
+              ? "border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100"
+              : tone === "amber"
+                ? "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100";
+          return (
+            <ThreadPrimitive.Suggestion
+              key={label}
+              prompt={t(prompt)}
+              send
+              clearComposer
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_20px_-18px_rgba(15,23,42,.6)] active:translate-y-0 active:scale-[.98]",
+                color,
+              )}
+            >
+              <Icon size={12} />
+              {t(label)}
+            </ThreadPrimitive.Suggestion>
+          );
+        })}
+      </div>
+      <ComposerPrimitive.Root className="flex items-end gap-2 rounded-xl border border-border bg-white p-1.5 transition-all hover:border-orange-200 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100">
+        <ComposerPrimitive.Input
+          autoFocus
+          rows={1}
+          submitOnEnter
+          placeholder={placeholder}
+          aria-label={placeholder}
+          className="max-h-32 min-h-[38px] flex-1 resize-none bg-transparent px-2 py-2 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-dim"
+        />
+        <AuiIf condition={(s: AssistantState) => !s.thread.isRunning}>
+          <ComposerPrimitive.Send asChild>
+            <Button size="icon" variant="primary" title={t("assistantSend")}>
+              <SendHorizontal size={16} />
+            </Button>
+          </ComposerPrimitive.Send>
+        </AuiIf>
+        <AuiIf condition={(s: AssistantState) => s.thread.isRunning}>
+          <ComposerPrimitive.Cancel asChild>
+            <Button size="icon" variant="outline" title={t("assistantThinking")}>
+              <Square size={15} />
+            </Button>
+          </ComposerPrimitive.Cancel>
+        </AuiIf>
+      </ComposerPrimitive.Root>
+    </div>
   );
 }

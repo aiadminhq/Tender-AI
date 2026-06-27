@@ -5,7 +5,8 @@
 - POST /chat 會把使用者提問與助手回答各 append 一則，meta 帶回 thread_id；
 - 缺 thread_id 時後端自動產生並於 meta 回傳；
 - GET 列表／詳情可取回，且預設 owner=default、consent_state=pending-consent、
-  layer_b_opt_in=False（登入未落地的 Layer B 紅線）。
+  layer_b_opt_in=False（未登入／demo 的 Layer B 紅線）；
+- 有 Bearer token 時以登入者 id 隔離個人歷史，並支援 q 搜尋訊息內容。
 """
 from __future__ import annotations
 
@@ -78,6 +79,45 @@ async def test_thread_defaults_are_pending_consent(client, seeded, fake_llm):
     assert data["consent_state"] == "pending-consent"
     assert data["layer_b_opt_in"] is False
     assert data["title"] == "台北"
+
+
+async def test_authenticated_threads_are_personal(
+    client, seeded, fake_llm, default_user, auth_headers
+):
+    headers = auth_headers(default_user)
+
+    await client.post(
+        CHAT, json=_payload("只屬於我的標案問題", thread_id="mine"), headers=headers
+    )
+    await client.post(CHAT, json=_payload("未登入問題", thread_id="public-default"))
+
+    mine = await client.get(THREADS, headers=headers)
+    assert mine.status_code == 200
+    mine_ids = [t["id"] for t in mine.json()["threads"]]
+    assert mine_ids == ["mine"]
+
+    detail = await client.get(f"{THREADS}/mine", headers=headers)
+    assert detail.status_code == 200
+    assert detail.json()["owner_user_id"] == str(default_user.id)
+
+    hidden = await client.get(f"{THREADS}/public-default", headers=headers)
+    assert hidden.status_code == 404
+
+
+async def test_thread_search_matches_message_content(
+    client, seeded, fake_llm, default_user, auth_headers
+):
+    headers = auth_headers(default_user)
+    await client.post(
+        CHAT, json=_payload("請幫我找無障礙廁所整修", thread_id="accessible"), headers=headers
+    )
+    await client.post(
+        CHAT, json=_payload("請幫我看空調汰換", thread_id="hvac"), headers=headers
+    )
+
+    resp = await client.get(f"{THREADS}?q=廁所", headers=headers)
+    assert resp.status_code == 200
+    assert [t["id"] for t in resp.json()["threads"]] == ["accessible"]
 
 
 async def test_list_threads_returns_recent_first(client, seeded, fake_llm):

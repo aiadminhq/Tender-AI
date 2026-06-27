@@ -13,16 +13,22 @@ import { Link } from "react-router-dom";
 import {
   Bot,
   ChevronDown,
+  CircleDot,
+  History,
+  MessageSquareText,
   Minimize2,
   PanelRight,
   PanelsTopLeft,
+  Plus,
+  RefreshCw,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { cn } from "@/lib/utils";
 import { AssistantUIThread } from "./assistant-ui-thread";
-import { useAssistantBridge } from "./assistant-runtime-provider";
+import { useAssistantBridge } from "./assistant-bridge";
 
 interface AssistantModalProps {
   open: boolean;
@@ -130,6 +136,7 @@ function AssistantPanel({
 }) {
   const { t } = useApp();
   const isSidebar = state.mode === "sidebar";
+  const [historyOpen, setHistoryOpen] = useState(false);
   const dragRef = useRef<{
     startX: number;
     w: number;
@@ -183,7 +190,7 @@ function AssistantPanel({
       data-assistant-panel
       style={style}
       className={cn(
-        "fixed z-40 flex flex-col overflow-hidden bg-popover text-popover-foreground",
+        "fixed z-40 flex flex-col overflow-hidden bg-white text-popover-foreground",
         "animate-in fade-in slide-in-from-right-4",
         isSidebar
           ? "right-0 top-0 bottom-0 h-svh border-l border-border shadow-[-8px_0_24px_-12px_rgba(0,0,0,.18)]"
@@ -204,9 +211,12 @@ function AssistantPanel({
       <ModalHeader
         tenderId={tenderId}
         isSidebar={isSidebar}
+        historyOpen={historyOpen}
+        onToggleHistory={() => setHistoryOpen((v) => !v)}
         onToggleMode={toggleMode}
         onClose={onClose}
       />
+      {historyOpen && <AssistantHistoryPanel />}
       <div className="min-h-0 flex-1">
         <AssistantUIThread />
       </div>
@@ -254,38 +264,86 @@ const FabButton = forwardRef<
 function ModalHeader({
   tenderId,
   isSidebar,
+  historyOpen,
+  onToggleHistory,
   onToggleMode,
   onClose,
 }: {
   tenderId: string | null;
   isSidebar: boolean;
+  historyOpen: boolean;
+  onToggleHistory: () => void;
   onToggleMode: () => void;
   onClose: () => void;
 }) {
   const { t } = useApp();
-  const { clear, hasTurns } = useAssistantBridge();
+  const { clear, newChat, hasTurns, refreshThreads } = useAssistantBridge();
   const commandCenterTo = tenderId
     ? `/assistant?tender=${tenderId}`
     : "/assistant";
 
   const iconBtn =
-    "grid h-7 w-7 place-items-center rounded-lg text-ink-dim transition-colors hover:bg-accent hover:text-foreground";
+    "grid h-7 w-7 place-items-center rounded-lg text-ink-dim transition-colors hover:bg-slate-100 hover:text-foreground";
+  const ctaBtn =
+    "inline-flex h-7 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-semibold transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_-10px_rgba(15,23,42,.45)] active:translate-y-0 active:scale-[.98]";
 
   return (
-    <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/12 text-primary">
-        <Bot size={15} />
+    <div className="flex items-center gap-2 border-b border-border bg-white px-3.5 py-2.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-signal/12 text-signal">
+        <Bot size={16} />
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground">
-        {t("assistantTitle")}
-      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-[13px] font-semibold text-foreground">
+            {t("assistantTitle")}
+          </span>
+          <span className="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-canvas px-1.5 py-0.5 text-[10px] font-medium text-ink-dim sm:inline-flex">
+            <CircleDot size={9} className="text-signal" />
+            {t(isSidebar ? "assistantModeSidebar" : "assistantModeFloating")}
+          </span>
+        </div>
+        <p className="truncate text-[10px] text-ink-dim">
+          {t(tenderId ? "assistantHeaderWithTender" : "assistantHeaderNoTender")}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={newChat}
+        title={t("assistantNewChat")}
+        aria-label={t("assistantNewChat")}
+        className={cn(
+          ctaBtn,
+          "border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100",
+        )}
+      >
+        <Plus size={13} />
+        <span className="hidden sm:inline">{t("assistantNewChatShort")}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          if (!historyOpen) void refreshThreads();
+          onToggleHistory();
+        }}
+        title={t("assistantHistory")}
+        aria-label={t("assistantHistory")}
+        className={cn(
+          ctaBtn,
+          historyOpen
+            ? "border-sky-300 bg-sky-100 text-sky-800"
+            : "border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100",
+        )}
+      >
+        <History size={13} />
+        <span className="hidden sm:inline">{t("assistantHistoryShort")}</span>
+      </button>
       {hasTurns && (
         <button
           type="button"
           onClick={clear}
           title={t("assistantClear")}
           aria-label={t("assistantClear")}
-          className={iconBtn}
+          className="grid h-7 w-7 place-items-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 transition-all hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-100 active:translate-y-0 active:scale-[.98]"
         >
           <Trash2 size={14} />
         </button>
@@ -295,7 +353,7 @@ function ModalHeader({
         onClick={onClose}
         title={t("assistantCommandCenterHint")}
         aria-label={t("assistantCommandCenter")}
-        className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-medium text-ink-muted transition-colors hover:bg-accent hover:text-foreground"
+        className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-2 py-1 text-[12px] font-medium text-ink-muted transition-all hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 active:translate-y-0"
       >
         <PanelsTopLeft size={14} />
         <span className="hidden sm:inline">{t("assistantCommandCenter")}</span>
@@ -319,6 +377,123 @@ function ModalHeader({
       >
         <X size={15} />
       </button>
+    </div>
+  );
+}
+
+function AssistantHistoryPanel() {
+  const { t } = useApp();
+  const {
+    threads,
+    threadsLoading,
+    activeThreadId,
+    refreshThreads,
+    loadThread,
+    newChat,
+  } = useAssistantBridge();
+  const [query, setQuery] = useState("");
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await refreshThreads(query);
+  }
+
+  return (
+    <div className="border-b border-border bg-white px-3.5 py-3 shadow-[0_8px_22px_-22px_rgba(15,23,42,.35)]">
+      <form onSubmit={onSubmit} className="flex items-center gap-2">
+        <label className="relative min-w-0 flex-1">
+          <Search
+            size={13}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-dim"
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("assistantHistorySearchPlaceholder")}
+            className="h-8 w-full rounded-lg border border-border bg-white pl-8 pr-2 text-[12px] text-ink outline-none transition-colors placeholder:text-ink-dim focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
+        <button
+          type="submit"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 text-[11px] font-semibold text-sky-700 transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-100 active:translate-y-0"
+        >
+          <Search size={12} />
+          {t("assistantHistorySearch")}
+        </button>
+        <button
+          type="button"
+          onClick={() => void refreshThreads(query)}
+          className="grid h-8 w-8 place-items-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-100 active:translate-y-0"
+          title={t("assistantHistoryRefresh")}
+          aria-label={t("assistantHistoryRefresh")}
+        >
+          <RefreshCw size={13} className={cn(threadsLoading && "animate-spin")} />
+        </button>
+      </form>
+
+      <div className="mt-2 max-h-52 space-y-1.5 overflow-y-auto pr-1">
+        {threadsLoading && threads.length === 0 ? (
+          <p className="rounded-lg border border-border bg-slate-50 px-3 py-2 text-[12px] text-ink-dim">
+            {t("assistantHistoryLoading")}
+          </p>
+        ) : threads.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-slate-50 px-3 py-3">
+            <p className="text-[12px] font-medium text-ink">
+              {t("assistantHistoryEmpty")}
+            </p>
+            <button
+              type="button"
+              onClick={newChat}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+            >
+              <Plus size={12} />
+              {t("assistantNewChat")}
+            </button>
+          </div>
+        ) : (
+          threads.map((thread) => {
+            const active = thread.id === activeThreadId;
+            return (
+              <button
+                type="button"
+                key={thread.id}
+                onClick={() => void loadThread(thread.id)}
+                className={cn(
+                  "group flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_22px_-18px_rgba(15,23,42,.55)] active:translate-y-0",
+                  active
+                    ? "border-orange-200 bg-orange-50"
+                    : "border-border bg-white hover:border-sky-200 hover:bg-sky-50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+                    active
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-slate-100 text-slate-600 group-hover:bg-sky-100 group-hover:text-sky-700",
+                  )}
+                >
+                  <MessageSquareText size={13} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[12px] font-medium text-ink">
+                    {thread.title || t("assistantUntitledThread")}
+                  </span>
+                  <span className="block truncate text-[10px] text-ink-dim">
+                    {thread.scope === "assistant_page"
+                      ? t("assistantHistoryScopePage")
+                      : t("assistantHistoryScopePanel")}
+                  </span>
+                </span>
+                <ChevronDown
+                  size={13}
+                  className="shrink-0 -rotate-90 text-ink-dim opacity-0 transition-opacity group-hover:opacity-100"
+                />
+              </button>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

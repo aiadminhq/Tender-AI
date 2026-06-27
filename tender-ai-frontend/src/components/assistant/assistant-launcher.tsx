@@ -6,10 +6,8 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useMatch } from "react-router-dom";
 import { onAssistantRequest } from "@/lib/assistant-bus";
-import {
-  AssistantRuntime,
-  useAssistantBridge,
-} from "./assistant-runtime-provider";
+import { AssistantRuntime } from "./assistant-runtime-provider";
+import { useAssistantBridge } from "./assistant-bridge";
 import { AssistantModal } from "./assistant-modal";
 import { AssistantOnboarding } from "./assistant-onboarding";
 

@@ -2,6 +2,7 @@
 // 後端事件序：meta（scope + 證據來源）→ delta（注意：text 為「累積全文」，前端 replace 而非 append）→ done。
 // 契約見 tender-ai-backend/app/schemas/assistant.py。失敗時 throw，由 UI fallback。
 import type { SourceKey } from "@/types/domain";
+import { getToken } from "@/lib/auth-token";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
@@ -9,8 +10,12 @@ const API_BASE =
   (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
 
 function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
   const key = import.meta.env.VITE_API_KEY as string | undefined;
-  return key ? { "X-API-Key": key } : {};
+  if (key) headers["X-API-Key"] = key;
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
 }
 
 // 對齊後端 AssistantSourceOut。
@@ -224,10 +229,16 @@ interface ThreadDetailDto extends ThreadSummaryDto {
 
 /** 列出近期對話串；純 mock 模式（VITE_USE_API=false）不外連，回空陣列。 */
 export async function fetchAssistantThreads(
+  query?: string,
   signal?: AbortSignal,
 ): Promise<AssistantThreadSummary[]> {
   if (import.meta.env.VITE_USE_API === "false") return [];
-  const res = await fetch(`${API_BASE}/assistant/threads`, {
+  const params = new URLSearchParams();
+  const q = query?.trim();
+  if (q) params.set("q", q);
+  const qs = params.toString();
+  const url = `${API_BASE}/assistant/threads${qs ? `?${qs}` : ""}`;
+  const res = await fetch(url, {
     headers: authHeaders(),
     signal,
   });

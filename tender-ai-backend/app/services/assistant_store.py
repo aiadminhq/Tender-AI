@@ -13,7 +13,7 @@ Layer B 紅線（見 CLAUDE.md）：登入未落地前一律 ``owner_user_id="de
 """
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.assistant import AssistantMessage, AssistantThread
@@ -79,8 +79,9 @@ async def list_threads(
     owner_user_id: str = "default",
     *,
     limit: int = 20,
+    query: str | None = None,
 ) -> list[AssistantThread]:
-    """列出某擁有者的 thread，依最近活動（最新訊息 id）排序，無訊息者退回建立序。"""
+    """列出某擁有者的 thread，依最近活動排序；query 可搜尋標題與訊息內容。"""
     last_msg = (
         select(
             AssistantMessage.thread_id.label("thread_id"),
@@ -99,6 +100,18 @@ async def list_threads(
         )
         .limit(limit)
     )
+    q = (query or "").strip()
+    if q:
+        term = f"%{q}%"
+        message_match = (
+            select(AssistantMessage.id)
+            .where(
+                AssistantMessage.thread_id == AssistantThread.id,
+                AssistantMessage.content.ilike(term),
+            )
+            .exists()
+        )
+        stmt = stmt.where(or_(AssistantThread.title.ilike(term), message_match))
     result = await session.execute(stmt)
     return list(result.scalars().all())
 

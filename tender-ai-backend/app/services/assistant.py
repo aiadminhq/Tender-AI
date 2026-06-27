@@ -407,7 +407,10 @@ def _json_line(payload: object) -> str:
 
 
 async def stream_chat_events(
-    session: AsyncSession, payload: AssistantChatRequest
+    session: AsyncSession,
+    payload: AssistantChatRequest,
+    *,
+    owner_user_id: str = "default",
 ) -> AsyncIterator[str]:
     prompt = _latest_user_prompt(payload)
     focus_id = _focus_tender_id(payload)
@@ -476,7 +479,9 @@ async def stream_chat_events(
     # 對話留存（Phase 4）：建串（冪等）＋寫入使用者提問，立即 commit 讓 GET 取得。
     # 留存失敗只 rollback、不阻斷對話（HTTP 仍正常串流）。Layer B 預設不具名/不共享。
     try:
-        await assistant_store.ensure_thread(session, thread_id, scope=store_scope)
+        await assistant_store.ensure_thread(
+            session, thread_id, scope=store_scope, owner_user_id=owner_user_id
+        )
         if prompt:
             await assistant_store.append_message(
                 session, thread_id, role="user", content=prompt
