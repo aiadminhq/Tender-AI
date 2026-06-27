@@ -16,6 +16,7 @@ import { AssistantPage } from "@/pages/assistant-page";
 import { SearchPage } from "@/pages/search-page";
 import { EvolutionPage } from "@/pages/evolution-page";
 import { KnowvioDashboardPage } from "@/pages/knowvio-dashboard-page";
+import { OpsPanelsPage } from "@/pages/ops-panels-page";
 import { DesignSystemPage } from "@/pages/design-system";
 import { ChartsPage } from "@/pages/charts-page";
 import { AnnotationLayer } from "@/components/annotate/annotation-layer";
@@ -40,6 +41,10 @@ export default function App() {
       <Routes>
         {/* 全螢幕獨立路由（不套 AppShell）：Knowvio 風格忠實複刻儀表板 */}
         <Route path="/knowvio" element={<KnowvioDashboardPage />} />
+        {/* 操作面板組件庫展示（dev-only，獨立全螢幕，不套 AppShell） */}
+        {import.meta.env.DEV && (
+          <Route path="/ops-panels" element={<OpsPanelsPage />} />
+        )}
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="tenders" element={<TendersPage />} />
