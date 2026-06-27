@@ -30,13 +30,21 @@ still exports all barrel exports (so designs can compose CardHeader, ChartToolti
 - Path alias `@/* → ./src/*` lives in `tsconfig.app.json` → `config.tsconfig`
   points there so esbuild resolves `@/` imports.
 
-## Theme — default dark via `[data-theme]`
+## Theme — default **light** via `[data-theme]`
 
-App theme switches on the **HTML `[data-theme]` attribute, default dark**.
-Tailwind `dark:` variant and the CSS-variable tokens both resolve off a
-`[data-theme="dark"]` ancestor. So the barrel exports a **`ThemeProvider`** that
-wraps children in `<div data-theme="dark">` (with `--canvas`/`--ink` surface), and
-`config.provider = { component: "ThemeProvider" }` wraps every preview/floor card.
+App theme switches on the **HTML `[data-theme]` attribute, default LIGHT** — see
+`index.html` pre-paint (`if (t !== "light" && t !== "dark") t = "light"`) and
+`src/lib/storage.ts` `loadTheme()` (non-`dark` → `light`). The CSS-variable tokens
+resolve off the `[data-theme]` ancestor; `:root` carries the dark primitives and
+`[data-theme="light"]` overrides them, but the running app **always** sets the
+attribute and defaults it to light. So the barrel exports a **`ThemeProvider`** that
+wraps children in `<div data-theme="light">` (with `--canvas`/`--ink` surface), and
+`config.provider = { component: "ThemeProvider" }` wraps every preview/floor card —
+matching what users actually see.
+
+> Correction (2026-06-27): an earlier run wrongly recorded "default dark" and
+> shipped dark previews. The app has always defaulted light; ThemeProvider +
+> conventions.md were flipped to light to match. Owner directive: 永遠預設淺色。
 
 ## Tailwind CSS 4 — CSS heal is REQUIRED (already applied)
 
@@ -58,9 +66,10 @@ npx -y @tailwindcss/cli@4.3.1 -i src/index.css -o .design-sync-tw.css --minify
   pnpm tree breaks (`Cannot read properties of null`) — use `npx`, don't add the CLI
   as a dep.
 - The compiled CSS inlines `tw-animate-css`, keeps `:root`/`[data-theme=dark]`
-  (default dark) + `[data-theme=light]` token blocks. Components flip theme via CSS
-  vars, not the `dark:` variant (0 `dark:` utilities), so :root-dark already renders
-  every preview correctly; `ThemeProvider` just makes the dark surface explicit.
+  (dark primitives) + `[data-theme=light]` (overrides) token blocks. Components flip
+  theme via CSS vars, not the `dark:` variant (0 `dark:` utilities). `:root` alone is
+  dark, so `ThemeProvider` **must** set `[data-theme="light"]` explicitly to render
+  previews in the app's real (light) default — which it now does.
 - **Recompile after authoring previews** if they add utility classes not already in
   `src/` (Tailwind only scans what it sees) — then rebuild.
 

@@ -49,15 +49,16 @@ export { TierBadge } from "./src/components/ui/tier-badge";
 export { TrendBadge } from "./src/components/ui/trend-badge";
 
 /**
- * Wraps every rendered preview/floor card in the app's default dark theme.
- * The app's theme switches via the [data-theme] attribute (default dark), and
- * Tailwind's `dark:` variant + the CSS-variable tokens both resolve off a
- * [data-theme="dark"] ancestor — so previews need this wrapper to look right.
+ * Wraps every rendered preview/floor card in the app's default **light** theme.
+ * The app's theme switches via the [data-theme] attribute (default light — see
+ * index.html pre-paint + storage.loadTheme), and the CSS-variable tokens resolve
+ * off a [data-theme="light"] ancestor — so previews need this wrapper to match
+ * what users actually see.
  */
 export function ThemeProvider({ children }: { children?: ReactNode }) {
   return (
     <div
-      data-theme="dark"
+      data-theme="light"
       style={{
         background: "var(--canvas)",
         color: "var(--ink)",
