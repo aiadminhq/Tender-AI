@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Literal
 
@@ -44,14 +45,29 @@ class BrainChunk:
 
 
 # CLI provider 預設命令樣板（可在 settings 覆寫）。{prompt} 由呼叫端帶入。
-# --allowedTools 限縮放行本專案的 tender-ai-brain MCP server：headless `-p` 預設權限模式會
-# 擋下所有 MCP 工具呼叫（實測 search_tenders 會被拒→無內容→BrainError），須明確放行才能讓 CLI
-# 自主 agentic 檢索。只放行此 server（非 --dangerously-skip-permissions），其餘工具仍受管。
+# 三家 headless agentic CLI 各有不同的「放行 MCP + 結構化輸出」旗標與輸出格式，故各自一組
+# 樣板＋專屬 parser（見下方 _parse_*_line）。共通前提：tender-ai-brain MCP 已分別注入各 CLI 的
+# 設定檔（claude=.claude.json／codex=~/.codex/config.toml／hermes=~/.hermes/config.yaml，見
+# MCP_BRIDGE.md），本層只負責「以正確旗標啟動 + 解析輸出」。
+#
+# - claude：``--allowedTools mcp__tender-ai-brain`` 明確放行本專案 MCP（headless `-p` 預設權限會
+#   擋下所有 MCP 工具呼叫→無內容→BrainError）；``stream-json`` 逐事件輸出，type=result 為最終答案。
+# - codex：``exec --json`` 將事件以 JSONL 印到 stdout（item.completed/agent_message=答案、
+#   error/turn.failed=失敗）；``--skip-git-repo-check`` 允許在非 git 工作目錄下執行。exec 為
+#   非互動模式，MCP 工具呼叫自動放行、不會卡核准。
+# - hermes：``-z/--oneshot`` 為一次性 headless；無 JSON 事件格式，stdout 即純文字答案。
+#   ``--yolo`` 跳過危險指令核准，避免 headless 卡在互動提示。
 _CLI_COMMANDS: dict[str, list[str]] = {
     "claude": [
         "claude", "-p", "{prompt}",
         "--allowedTools", "mcp__tender-ai-brain",
         "--output-format", "stream-json", "--verbose",
+    ],
+    "codex": [
+        "codex", "exec", "--json", "--skip-git-repo-check", "{prompt}",
+    ],
+    "hermes": [
+        "hermes", "-z", "{prompt}", "--yolo",
     ],
 }
 
@@ -213,7 +229,7 @@ async def _stream_cli(
             line = raw.decode("utf-8", errors="replace").strip()
             if not line:
                 continue
-            chunk = _parse_cli_line(line, answer_parts)
+            chunk = _parse_cli_line(agent, line, answer_parts)
             if chunk is not None:
                 if chunk.kind == "delta":
                     saw_result = True
@@ -246,7 +262,20 @@ async def _stream_cli(
             raise BrainError("CLI 未產出任何內容")
 
 
-def _parse_cli_line(line: str, answer_parts: list[str]) -> BrainChunk | None:
+def _parse_cli_line(agent: str, line: str, answer_parts: list[str]) -> BrainChunk | None:
+    """依 CLI 種類分派到對應 parser。三家輸出格式不同（見 _CLI_COMMANDS 註解）。
+
+    回傳要送出的 chunk 或 None；解析不到結構的雜訊一律 None（不中斷串流）。
+    codex/hermes 失敗事件會 raise BrainError（由 assistant.py 退模板）。
+    """
+    if agent == "codex":
+        return _parse_codex_line(line, answer_parts)
+    if agent == "hermes":
+        return _parse_hermes_line(line, answer_parts)
+    return _parse_claude_line(line, answer_parts)
+
+
+def _parse_claude_line(line: str, answer_parts: list[str]) -> BrainChunk | None:
     """解析一行 Claude Code stream-json。
 
     - ``type=assistant``：content blocks 內 text → 累積；tool_use → progress。
@@ -282,3 +311,69 @@ def _parse_cli_line(line: str, answer_parts: list[str]) -> BrainChunk | None:
         return None
 
     return None
+
+
+# codex exec --json 事件（JSONL）。最終答案經由 item.completed / item.type=agent_message
+# 傳來（為完整訊息，非 token 增量）；工具/指令類 item → progress；error / turn.failed → 失敗。
+# 收尾統一靠 _stream_cli 的「無 result 但有累積文字」分支補一筆完整 delta，故本 parser 對
+# agent_message 採「取代累積」（保留最後一則＝結論，蓋過前置 preamble），且回 None 不即時送。
+_CODEX_PROGRESS_ITEMS = {
+    "command_execution": "執行指令",
+    "mcp_tool_call": "查詢資料庫",
+    "web_search": "搜尋",
+    "file_change": "整理資料",
+}
+
+
+def _parse_codex_line(line: str, answer_parts: list[str]) -> BrainChunk | None:
+    try:
+        data = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+
+    etype = data.get("type")
+
+    if etype == "error":
+        msg = data.get("message") or "codex 回報錯誤"
+        raise BrainError(f"codex 失敗：{str(msg)[:200]}")
+    if etype == "turn.failed":
+        msg = (data.get("error") or {}).get("message") or "turn failed"
+        raise BrainError(f"codex 失敗：{str(msg)[:200]}")
+
+    if etype == "item.completed":
+        item = data.get("item") or {}
+        itype = item.get("type")
+        if itype == "agent_message":
+            text = item.get("text")
+            if isinstance(text, str) and text.strip():
+                answer_parts.clear()  # 保留最後一則 agent_message 為最終答案
+                answer_parts.append(text.strip())
+            return None
+        label = _CODEX_PROGRESS_ITEMS.get(itype)
+        if label is not None:
+            # MCP 工具呼叫盡量帶出工具名，讓「查詢中：search_tenders」更具體。
+            tool = item.get("tool") or item.get("name") or item.get("server")
+            if itype == "mcp_tool_call" and tool:
+                return BrainChunk("progress", f"查詢中：{tool}")
+            return BrainChunk("progress", f"{label}中…")
+        return None
+
+    return None
+
+
+# hermes -z/--oneshot：無 JSON 事件格式，stdout 即純文字答案。逐行當 delta 增量串流
+# （assistant.py 會累積成全文，前端 replace）；補上換行以保留 markdown 結構。
+def _parse_hermes_line(line: str, answer_parts: list[str]) -> BrainChunk | None:
+    text = _strip_ansi(line)
+    if not text.strip():
+        return None
+    answer_parts.append(text + "\n")
+    return BrainChunk("delta", text + "\n")
+
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
+
+def _strip_ansi(s: str) -> str:
+    """去除終端 ANSI 跳脫序列（hermes 純文字輸出可能夾帶色碼/游標控制）。"""
+    return _ANSI_RE.sub("", s)
