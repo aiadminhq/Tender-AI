@@ -1,6 +1,6 @@
 # Knowvio 儀表板 mock→live 接線 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 把 `/knowvio` 戰情儀表板頁面中五處寫死的裝飾 mock（趨勢圖、活動甜甜圈、KPI 變化徽章、截止表狀態、歡迎副標）換成 `useAppData()` 已暴露的真實聚合，純前端、零新後端。
 
@@ -43,7 +43,7 @@
   - `tenderStatusKind(map: Map<string, KnowvioStatusKind>, tenderId: string): KnowvioStatusKind` — 查無→`"notStarted"`。
   - `trendDeltaPct(trend: number[]): string | null` — 末兩點百分比字串（如 `"+75%"`）；長度<2 或前值=0 回 `null`。
 
-- [ ] **Step 1: 寫失敗測試**
+- [x] **Step 1: 寫失敗測試**
 
 ```ts
 // tender-ai-frontend/src/lib/knowvio-aggregations.test.ts
@@ -150,12 +150,12 @@ describe("trendDeltaPct", () => {
 });
 ```
 
-- [ ] **Step 2: 跑測試確認失敗**
+- [x] **Step 2: 跑測試確認失敗**
 
 Run: `cd tender-ai-frontend && npx vitest run src/lib/knowvio-aggregations.test.ts`
 Expected: FAIL（`Failed to resolve import "@/lib/knowvio-aggregations"`）
 
-- [ ] **Step 3: 寫最小實作**
+- [x] **Step 3: 寫最小實作**
 
 ```ts
 // tender-ai-frontend/src/lib/knowvio-aggregations.ts
@@ -270,12 +270,12 @@ export function trendDeltaPct(trend: number[]): string | null {
 }
 ```
 
-- [ ] **Step 4: 跑測試確認通過**
+- [x] **Step 4: 跑測試確認通過**
 
 Run: `cd tender-ai-frontend && npx vitest run src/lib/knowvio-aggregations.test.ts`
 Expected: PASS（全部 9 個 it）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tender-ai-frontend/src/lib/knowvio-aggregations.ts tender-ai-frontend/src/lib/knowvio-aggregations.test.ts
@@ -295,7 +295,7 @@ git commit -m "feat(fe): 抽出 knowvio 彙總純函式（活動分桶/看板狀
 - Consumes：`useAppData().trend7d: number[]`（已暴露）、`trendDeltaPct`（Task 1）。
 - Produces：`<ProgressArea lang series={number[]} />`；無下游消費。
 
-- [ ] **Step 1: 改 `ProgressArea` 簽名吃 `series` prop，移除寫死 `SERIES`**
+- [x] **Step 1: 改 `ProgressArea` 簽名吃 `series` prop，移除寫死 `SERIES`**
 
 把 `const SERIES = [8, 12, ... 75];`（L548）整段刪除。`ProgressArea` 改為：
 
@@ -323,7 +323,7 @@ function ProgressArea({ lang, series }: { lang: Lang; series: number[] }) {
 
 > 實作注意：原 `dateLabel(i)`／X 軸 ticks `[1,5,10,15,20,25,30]` 改為依 `series.length` 產生（7 點時顯示 `近 7 日`）。`progressSub` 文案 `近 30 日`→改 `近 7 日`／`last 7 days`（見 Step 3）。`delta` 為 `null` 時，tooltip 不渲染百分比徽章元素。
 
-- [ ] **Step 2: 加 import 並更新呼叫處**
+- [x] **Step 2: 加 import 並更新呼叫處**
 
 頁面頂部 import 區加：
 
@@ -349,7 +349,7 @@ const { metrics, filteredTenders, usingLiveData, activity, cards, trend7d } =
   useAppData();
 ```
 
-- [ ] **Step 3: i18n 文案改成對（近 7 日）**
+- [x] **Step 3: i18n 文案改成對（近 7 日）**
 
 在 `TX` 字典 zh/en 把趨勢副標由「近 30 日 / last 30 days」改為：
 
@@ -362,12 +362,12 @@ progressSub: "Last 7 days · new tenders",
 
 （若原 key 名不同，沿用原 key，只改值；確保 zh/en 成對。）
 
-- [ ] **Step 4: typecheck＋現有測試**
+- [x] **Step 4: typecheck＋現有測試**
 
 Run: `cd tender-ai-frontend && npx tsc --noEmit && npx vitest run`
 Expected: 0 type error；既有測試全綠。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tender-ai-frontend/src/pages/knowvio-dashboard-page.tsx
@@ -387,7 +387,7 @@ git commit -m "feat(fe): knowvio 趨勢圖綁 trend7d 真資料＋tooltip delta 
 - Consumes：`useAppData().activity`、`donutSegmentsFromActivity`（Task 1）。
 - Produces：無下游消費。
 
-- [ ] **Step 1: `ActivityDonut` 改吃 `activity`，移除寫死 segs 與中央「42」**
+- [x] **Step 1: `ActivityDonut` 改吃 `activity`，移除寫死 segs 與中央「42」**
 
 ```tsx
 function ActivityDonut({ tx, activity }: { tx: (typeof TX)[Lang]; activity: ActivityItem[] }) {
@@ -413,16 +413,16 @@ function ActivityDonut({ tx, activity }: { tx: (typeof TX)[Lang]; activity: Acti
 
 > 需 `import type { ActivityItem } from "@/types/domain";` 與 `import type { DonutBucketKey } from "@/lib/knowvio-aggregations";`（後者與 Task 2 的值 import 合併：`import { donutSegmentsFromActivity, ... , type DonutBucketKey } from "@/lib/knowvio-aggregations";`）。
 
-- [ ] **Step 2: 更新呼叫處**
+- [x] **Step 2: 更新呼叫處**
 
 原 `<ActivityDonut tx={tx} />` → `<ActivityDonut tx={tx} activity={activity} />`。
 
-- [ ] **Step 3: typecheck＋測試**
+- [x] **Step 3: typecheck＋測試**
 
 Run: `cd tender-ai-frontend && npx tsc --noEmit && npx vitest run`
 Expected: 0 type error；測試全綠。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tender-ai-frontend/src/pages/knowvio-dashboard-page.tsx
@@ -442,7 +442,7 @@ git commit -m "feat(fe): knowvio 活動甜甜圈由 activity 真實彙總＋中�
 - Consumes：`trendDeltaPct(trend7d)`（Task 1）。
 - Produces：`KpiCard` 的 `delta` 變為選用 `delta?: string | null`。
 
-- [ ] **Step 1: `KpiCard` 的 `delta` 改選用、null 不渲染徽章**
+- [x] **Step 1: `KpiCard` 的 `delta` 改選用、null 不渲染徽章**
 
 ```tsx
 function KpiCard({
@@ -470,17 +470,17 @@ function KpiCard({
 }
 ```
 
-- [ ] **Step 2: KPI 群套真值/隱藏**
+- [x] **Step 2: KPI 群套真值/隱藏**
 
 - 「今日新案」`kpiNew` 卡：`delta={trendDeltaPct(trend7d)}`（有真實前值才顯示）。
 - 其餘三張（`kpiHigh`/`avgScore`/`kpiAccepted`）：移除寫死 `"+5%"/"+10%"/"+6%"`，改傳 `delta={null}`（無真實前值，誠實不顯示）。
 
-- [ ] **Step 3: typecheck＋測試**
+- [x] **Step 3: typecheck＋測試**
 
 Run: `cd tender-ai-frontend && npx tsc --noEmit && npx vitest run`
 Expected: 0 type error；測試全綠。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tender-ai-frontend/src/pages/knowvio-dashboard-page.tsx
@@ -500,7 +500,7 @@ git commit -m "feat(fe): knowvio KPI delta 改真值＋誠實隱藏無前值徽�
 - Consumes：`useAppData().cards`、`statusByTenderId`/`tenderStatusKind`/`KnowvioStatusKind`（Task 1）。
 - Produces：無下游消費。
 
-- [ ] **Step 1: 頁面層算 `statusMap`（useMemo），傳入 `DeadlineTable`**
+- [x] **Step 1: 頁面層算 `statusMap`（useMemo），傳入 `DeadlineTable`**
 
 在元件主體（`upcoming` useMemo 附近）加：
 
@@ -510,7 +510,7 @@ const statusMap = useMemo(() => statusByTenderId(cards), [cards]);
 
 呼叫處把 `statusMap` 傳入 `DeadlineTable`。
 
-- [ ] **Step 2: `DeadlineTable` 移除假 `statusByIdx[i % 3]`，改查真實狀態**
+- [x] **Step 2: `DeadlineTable` 移除假 `statusByIdx[i % 3]`，改查真實狀態**
 
 ```tsx
 function DeadlineTable({
@@ -532,12 +532,12 @@ function DeadlineTable({
 
 > `StatusKind`（頁面內既有 type）與 Task 1 的 `KnowvioStatusKind` 值域一致（`pending|notStarted|inProgress`）。把 `DeadlineTable` 的 `statusMap` 參數型別宣告為 `Map<string, KnowvioStatusKind>`，內部 `STATUS_STYLE` 仍以該值索引。需 `import { ... , type KnowvioStatusKind } from "@/lib/knowvio-aggregations";`（與既有 import 合併）。
 
-- [ ] **Step 3: typecheck＋測試**
+- [x] **Step 3: typecheck＋測試**
 
 Run: `cd tender-ai-frontend && npx tsc --noEmit && npx vitest run`
 Expected: 0 type error；測試全綠。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tender-ai-frontend/src/pages/knowvio-dashboard-page.tsx
@@ -557,7 +557,7 @@ git commit -m "feat(fe): knowvio 截止表狀態改由看板 cards 映射，移�
 - Consumes：`useAppData().metrics.kpiHigh`。
 - Produces：`<TopWelcome ... highCount={number} />`。
 
-- [ ] **Step 1: `welcomeSub` 改為帶 `{n}` 佔位的模板（zh/en 成對）**
+- [x] **Step 1: `welcomeSub` 改為帶 `{n}` 佔位的模板（zh/en 成對）**
 
 ```ts
 // zh
@@ -566,7 +566,7 @@ welcomeSub: "今天有 {n} 件高潛力新案，別錯過 →",
 welcomeSub: "{n} high-potential tenders today — don't miss them →",
 ```
 
-- [ ] **Step 2: `TopWelcome` 接 `highCount` 並插值**
+- [x] **Step 2: `TopWelcome` 接 `highCount` 並插值**
 
 ```tsx
 function TopWelcome({
@@ -583,12 +583,12 @@ function TopWelcome({
 
 呼叫處：`<TopWelcome tx={tx} highCount={metrics.kpiHigh} />`。
 
-- [ ] **Step 3: typecheck＋測試**
+- [x] **Step 3: typecheck＋測試**
 
 Run: `cd tender-ai-frontend && npx tsc --noEmit && npx vitest run`
 Expected: 0 type error；測試全綠。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tender-ai-frontend/src/pages/knowvio-dashboard-page.tsx
@@ -601,11 +601,11 @@ git commit -m "feat(fe): knowvio 歡迎副標插值 metrics.kpiHigh，移除寫�
 
 **Files:** 無（驗證 only）
 
-- [ ] **Step 1: 啟動 dev server（若未啟動）**
+- [x] **Step 1: 啟動 dev server（若未啟動）**
 
 `preview_start`（vite dev，5173，HMR）。
 
-- [ ] **Step 2: 載入 `/knowvio` 並檢查**
+- [x] **Step 2: 載入 `/knowvio` 並檢查**
 
 `preview_eval: window.location.assign("/knowvio")` → `preview_console_logs`（無 error）→ `preview_snapshot`：
 
@@ -615,11 +615,11 @@ git commit -m "feat(fe): knowvio 歡迎副標插值 metrics.kpiHigh，移除寫�
 - 截止表狀態欄非 `i%3` 輪播。
 - 歡迎副標數字＝真實 `kpiHigh`。
 
-- [ ] **Step 3: 留證**
+- [x] **Step 3: 留證**
 
 `preview_screenshot` 存 knowvio 全頁截圖。
 
-- [ ] **Step 4: 最終回歸**
+- [x] **Step 4: 最終回歸**
 
 Run: `cd tender-ai-frontend && npx tsc --noEmit && npx vitest run`
 Expected: 0 type error；全測試綠。
