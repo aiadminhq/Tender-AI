@@ -22,6 +22,15 @@ import {
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
 import { daysLeft } from "@/lib/format";
+import {
+  type DonutBucketKey,
+  donutSegmentsFromActivity,
+  type KnowvioStatusKind,
+  statusByTenderId,
+  tenderStatusKind,
+  trendDeltaPct,
+} from "@/lib/knowvio-aggregations";
+import type { ActivityItem } from "@/types/domain";
 import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 
 /* =========================================================================
@@ -35,7 +44,7 @@ import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 const TX = {
   zh: {
     welcome: "歡迎回來，Alex！",
-    welcomeSub: "今天有 3 件高潛力新案，別錯過 →",
+    welcomeSub: "今天有 {n} 件高潛力新案，別錯過 →",
     searchPh: "搜尋標案、機關、關鍵字…",
     highlights: "重點摘要",
     refresh: "重新整理",
@@ -45,13 +54,14 @@ const TX = {
     kpiStreak: "連續承接",
     days: "天",
     progress: "案量趨勢",
-    progressSub: "近 30 日新案與篩入趨勢",
+    progressSub: "近 7 日新案趨勢",
     activity: "本週活動分佈",
     totalHrs: "總動作",
     actView: "瀏覽標案",
     actRate: "評分標記",
     actBoard: "加入看板",
     actExport: "匯出／動作",
+    actEmpty: "尚無活動紀錄",
     deadlines: "即將截止",
     colTask: "標案／任務",
     colDue: "截止日",
@@ -76,7 +86,7 @@ const TX = {
   },
   en: {
     welcome: "Welcome Back Alex!",
-    welcomeSub: "3 high-potential tenders today — don't miss them →",
+    welcomeSub: "{n} high-potential tenders today — don't miss them →",
     searchPh: "Search tenders, agencies, keywords…",
     highlights: "Highlights",
     refresh: "Refresh Data",
@@ -86,13 +96,14 @@ const TX = {
     kpiStreak: "Win Streak",
     days: "Days",
     progress: "Volume Trend",
-    progressSub: "New & matched tenders, last 30 days",
+    progressSub: "Last 7 days · new tenders",
     activity: "Weekly Activity Split",
     totalHrs: "Actions",
     actView: "Tenders Viewed",
     actRate: "Rated / Tagged",
     actBoard: "Added to Board",
     actExport: "Export / Action",
+    actEmpty: "No activity yet",
     deadlines: "Upcoming Deadlines",
     colTask: "Tender / Task",
     colDue: "Due Date",
@@ -129,9 +140,13 @@ type Cat = { [K in keyof (typeof CAT_LABEL)["zh"]]: string };
 
 export function KnowvioDashboardPage() {
   const { lang } = useApp();
-  const { metrics, filteredTenders, usingLiveData } = useAppData();
+  const { metrics, filteredTenders, usingLiveData, activity, cards, trend7d } =
+    useAppData();
   const tx = TX[lang === "en" ? "en" : "zh"];
   const cat = CAT_LABEL[lang === "en" ? "en" : "zh"];
+
+  const statusMap = useMemo(() => statusByTenderId(cards), [cards]);
+  const newDelta = useMemo(() => trendDeltaPct(trend7d), [trend7d]);
 
   const upcoming = useMemo(
     () =>
@@ -155,7 +170,7 @@ export function KnowvioDashboardPage() {
 
         {/* 主內容 */}
         <main className="min-w-0 flex-1 bg-[#fafbfc] p-4 sm:p-6 lg:p-7">
-          <TopWelcome tx={tx} />
+          <TopWelcome tx={tx} highCount={metrics.kpiHigh} />
 
           {/* Highlights 標頭 */}
           <div className="mb-3 mt-7 flex items-center justify-between">
@@ -174,14 +189,14 @@ export function KnowvioDashboardPage() {
               icon={Inbox}
               label={tx.kpiNew}
               value={String(metrics.kpiNew)}
-              delta="+12%"
+              delta={newDelta}
               chart={<BarSpark />}
             />
             <KpiCard
               icon={Flame}
               label={tx.kpiHigh}
               value={String(metrics.kpiHigh)}
-              delta="+5%"
+              delta={null}
               chart={<LineSpark />}
             />
             <KpiCard
@@ -189,7 +204,7 @@ export function KnowvioDashboardPage() {
               label={tx.kpiScore}
               value={`${avgScore}`}
               suffix="%"
-              delta="+10%"
+              delta={null}
               chart={<LineSpark muted />}
             />
             <KpiCard
@@ -197,7 +212,7 @@ export function KnowvioDashboardPage() {
               label={tx.kpiStreak}
               value={String(metrics.kpiAccepted)}
               suffix={` ${tx.days}`}
-              delta="+6%"
+              delta={null}
               chart={<StreakDots active={metrics.kpiAccepted} />}
             />
           </div>
@@ -211,7 +226,7 @@ export function KnowvioDashboardPage() {
                   <Pill>{lang === "en" ? "October" : "六月"}</Pill>
                 </div>
               </CardHead>
-              <ProgressArea lang={lang} />
+              <ProgressArea lang={lang} series={trend7d} />
             </Card>
 
             <Card>
@@ -220,7 +235,7 @@ export function KnowvioDashboardPage() {
                   <ChevronRight size={15} />
                 </button>
               </CardHead>
-              <ActivityDonut tx={tx} />
+              <ActivityDonut tx={tx} activity={activity} />
             </Card>
           </div>
 
@@ -238,6 +253,7 @@ export function KnowvioDashboardPage() {
                 cat={cat}
                 rows={upcoming}
                 live={usingLiveData}
+                statusMap={statusMap}
               />
             </Card>
 
@@ -366,14 +382,16 @@ function KvSidebar() {
 }
 
 /* ----------------------------- 頂部歡迎列 ----------------------------- */
-function TopWelcome({ tx }: { tx: Tx }) {
+function TopWelcome({ tx, highCount }: { tx: Tx; highCount: number }) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         <h1 className="text-[20px] font-bold tracking-tight sm:text-[22px]">
           {tx.welcome}
         </h1>
-        <p className="mt-1 text-[13px] text-[#6b7280]">{tx.welcomeSub}</p>
+        <p className="mt-1 text-[13px] text-[#6b7280]">
+          {tx.welcomeSub.replace("{n}", String(highCount))}
+        </p>
       </div>
       <div className="flex items-center gap-2.5">
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[#e7e9ee] bg-white px-3 py-2 lg:flex-none">
@@ -429,9 +447,10 @@ function KpiCard({
   label: string;
   value: string;
   suffix?: string;
-  delta: string;
+  delta?: string | null;
   chart: React.ReactNode;
 }) {
+  const deltaDown = !!delta && delta.startsWith("-");
   return (
     <div className="rounded-2xl border border-[#eceef2] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,.05)]">
       <div className="flex items-center gap-2">
@@ -441,9 +460,17 @@ function KpiCard({
         <span className="truncate text-[12px] font-medium text-[#6b7280]">
           {label}
         </span>
-        <span className="ml-auto rounded-full bg-[#dcfce7] px-1.5 py-0.5 text-[10px] font-semibold text-[#16a34a]">
-          {delta}
-        </span>
+        {delta ? (
+          <span
+            className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+              deltaDown
+                ? "bg-[#fee2e2] text-[#dc2626]"
+                : "bg-[#dcfce7] text-[#16a34a]"
+            }`}
+          >
+            {delta}
+          </span>
+        ) : null}
       </div>
       <div className="mt-3 flex items-end justify-between">
         <div className="font-mono text-[28px] font-bold leading-none tracking-tight">
@@ -545,12 +572,7 @@ function StreakDots({ active }: { active: number }) {
 }
 
 /* ----------------------------- 趨勢面積圖（hover tooltip） ----------------------------- */
-const SERIES = [
-  8, 12, 10, 15, 14, 18, 16, 22, 20, 19, 24, 23, 28, 26, 32, 30, 35, 33, 38, 36,
-  42, 40, 45, 44, 50, 48, 55, 58, 62, 75,
-];
-
-function ProgressArea({ lang }: { lang: string }) {
+function ProgressArea({ lang, series }: { lang: string; series: number[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -558,10 +580,27 @@ function ProgressArea({ lang }: { lang: string }) {
   const H = 100;
   const TOP = 12;
   const BOT = 8;
-  const max = Math.max(...SERIES);
-  const n = SERIES.length;
-  const pts = SERIES.map((v, i) => ({
-    x: (i / (n - 1)) * W,
+  const n = series.length;
+
+  // 近 N 日標籤：最後一點＝今日，往前推「−k 日」。
+  const dayLabel = (i: number) => {
+    const back = n - 1 - i;
+    if (back === 0) return lang === "en" ? "Today" : "今日";
+    return lang === "en" ? `−${back}d` : `−${back}日`;
+  };
+
+  // 空態：無趨勢資料時優雅降級（沿用示範/無資料語氣）。
+  if (n === 0) {
+    return (
+      <div className="flex h-52 items-center justify-center text-[12px] text-[#9ca3af]">
+        {lang === "en" ? "No trend data yet" : "尚無趨勢資料"}
+      </div>
+    );
+  }
+
+  const max = Math.max(...series, 1);
+  const pts = series.map((v, i) => ({
+    x: n > 1 ? (i / (n - 1)) * W : W / 2,
     y: TOP + (1 - v / max) * (H - TOP - BOT),
     v,
   }));
@@ -579,8 +618,9 @@ function ProgressArea({ lang }: { lang: string }) {
   };
 
   const hp = hover != null ? pts[hover] : null;
-  const dateLabel = (i: number) =>
-    lang === "en" ? `Day ${i + 1}` : `第 ${i + 1} 日`;
+  // 逐點 delta：該點對前一點的百分比變化；首點或前值 0 時為 null（不灌假數）。
+  const hoverDelta =
+    hover != null ? trendDeltaPct(series.slice(hover - 1, hover + 1)) : null;
 
   return (
     <div
@@ -668,10 +708,18 @@ function ProgressArea({ lang }: { lang: string }) {
             }}
           >
             <div className="flex items-center gap-2 text-[11px] font-semibold text-[#111827]">
-              {dateLabel(hover)}
-              <span className="rounded bg-[#dcfce7] px-1 text-[10px] text-[#16a34a]">
-                +5%
-              </span>
+              {dayLabel(hover)}
+              {hoverDelta ? (
+                <span
+                  className={`rounded px-1 text-[10px] ${
+                    hoverDelta.startsWith("-")
+                      ? "bg-[#fee2e2] text-[#dc2626]"
+                      : "bg-[#dcfce7] text-[#16a34a]"
+                  }`}
+                >
+                  {hoverDelta}
+                </span>
+              ) : null}
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="font-mono text-[13px] font-bold text-[#f97316]">
@@ -688,11 +736,11 @@ function ProgressArea({ lang }: { lang: string }) {
         )}
       </div>
 
-      {/* X 軸 */}
+      {/* X 軸：近 N 日 */}
       <div className="absolute bottom-0 left-8 right-0 flex justify-between text-[10px] text-[#c2c7d0]">
-        {[1, 5, 10, 15, 20, 25, 30].map((d) => (
-          <span key={d} className="font-mono">
-            {d}
+        {series.map((_, i) => (
+          <span key={i} className="font-mono">
+            {dayLabel(i)}
           </span>
         ))}
       </div>
@@ -701,13 +749,36 @@ function ProgressArea({ lang }: { lang: string }) {
 }
 
 /* ----------------------------- 活動甜甜圈 ----------------------------- */
-function ActivityDonut({ tx }: { tx: Tx }) {
-  const segs = [
-    { label: tx.actView, pct: 45, color: "#fb923c" },
-    { label: tx.actRate, pct: 25, color: "#3b82f6" },
-    { label: tx.actBoard, pct: 20, color: "#ec4899" },
-    { label: tx.actExport, pct: 10, color: "#22c55e" },
-  ];
+const DONUT_COLOR: Record<DonutBucketKey, string> = {
+  view: "#fb923c",
+  rate: "#3b82f6",
+  board: "#ec4899",
+  other: "#22c55e",
+};
+
+function ActivityDonut({ tx, activity }: { tx: Tx; activity: ActivityItem[] }) {
+  const donutLabel: Record<DonutBucketKey, string> = {
+    view: tx.actView,
+    rate: tx.actRate,
+    board: tx.actBoard,
+    other: tx.actExport,
+  };
+  const total = activity.length;
+  const segs = donutSegmentsFromActivity(activity).map((s) => ({
+    label: donutLabel[s.key],
+    pct: s.pct,
+    color: DONUT_COLOR[s.key],
+  }));
+
+  // 空態：尚無活動事件時優雅降級。
+  if (total === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center text-[12px] text-[#9ca3af]">
+        <span>{tx.actEmpty}</span>
+      </div>
+    );
+  }
+
   const R = 42;
   const C = 2 * Math.PI * R;
   const GAP = 3;
@@ -749,7 +820,7 @@ function ActivityDonut({ tx }: { tx: Tx }) {
             {tx.totalHrs}
           </span>
           <span className="font-mono text-[30px] font-bold leading-none">
-            42
+            {total}
           </span>
         </div>
       </div>
@@ -784,18 +855,19 @@ function DeadlineTable({
   cat,
   rows,
   live,
+  statusMap,
 }: {
   tx: Tx;
   cat: Cat;
   rows: ReturnType<typeof useAppData>["filteredTenders"];
   live: boolean;
+  statusMap: Map<string, KnowvioStatusKind>;
 }) {
   const dotByTier = {
     high: "#ec4899",
     mid: "#3b82f6",
     low: "#22c55e",
   } as const;
-  const statusByIdx: StatusKind[] = ["pending", "notStarted", "inProgress"];
   const statusLabel = {
     pending: tx.stPending,
     notStarted: tx.stNotStarted,
@@ -823,8 +895,8 @@ function DeadlineTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => {
-            const sk = statusByIdx[i % 3];
+          {rows.map((r) => {
+            const sk = tenderStatusKind(statusMap, r.id);
             return (
               <tr
                 key={r.id}
