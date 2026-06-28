@@ -7,6 +7,7 @@ import {
   Palette,
   Search,
   Settings,
+  Sparkles,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -202,6 +203,17 @@ export function Sidebar() {
                 icon: Palette,
               }}
               meta={{ tag: "dev" }}
+            />
+          )}
+          {/* 小助手替代方案 mockup：dev-only，獨立於現有 /assistant。 */}
+          {import.meta.env.DEV && (
+            <SidebarLink
+              item={{
+                to: "/assistant-studio",
+                key: "navAssistantStudio",
+                icon: Sparkles,
+              }}
+              meta={{ tag: "mock" }}
             />
           )}
           {/* 圖表藝廊：dev-only 入口（與 App.tsx route gate 一致；正式 build 不顯示） */}

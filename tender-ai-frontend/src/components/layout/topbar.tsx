@@ -18,6 +18,7 @@ import { PushBell } from "@/components/push/push-bell";
 import { AnnotationToggle } from "@/components/annotate/annotation-toggle";
 import { AccountMenu } from "./account-menu";
 import { NAV } from "./nav-items";
+import type { TextKey } from "@/i18n/strings";
 import { cn } from "@/lib/utils";
 
 export function Topbar() {
@@ -34,12 +35,14 @@ export function Topbar() {
   const location = useLocation();
   const [refreshing, setRefreshing] = useState(false);
 
-  const activeItem = useMemo(() => {
+  const activeKey = useMemo<TextKey>(() => {
+    if (location.pathname === "/assistant-studio") return "navAssistantStudio";
     const exact = NAV.find((item) => item.to === location.pathname);
-    if (exact) return exact;
-    return NAV.find(
+    if (exact) return exact.key;
+    const parent = NAV.find(
       (item) => item.to !== "/" && location.pathname.startsWith(item.to),
     );
+    return parent?.key ?? "appName";
   }, [location.pathname]);
 
   const refresh = () => {
@@ -76,7 +79,7 @@ export function Topbar() {
           </span>
           <span className="hidden text-ink-dim sm:inline">/</span>
           <span className="truncate font-semibold text-ink">
-            {activeItem ? t(activeItem.key) : t("appName")}
+            {t(activeKey)}
           </span>
         </div>
       </div>
@@ -88,6 +91,7 @@ export function Topbar() {
             className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-dim"
           />
           <Input
+            name="global-search"
             value={filter.query}
             onChange={(e) => setFilter({ query: e.target.value })}
             placeholder={t("search")}
@@ -138,7 +142,7 @@ export function Topbar() {
           </Button>
           {import.meta.env.DEV && <AnnotationToggle />}
           <PushBell />
-          <AssistantLauncher />
+          {location.pathname !== "/assistant-studio" && <AssistantLauncher />}
           <AccountMenu />
         </div>
       </div>

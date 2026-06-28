@@ -37,6 +37,7 @@ export const STRINGS = {
     navSearch: "語意搜尋",
     navEvolution: "自我進化",
     navDesignSystem: "設計系統",
+    navAssistantStudio: "小助手方案",
     navCharts: "圖表藝廊",
     searchPageSub: "用自然語言找語意相近的標案",
     evolutionPageSub: "知識庫學習現況與手動觸發（聚合統計，對外去識別化）",
@@ -819,6 +820,7 @@ export const STRINGS = {
     navSearch: "Semantic Search",
     navEvolution: "Self-Evolution",
     navDesignSystem: "Design System",
+    navAssistantStudio: "Assistant Studio",
     navCharts: "Charts Gallery",
     searchPageSub: "Find semantically similar tenders in natural language",
     evolutionPageSub:

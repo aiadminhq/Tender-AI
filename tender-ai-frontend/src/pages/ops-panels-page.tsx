@@ -15,6 +15,7 @@ import { BarSpark, LineSpark } from "@/components/ui/sparkline";
 import { TrendBadge } from "@/components/ui/trend-badge";
 import { Select } from "@/components/ui/select";
 import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
+import { AnnotationToggle } from "@/components/annotate/annotation-toggle";
 import type { Tier } from "@/types/domain";
 import type { Lang } from "@/i18n/strings";
 
@@ -2141,6 +2142,23 @@ export function OpsPanelsPage() {
               {t.wallSub}
             </div>
           </div>
+          {/* dev-only 設計標註：本頁無 topbar，於此提供開關（與 topbar 同一顆按鈕、同一份 store） */}
+          {import.meta.env.DEV && (
+            <div
+              data-annotate-ui
+              style={{
+                marginLeft: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 12, color: "var(--ink-muted)" }}>
+                {lang === "zh" ? "標註修改意見" : "Markup feedback"}
+              </span>
+              <AnnotationToggle />
+            </div>
+          )}
         </header>
 
         <div

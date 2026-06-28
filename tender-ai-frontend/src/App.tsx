@@ -19,6 +19,7 @@ import { KnowvioDashboardPage } from "@/pages/knowvio-dashboard-page";
 import { OpsPanelsPage } from "@/pages/ops-panels-page";
 import { DesignSystemPage } from "@/pages/design-system";
 import { ChartsPage } from "@/pages/charts-page";
+import { AssistantStudioPage } from "@/pages/assistant-studio-page";
 import { AnnotationLayer } from "@/components/annotate/annotation-layer";
 
 export default function App() {
@@ -62,6 +63,10 @@ export default function App() {
           {/* 設計系統展示頁（dev-only，正式 build 不含） */}
           {import.meta.env.DEV && (
             <Route path="design-system" element={<DesignSystemPage />} />
+          )}
+          {/* 小助手替代方案 mockup（dev-only，不影響現有 /assistant） */}
+          {import.meta.env.DEV && (
+            <Route path="assistant-studio" element={<AssistantStudioPage />} />
           )}
           {/* 圖表藝廊（dev-only，正式 build 不含） */}
           {import.meta.env.DEV && (
