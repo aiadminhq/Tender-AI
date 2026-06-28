@@ -42,6 +42,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
+import { AssistantArtifacts } from "@/components/assistant/assistant-artifacts";
+import type { AssistantArtifact } from "@/components/assistant/assistant-artifact-types";
 import { cn } from "@/lib/utils";
 
 type LibraryTab = "components" | "functions" | "prompts";
@@ -289,6 +291,68 @@ const quickActions = [
   { label: "複製摘要", icon: Clipboard },
 ];
 
+const artifactMockups: AssistantArtifact[] = [
+  {
+    type: "table",
+    id: "studio-table-ranking",
+    title: "相似案比較表",
+    caption: "由 C1 adapter 正規化後進入 assistant artifact pipeline",
+    columns: [
+      { key: "name", label: "標案" },
+      { key: "budget", label: "預算", align: "right" },
+      { key: "risk", label: "主要風險" },
+      { key: "score", label: "分數", align: "right" },
+    ],
+    rows: [
+      {
+        name: "某醫院 3 樓病房整修統包工程",
+        budget: "820 萬",
+        risk: "醫療場域實績",
+        score: 91,
+      },
+      {
+        name: "北部醫療中心門診區整修工程",
+        budget: "780 萬",
+        risk: "夜間施工",
+        score: 84,
+      },
+      {
+        name: "市立醫院候診區空間改善",
+        budget: "640 萬",
+        risk: "感染控制",
+        score: 78,
+      },
+    ],
+  },
+  {
+    type: "chart",
+    id: "studio-chart-scores",
+    title: "相似案分數趨勢",
+    caption: "chart artifact 支援 bar / line / pie，沿用專案 chart token",
+    chartType: "bar",
+    xKey: "name",
+    series: [{ key: "score", label: "可行度" }],
+    rows: [
+      { name: "病房整修", score: 91 },
+      { name: "門診整修", score: 84 },
+      { name: "候診區", score: 78 },
+    ],
+    height: 190,
+  },
+  {
+    type: "actions",
+    id: "studio-actions-share",
+    title: "儲存與分享本次 artifact",
+    caption: "批次收藏引用標案，並可複製或分享 artifact 摘要",
+    tenderIds: [5, 9, 12],
+    actions: ["save", "share", "copy"],
+    payload: {
+      scope: "assistant-studio",
+      decision: "必看，但需補資格文件",
+    },
+  },
+];
+
 export function AssistantStudioPage() {
   const [tab, setTab] = useState<LibraryTab>("components");
   const [query, setQuery] = useState("");
@@ -497,13 +561,14 @@ function ConversationStage() {
         <div className="flex min-h-0 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-            <ToolTimeline />
-            <SourceDeck />
-          </div>
-          <ComposerDock />
+            <MessageBubble key={message.id} message={message} />
+          ))}
+          <ToolTimeline />
+          <SourceDeck />
+          <ArtifactShowcase />
         </div>
+        <ComposerDock />
+      </div>
         <ContextColumn />
       </div>
     </section>
@@ -686,6 +751,27 @@ function SourceDeck() {
         </Card>
       ))}
     </div>
+  );
+}
+
+function ArtifactShowcase() {
+  return (
+    <Card className="bg-white hover:translate-y-0">
+      <CardHeader>
+        <div>
+          <CardTitle>Artifact mockup</CardTitle>
+          <CardDescription>
+            Markdown 補強、tender link、table、chart、save/share 與 C1 adapter 的前端呈現
+          </CardDescription>
+        </div>
+        <Badge variant="success">
+          <CheckCircle2 size={11} /> wired
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        <AssistantArtifacts artifacts={artifactMockups} />
+      </CardContent>
+    </Card>
   );
 }
 

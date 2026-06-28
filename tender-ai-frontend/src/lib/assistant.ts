@@ -3,6 +3,8 @@
 // 契約見 tender-ai-backend/app/schemas/assistant.py。失敗時 throw，由 UI fallback。
 import type { SourceKey } from "@/types/domain";
 import { getToken } from "@/lib/auth-token";
+import type { AssistantArtifact } from "@/components/assistant/assistant-artifact-types";
+import { adaptAssistantArtifact } from "@/components/assistant/assistant-artifact-adapter";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
@@ -76,10 +78,14 @@ interface ProgressEvent {
   type: "progress";
   text: string;
 }
+interface ArtifactEvent {
+  type: "artifact";
+  artifact: unknown;
+}
 interface DoneEvent {
   type: "done";
 }
-type StreamEvent = MetaEvent | DeltaEvent | ProgressEvent | DoneEvent;
+type StreamEvent = MetaEvent | DeltaEvent | ProgressEvent | ArtifactEvent | DoneEvent;
 
 export interface StreamHandlers {
   /** threadId 為後端回傳的對話串 id（缺 thread_id 時由後端產生）；前端據此續接同串。 */
@@ -92,6 +98,8 @@ export interface StreamHandlers {
   onText?: (fullText: string) => void;
   /** agentic 暫態狀態（CLI 大腦查詢工具中）；下一筆 onText 到達即應清除。 */
   onProgress?: (status: string) => void;
+  /** 結構化 artifact（第一階段支援 table；後續 chart/save/share 沿用此 pipeline）。 */
+  onArtifact?: (artifact: AssistantArtifact) => void;
   /** 偵測到對話中的長期條件時回呼（否則帶 null）；UI 據此顯示確認 chip。 */
   onPreferenceSuggestion?: (suggestion: PreferenceSuggestion | null) => void;
   onDone?: () => void;
@@ -171,6 +179,9 @@ export async function streamAssistantChat(
       handlers.onText?.(evt.text);
     } else if (evt.type === "progress") {
       handlers.onProgress?.(evt.text);
+    } else if (evt.type === "artifact") {
+      const artifact = adaptAssistantArtifact(evt.artifact);
+      if (artifact) handlers.onArtifact?.(artifact);
     } else if (evt.type === "done") {
       handlers.onDone?.();
     }

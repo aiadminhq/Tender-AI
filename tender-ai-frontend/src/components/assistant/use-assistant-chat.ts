@@ -14,6 +14,7 @@ import {
   type ChatMessage,
   type PreferenceSuggestion,
 } from "@/lib/assistant";
+import type { AssistantArtifact } from "./assistant-artifact-types";
 
 export interface Turn {
   role: "user" | "assistant";
@@ -24,6 +25,7 @@ export interface Turn {
   preference?: PreferenceSuggestion | null;
   /** 偏好建議的處理狀態：待確認／已記住／不用。預設 pending（有 preference 時）。 */
   preferenceState?: "pending" | "confirmed" | "dismissed";
+  artifacts?: AssistantArtifact[];
 }
 
 export function useAssistantChat(scope: string, focusTenderId?: string | null) {
@@ -127,6 +129,25 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
     });
   }, []);
 
+  const appendLastAssistantArtifact = useCallback(
+    (artifact: AssistantArtifact) => {
+      setTurns((prev) => {
+        const next = [...prev];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].role === "assistant") {
+            next[i] = {
+              ...next[i],
+              artifacts: [...(next[i].artifacts ?? []), artifact],
+            };
+            break;
+          }
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   const send = useCallback(
     async (raw: string) => {
       const prompt = raw.trim();
@@ -164,6 +185,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
               patchLastAssistant({ text: full });
             },
             onProgress: (status) => setProgress(status),
+            onArtifact: appendLastAssistantArtifact,
             onPreferenceSuggestion: (suggestion) =>
               patchLastAssistant(
                 suggestion
@@ -190,7 +212,15 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
         setStreaming(false);
       }
     },
-    [turns, streaming, patchLastAssistant, refreshThreads, t, scope],
+    [
+      turns,
+      streaming,
+      patchLastAssistant,
+      appendLastAssistantArtifact,
+      refreshThreads,
+      t,
+      scope,
+    ],
   );
 
   // 中止進行中的串流但保留已產生的對話（供 assistant-ui onCancel 串接）。

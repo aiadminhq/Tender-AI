@@ -40,6 +40,7 @@ import type { AssistantSource, PreferenceSuggestion } from "@/lib/assistant";
 import { cn } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { AssistantArtifacts } from "./assistant-artifacts";
 import { RichText } from "./rich-text";
 import {
   type AssistantCustomMeta,
@@ -353,6 +354,7 @@ function useMessageMeta(): AssistantCustomMeta {
       error: false,
       preference: null,
       preferenceState: null,
+      artifacts: [],
     }
   );
 }
@@ -372,7 +374,8 @@ function AssistantMessage() {
   const { t } = useApp();
   const { onSourceClick, progress } = useAssistantBridge();
   const text = useMessageText();
-  const { sources, error, preference, preferenceState } = useMessageMeta();
+  const { sources, error, preference, preferenceState, artifacts } =
+    useMessageMeta();
   const sourceCount = sources?.length ?? 0;
 
   // 本則回答已引用的標案（id→標題），供 RichText 把答案內文的「#<id> 標題」連到詳情頁。
@@ -425,6 +428,9 @@ function AssistantMessage() {
         {/* 來源只在答案出現後、以可收合區塊呈現（預設收合，標題列帶筆數＋類別 icon 預覽）。 */}
         {!error && text && sourceCount > 0 && sources && (
           <SourceSection sources={sources} onSourceClick={onSourceClick} />
+        )}
+        {!error && artifacts.length > 0 && (
+          <AssistantArtifacts artifacts={artifacts} />
         )}
         {preference && preferenceState && preferenceState !== "dismissed" && (
           <PreferenceChip preference={preference} state={preferenceState} />

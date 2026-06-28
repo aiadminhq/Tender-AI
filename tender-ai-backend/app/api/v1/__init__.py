@@ -6,6 +6,8 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.assistant import router as assistant_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.behavior import router as behavior_router
+from app.api.v1.index_status import router as index_router
+from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.learning import router as learning_router
 from app.api.v1.me import router as me_router
 from app.api.v1.push import router as push_router
@@ -18,6 +20,8 @@ api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(tenders_router)
 api_router.include_router(behavior_router)
 api_router.include_router(search_router)
+api_router.include_router(knowledge_router)
+api_router.include_router(index_router)
 api_router.include_router(assistant_router)
 api_router.include_router(reasoning_router)
 api_router.include_router(push_router)

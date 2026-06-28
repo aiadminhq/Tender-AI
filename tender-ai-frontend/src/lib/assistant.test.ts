@@ -89,6 +89,187 @@ describe("streamAssistantChat 對話留存接線", () => {
     expect(progresses).toEqual(["正在查詢標案…"]);
     expect(texts).toEqual(["找到 3 筆"]);
   });
+
+  it("artifact 事件走 onArtifact、不混入 onText", async () => {
+    const fetchMock = vi.fn(async () =>
+      ndjsonResponse([
+        JSON.stringify({
+          type: "artifact",
+          artifact: {
+            type: "table",
+            id: "ranking",
+            title: "標案排序",
+            columns: [
+              { key: "name", label: "標案" },
+              { key: "score", label: "分數", align: "right" },
+            ],
+            rows: [{ name: "資訊系統", score: 91 }],
+          },
+        }),
+        JSON.stringify({ type: "delta", text: "已整理成表格。" }),
+        JSON.stringify({ type: "done" }),
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const artifacts: unknown[] = [];
+    const texts: string[] = [];
+    await streamAssistantChat(
+      [{ role: "user", text: "整理成表" }],
+      {
+        onArtifact: (artifact) => artifacts.push(artifact),
+        onText: (t) => texts.push(t),
+      },
+      undefined,
+      null,
+      { threadId: null, scope: "assistant" },
+    );
+
+    expect(artifacts).toEqual([
+      {
+        type: "table",
+        id: "ranking",
+        title: "標案排序",
+        caption: null,
+        columns: [
+          { key: "name", label: "標案" },
+          { key: "score", label: "分數", align: "right" },
+        ],
+        rows: [{ name: "資訊系統", score: 91 }],
+      },
+    ]);
+    expect(texts).toEqual(["已整理成表格。"]);
+  });
+
+  it("chart artifact 事件保留 chart contract", async () => {
+    const fetchMock = vi.fn(async () =>
+      ndjsonResponse([
+        JSON.stringify({
+          type: "artifact",
+          artifact: {
+            type: "chart",
+            id: "weekly",
+            title: "近 7 日標案量",
+            chartType: "line",
+            xKey: "day",
+            series: [{ key: "count", label: "件數" }],
+            rows: [{ day: "6/22", count: 18 }],
+          },
+        }),
+        JSON.stringify({ type: "done" }),
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const artifacts: unknown[] = [];
+    await streamAssistantChat(
+      [{ role: "user", text: "畫趨勢圖" }],
+      { onArtifact: (artifact) => artifacts.push(artifact) },
+      undefined,
+      null,
+      { threadId: null, scope: "assistant" },
+    );
+
+    expect(artifacts).toEqual([
+      {
+        type: "chart",
+        id: "weekly",
+        title: "近 7 日標案量",
+        caption: null,
+        chartType: "line",
+        xKey: "day",
+        series: [{ key: "count", label: "件數" }],
+        rows: [{ day: "6/22", count: 18 }],
+      },
+    ]);
+  });
+
+  it("actions artifact 事件保留 save/share contract", async () => {
+    const fetchMock = vi.fn(async () =>
+      ndjsonResponse([
+        JSON.stringify({
+          type: "artifact",
+          artifact: {
+            type: "actions",
+            id: "share-ranking",
+            title: "分享本次排序",
+            tenderIds: [5, 9],
+            actions: ["save", "share", "copy"],
+            payload: { source: "assistant" },
+          },
+        }),
+        JSON.stringify({ type: "done" }),
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const artifacts: unknown[] = [];
+    await streamAssistantChat(
+      [{ role: "user", text: "收藏並分享" }],
+      { onArtifact: (artifact) => artifacts.push(artifact) },
+      undefined,
+      null,
+      { threadId: null, scope: "assistant" },
+    );
+
+    expect(artifacts).toEqual([
+      {
+        type: "actions",
+        id: "share-ranking",
+        title: "分享本次排序",
+        caption: null,
+        tenderIds: [5, 9],
+        actions: ["save", "share", "copy"],
+        payload: { source: "assistant" },
+      },
+    ]);
+  });
+
+  it("artifact 事件會經過 C1 adapter，無效 payload 不送出", async () => {
+    const fetchMock = vi.fn(async () =>
+      ndjsonResponse([
+        JSON.stringify({
+          type: "artifact",
+          artifact: {
+            kind: "chart",
+            artifact_id: "weekly",
+            chart_type: "bar",
+            x_key: "day",
+            series: ["count"],
+            data: [{ day: "6/23", count: 21 }],
+          },
+        }),
+        JSON.stringify({
+          type: "artifact",
+          artifact: { kind: "chart", series: [] },
+        }),
+        JSON.stringify({ type: "done" }),
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const artifacts: unknown[] = [];
+    await streamAssistantChat(
+      [{ role: "user", text: "C1 圖表" }],
+      { onArtifact: (artifact) => artifacts.push(artifact) },
+      undefined,
+      null,
+      { threadId: null, scope: "assistant" },
+    );
+
+    expect(artifacts).toEqual([
+      {
+        type: "chart",
+        id: "weekly",
+        title: null,
+        caption: null,
+        chartType: "bar",
+        xKey: "day",
+        series: [{ key: "count", label: "count" }],
+        rows: [{ day: "6/23", count: 21 }],
+      },
+    ]);
+  });
 });
 
 describe("fetchAssistantThreads", () => {

@@ -135,3 +135,50 @@ async def search_knowledge(
     if not vec_list and not kw_list:
         return []
     return _rrf_fuse(vec_list, kw_list, limit=limit)
+
+
+# --------------------------------------------------------------------------- #
+# 知識庫調閱（瀏覽，非檢索）：列文件、看單篇全部切塊
+# --------------------------------------------------------------------------- #
+@dataclass
+class KnowledgeDoc:
+    """一份知識文件的摘要列（供「調閱知識庫」清單）。"""
+
+    doc_id: str
+    title: str
+    chunks: int  # 該文件被切成幾塊
+
+
+async def list_docs(session: AsyncSession) -> list[KnowledgeDoc]:
+    """列出知識庫所有文件（依 doc_id 聚合），依 doc_id 排序。
+
+    同一 doc_id 的切塊共用 title，取 min 即可代表；只觸及 Layer A 公開知識。
+    """
+    stmt = (
+        select(
+            KnowledgeChunk.doc_id,
+            func.min(KnowledgeChunk.title).label("title"),
+            func.count().label("chunks"),
+        )
+        .group_by(KnowledgeChunk.doc_id)
+        .order_by(KnowledgeChunk.doc_id)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        KnowledgeDoc(doc_id=r.doc_id, title=r.title, chunks=int(r.chunks)) for r in rows
+    ]
+
+
+async def get_doc_chunks(
+    session: AsyncSession, doc_id: str
+) -> list[KnowledgeChunk]:
+    """取單篇文件的全部切塊，依 chunk_index 遞增（供逐段調閱）。
+
+    查無此文件回空清單（由 API 層轉 404）。
+    """
+    stmt = (
+        select(KnowledgeChunk)
+        .where(KnowledgeChunk.doc_id == doc_id)
+        .order_by(KnowledgeChunk.chunk_index.asc())
+    )
+    return list((await session.execute(stmt)).scalars().all())
