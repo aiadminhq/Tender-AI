@@ -17,6 +17,17 @@ dependencies = [
     "pgvector>=0.4.2",
     "requests>=2.32",
     "jieba>=0.42.1",
+    "pypdf>=4.2",  # PDF 投標須知純文字抽取（純 Python、本機、不外送 LLM）
+    "mcp[cli]>=1.2",  # DB 大腦對外 MCP 介面（stdio；見 app/mcp_server.py、MCP_BRIDGE.md）
+    "cryptography<49",  # 經 mcp→pyjwt[crypto] 引入；鎖在有預編 wheel 的 48.x，避免 uv sync 觸發 Rust 源碼編譯失敗
+]
+
+# 選用相依：瀏覽器抓取（PCC 詳情過 CAPTCHA 用）。CI/測試「不需」安裝——
+# scrape_detail_playwright / scrape_detail_cdp 皆 lazy import playwright，測試走 monkeypatch 假 page。
+# 本機啟用：`uv sync --extra browser` 後 `uv run playwright install chromium`。
+[project.optional-dependencies]
+browser = [
+    "playwright>=1.44",
 ]
 
 [dependency-groups]

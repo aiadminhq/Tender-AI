@@ -76,14 +76,32 @@ class AssistantToolContractOut(BaseModel):
     )
 
 
+class PreferenceSuggestionOut(BaseModel):
+    """對話中偵測到的「長期條件」建議（confirm-to-remember）。
+
+    僅是「建議」——前端據此顯示確認 chip，使用者按確認後才會寫入一筆具名
+    Layer B Event（``type="state_preference"``）。後端在此「不」自動寫入、
+    「不」碰評分權重（負向只由真實 lift 自然浮現，見 CLAUDE.md AI 大腦鐵則）。
+    """
+
+    kind: Literal["region"]
+    op: Literal["only", "exclude"]
+    value: str
+    raw: str
+
+
 class AssistantChatMetaOut(BaseModel):
     """串流的第一個 meta 事件。"""
 
     type: Literal["meta"] = "meta"
     scope: str
+    # 本串對話 id（前端帶上來就沿用，缺值由後端產生並回傳）；前端據此 hydrate／寫回。
+    thread_id: str
     prompt: str
     sources: list[AssistantSourceOut]
     tool_contract: AssistantToolContractOut
+    # 偵測到對話中的長期條件時帶出（否則 None）；前端據此渲染確認 chip。
+    preference_suggestion: PreferenceSuggestionOut | None = None
 
 
 class AssistantChatDeltaOut(BaseModel):
@@ -93,8 +111,60 @@ class AssistantChatDeltaOut(BaseModel):
     text: str
 
 
+class AssistantChatProgressOut(BaseModel):
+    """agentic（CLI 大腦）執行過程的暫態狀態事件。
+
+    用於 CLI provider 自主呼叫 MCP 工具時，逐步告知前端「正在查詢哪個工具」。
+    前端據此顯示暫態狀態行，下一筆 delta 到達即清除；不寫入對話文字、不留存。
+    """
+
+    type: Literal["progress"] = "progress"
+    text: str
+
+
 class AssistantChatDoneOut(BaseModel):
     """串流結束事件。"""
 
     type: Literal["done"] = "done"
+
+
+# ── 對話留存（Phase 4）讀取用 schemas ──────────────────────────────────────
+# Layer B 紅線：登入未落地前 owner 一律 "default"、consent_state="pending-consent"、
+# layer_b_opt_in=False；不具名、不共享、對外永不揭露（見 CLAUDE.md）。
+
+
+class AssistantThreadMessageOut(BaseModel):
+    """thread 內單則訊息（含助手來源卡）。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    content: str
+    sources: list[AssistantSourceOut] | None = None
+
+
+class AssistantThreadOut(BaseModel):
+    """thread 列表項（不含訊息明細）。"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    owner_user_id: str
+    scope: str
+    title: str | None = None
+    consent_state: str
+    layer_b_opt_in: bool
+
+
+class AssistantThreadDetailOut(AssistantThreadOut):
+    """thread 詳情：thread 欄位 + 依序訊息。"""
+
+    messages: list[AssistantThreadMessageOut] = Field(default_factory=list)
+
+
+class AssistantThreadListOut(BaseModel):
+    """GET /assistant/threads 的回應。"""
+
+    threads: list[AssistantThreadOut] = Field(default_factory=list)
 

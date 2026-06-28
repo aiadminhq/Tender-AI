@@ -100,18 +100,22 @@ export function LoginPage() {
               <p className="text-[12px] font-medium text-ink">
                 {t("loginErrNetwork")}
               </p>
-              <p className="mt-1 text-[11px] text-ink-dim">
-                {t("loginMockHint")}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2.5 w-full"
-                onClick={enterMock}
-              >
-                {t("loginUseMock")}
-              </Button>
+              {import.meta.env.DEV && (
+                <>
+                  <p className="mt-1 text-[11px] text-ink-dim">
+                    {t("loginMockHint")}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2.5 w-full"
+                    onClick={enterMock}
+                  >
+                    {t("loginUseMock")}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </form>

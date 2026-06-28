@@ -1,18 +1,23 @@
 // 認證 API 對接（Phase 2 輕量登入）：信箱＋密碼驗證身分、本人改密、管理員重置。
 // 後端 app/api/v1/{auth,me,admin}.py。
 //
-// 信任邊界（沿用後端 Phase 1）：登入只驗證憑證、不簽 token；身分存於前端
-// localStorage，管理權限暫以 `X-User-Role: admin` header 把關（可偽造，待 Phase 2
-// 改伺服器端 session 強制）。密碼明文僅於送出當下存在於記憶體，不落地、不寫版控。
+// Phase 2：帶 Bearer token（HMAC-signed，由登入後 setToken 存入 localStorage）。
+// 密碼明文僅於送出當下存在於記憶體，不落地、不寫版控。
+import { getToken } from "@/lib/auth-token";
 import type { FilterState } from "@/types/domain";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "http://localhost:8000/api/v1";
+  // 區網分享：dev 走相對 /api/v1（由 vite proxy 轉本機後端），靜態 build 維持絕對 localhost。
+  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
 
 function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
   const key = import.meta.env.VITE_API_KEY as string | undefined;
-  return key ? { "X-API-Key": key } : {};
+  if (key) headers["X-API-Key"] = key;
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
 }
 
 // 後端 LoginOut / MeOut（app/schemas/user.py，snake_case）。
@@ -82,8 +87,9 @@ function hashString(s: string): number {
   return Math.abs(h);
 }
 
-/** 由登入身分推導頭像顯示（縮寫取名稱前兩個字／英文首字母，底色依信箱穩定取色）。 */
-export function authDisplay(u: AuthUser): AuthDisplay {
+/** 由登入身分推導頭像顯示（縮寫取名稱前兩個字／英文首字母，底色依信箱穩定取色）。
+ *  參數放寬為 `Pick<AuthUser,"name"|"email">`：本就只讀這兩欄，供 Member 等衍生頭像。 */
+export function authDisplay(u: Pick<AuthUser, "name" | "email">): AuthDisplay {
   const name = u.name || u.email || "?";
   const ascii = /^[\x00-\x7F]+$/.test(name.trim());
   let initials: string;
@@ -123,7 +129,7 @@ export class LoginError extends Error {
 export async function login(
   email: string,
   password: string,
-): Promise<AuthUser> {
+): Promise<{ user: AuthUser; token: string; expiresAt: string | null }> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE}/auth/login`, {
@@ -138,18 +144,52 @@ export async function login(
     throw new LoginError("credentials", "invalid credentials");
   }
   if (!res.ok) throw new LoginError("network", `login API ${res.status}`);
-  return adaptAuthUser((await res.json()) as AuthUserRaw);
+  const raw = (await res.json()) as AuthUserRaw & {
+    token: string;
+    expires_at: string | null;
+  };
+  return {
+    user: adaptAuthUser(raw),
+    token: raw.token,
+    expiresAt: raw.expires_at ?? null,
+  };
 }
 
-/** GET /me?user_id=：以已存的身分刷新帳戶狀態（重新整理頁面後沿用）。失敗回 null。 */
-export async function fetchMe(userId: number): Promise<AuthUser | null> {
+/** GET /me：以 Bearer token 刷新帳戶狀態（重新整理頁面後沿用）。失敗回 null。 */
+export async function fetchMe(): Promise<AuthUser | null> {
   try {
-    const res = await fetch(
-      `${API_BASE}/me?user_id=${encodeURIComponent(userId)}`,
-      { headers: authHeaders() },
-    );
+    const res = await fetch(`${API_BASE}/me`, { headers: authHeaders() });
     if (!res.ok) return null;
     return adaptAuthUser((await res.json()) as AuthUserRaw);
+  } catch {
+    return null;
+  }
+}
+
+/** 本人設定／撤回共享同意後的最新狀態（PUT /me/consent 回傳）。 */
+export interface ConsentResult {
+  consentShared: boolean;
+  consentAt: string | null;
+}
+
+/** PUT /me/consent：本人設定／撤回 Layer B 共享同意（第 2 段）。
+ *  成功回最新同意狀態；後端不可達／非 200 回 null（呼叫端不就地改狀態）。
+ *  撤回同意（false）後，後端即停止把本人行為匯入共享庫（對外隔離邊界，見 CLAUDE.md）。 */
+export async function setConsent(
+  consentShared: boolean,
+): Promise<ConsentResult | null> {
+  try {
+    const res = await fetch(`${API_BASE}/me/consent`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ consent_shared: consentShared }),
+    });
+    if (!res.ok) return null;
+    const d = (await res.json()) as {
+      consent_shared: boolean;
+      consent_at: string | null;
+    };
+    return { consentShared: d.consent_shared, consentAt: d.consent_at };
   } catch {
     return null;
   }
@@ -162,7 +202,6 @@ export type PasswordResult =
 
 /** PUT /me/password：本人改密（須帶舊密碼）。 */
 export async function changePassword(
-  userId: number,
   oldPassword: string,
   newPassword: string,
 ): Promise<PasswordResult> {
@@ -171,7 +210,6 @@ export async function changePassword(
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({
-        user_id: userId,
         old_password: oldPassword,
         new_password: newPassword,
       }),
@@ -185,7 +223,7 @@ export async function changePassword(
   }
 }
 
-/** POST /admin/users/{id}/password：管理員重置某帳號密碼（暫以 X-User-Role 把關）。 */
+/** POST /admin/users/{id}/password：管理員重置某帳號密碼（Bearer token 把關）。 */
 export async function adminSetPassword(
   userId: number,
   newPassword: string,
@@ -197,7 +235,6 @@ export async function adminSetPassword(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User-Role": "admin",
           ...authHeaders(),
         },
         body: JSON.stringify({ new_password: newPassword }),
@@ -238,7 +275,7 @@ export interface AccountRow {
 export async function fetchAccounts(): Promise<AccountRow[] | null> {
   try {
     const res = await fetch(`${API_BASE}/admin/whitelist`, {
-      headers: { "X-User-Role": "admin", ...authHeaders() },
+      headers: { ...authHeaders() },
     });
     if (!res.ok) return null;
     const data = (await res.json()) as WhitelistRaw[];
@@ -253,6 +290,47 @@ export async function fetchAccounts(): Promise<AccountRow[] | null> {
     }));
   } catch {
     return null;
+  }
+}
+
+/** POST /admin/whitelist：管理員開通／關閉某帳號白名單（best-effort，Bearer token 把關）。
+ *  成功回 true；非 admin（403）／查無／後端不可達皆回 false。前端優先：本地 members 仍為事實來源，
+ *  此呼叫僅在 live+admin 時盡力同步後端，失敗不阻塞本地切換。 */
+export async function setWhitelist(
+  email: string,
+  whitelistActive: boolean,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/whitelist`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify({ email, whitelist_active: whitelistActive }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** DELETE /admin/whitelist/{email}：管理員自名單移除帳號（best-effort，Bearer token 把關）。
+ *  成功（204）回 true；非 admin（403）／網域不符（422）／查無（404）／後端不可達皆回 false。
+ *  前端優先：本地 members 仍為事實來源，此呼叫僅在 live+admin 時把刪除落地後端，
+ *  使重整時 hydration 不再把帳號併回（復活）。失敗不阻塞本地移除。 */
+export async function deleteAccount(email: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${API_BASE}/admin/whitelist/${encodeURIComponent(email)}`,
+      {
+        method: "DELETE",
+        headers: { ...authHeaders() },
+      },
+    );
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 

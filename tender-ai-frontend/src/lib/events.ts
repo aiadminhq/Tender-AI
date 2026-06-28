@@ -1,11 +1,13 @@
 // 使用者行為埋點：fire-and-forget 送到後端 POST /events。
 // 沿用 api.ts 的 API_BASE。不阻塞 UI、catch 吞錯（比照 fetchTenders 容錯）。
 // VITE_USE_API === "false" 全 mock 不打 API；VITE_TRACK === "false" 可單獨關埋點。
+import { getToken } from "@/lib/auth-token";
 
 // api.ts 未 export API_BASE，比照其定義一份。
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "http://localhost:8000/api/v1";
+  // 區網分享：dev 走相對 /api/v1（由 vite proxy 轉本機後端），靜態 build 維持絕對 localhost。
+  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
 
 // 對齊後端 EventRequest.type（app/schemas）。
 // 註：kanban 註記／轉傳三類為前端先行（Layer B 行為訊號），後端 EventRequest.type
@@ -19,6 +21,8 @@ export type EventType =
   | "apply_filter"
   | "search"
   | "sort"
+  // 對話中「確認後才記」的長期條件（後端 EventType 已涵蓋）；按確認才送。
+  | "state_preference"
   | "card_note_added"
   | "card_note_removed"
   | "card_forwarded";
@@ -55,10 +59,16 @@ export function trackEvent(type: EventType, opts: TrackOptions = {}): void {
   }
   if (opts.payload) body.payload = opts.payload;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   try {
     void fetch(`${API_BASE}/events`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(body),
       keepalive: true, // 卸載時（dwell）仍能送達
     }).catch(() => {
@@ -66,5 +76,47 @@ export function trackEvent(type: EventType, opts: TrackOptions = {}): void {
     });
   } catch {
     /* fetch 同步拋錯（極少）也吞掉 */
+  }
+}
+
+/**
+ * awaitable 變體（D）：送出一筆行為事件並回報成功與否，供需要「確實入庫＋成敗
+ * 回饋」的呼叫端（如速覽判斷原因對話框）等待。與 fire-and-forget 的 trackEvent
+ * 不同，本函式 **不吞錯**：HTTP 非 2xx 或網路錯誤回 false，由呼叫端決定 toast。
+ * 埋點關閉（mock／VITE_TRACK=false）時回 true（視為「不需入庫即算成功」）。
+ */
+export async function trackEventAwait(
+  type: EventType,
+  opts: TrackOptions = {},
+): Promise<boolean> {
+  if (!trackingEnabled()) return true;
+
+  const body: {
+    type: EventType;
+    tender_id?: number;
+    payload?: Record<string, unknown>;
+  } = { type };
+
+  if (opts.tenderId != null) {
+    const n = Number(opts.tenderId);
+    if (!Number.isNaN(n)) body.tender_id = n;
+  }
+  if (opts.payload) body.payload = opts.payload;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(`${API_BASE}/events`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }

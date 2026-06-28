@@ -30,10 +30,20 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 import app.models  # noqa: F401  匯入所有 model 進 Base.metadata
+from app.core.auth import get_current_user, issue_token, require_admin_user
 from app.core.config import settings
+from app.core.errors import PermissionDenied
+from fastapi import Depends, FastAPI
+from fastapi.responses import JSONResponse
 from app.db.base import Base
 from app.db.session import get_session, get_session_factory
 from app.main import app
+from app.models.behavior import User
+from types import SimpleNamespace
+
+# 整個測試 session 注入一把固定 AUTH_SECRET（避免缺 secret raise；勿用於正式）
+settings.auth_secret = "test-auth-secret-do-not-use-in-prod"
+settings.auth_token_ttl_hours = 168
 
 # 測試庫 URL：開發庫名加上 _test 後綴（postgresql+psycopg → 同步/非同步同一 driver）
 _BASE_URL = make_url(settings.database_url)
@@ -42,6 +52,9 @@ TEST_URL = _BASE_URL.set(database=_TEST_DB)
 
 # TRUNCATE 用的完整表清單（CASCADE 處理 FK 次序）
 _ALL_TABLES = [
+    "assistant_messages",
+    "assistant_threads",
+    "assistant_brain_config",
     "events",
     "annotations",
     "evaluations",
@@ -49,6 +62,7 @@ _ALL_TABLES = [
     "saved_searches",
     "push_logs",
     "evolution_logs",
+    "tier_threshold_revisions",
     "tender_user_state",
     "daily_tender",
     "daily_runs",
@@ -60,6 +74,7 @@ _ALL_TABLES = [
     "keyword_weights",
     "user_keyword_weights",
     "preference_profiles",
+    "user_manual_keywords",
     "crawl_failures",
     "tender_revisions",
     "tender_snapshots",
@@ -160,6 +175,28 @@ async def db_session():
 def session_factory():
     """自管 session 生命週期的服務/種子腳本（如 seed_members）注入測試庫 factory。"""
     return TestSessionLocal
+
+
+@pytest.fixture
+def ollama_brain(monkeypatch):
+    """把全域「大腦」設定釘成 ollama，供測 Ollama 生成路徑的測試使用。
+
+    產品預設大腦已改為 cli/Claude Code（見 brain_config.get_or_create），會 spawn 本機
+    CLI；但 /assistant/chat 的 LLM 生成/grounding/fallback 測試是針對 ollama 路徑、以
+    monkeypatch ``llm.stream_chat`` 驗證，故在這些模組以本 fixture 固定 provider=ollama，
+    避免改走 cli 分支真的去 spawn 子程序。模組層以 ``pytestmark = usefixtures`` 套用。
+    """
+
+    class _OllamaCfg:
+        provider = "ollama"
+        ollama_model = None
+
+    async def _fake_get_or_create(session):
+        return _OllamaCfg()
+
+    monkeypatch.setattr(
+        "app.services.brain_config.get_or_create", _fake_get_or_create
+    )
 
 
 async def seed_basic(session: AsyncSession) -> dict[str, int]:
@@ -269,3 +306,75 @@ async def seeded():
     """植入合成資料並回傳 label → tender_id（用獨立 session，植入後即關閉）。"""
     async with TestSessionLocal() as session:
         return await seed_basic(session)
+
+
+@pytest.fixture
+def auth_headers():
+    """回 callable：傳 User 或 user_id，得到 Bearer headers。"""
+
+    def _make(user_or_uid) -> dict[str, str]:
+        uid = getattr(user_or_uid, "id", user_or_uid)
+        return {"Authorization": f"Bearer {issue_token(SimpleNamespace(id=int(uid)))}"}
+
+    return _make
+
+
+@pytest_asyncio.fixture
+async def default_user() -> User:
+    async with TestSessionLocal() as s:
+        u = User(
+            name="預設使用者",
+            email="default@hqdesign.tw",
+            role="member",
+            whitelist_active=True,
+            consent_shared=True,
+        )
+        s.add(u)
+        await s.commit()
+        await s.refresh(u)
+        return u
+
+
+@pytest_asyncio.fixture
+async def admin_user() -> User:
+    async with TestSessionLocal() as s:
+        u = User(
+            name="測試管理員",
+            email="admin@hqdesign.tw",
+            role="admin",
+            whitelist_active=True,
+            consent_shared=True,
+        )
+        s.add(u)
+        await s.commit()
+        await s.refresh(u)
+        return u
+
+
+@pytest_asyncio.fixture
+async def auth_probe_client():
+    """最小探針 app，專用於單元測試 get_current_user / require_admin_user dependency。"""
+    probe = FastAPI()
+
+    async def _probe_permission_denied(request, exc):
+        return JSONResponse(status_code=403, content={"detail": exc.detail})
+
+    probe.add_exception_handler(PermissionDenied, _probe_permission_denied)
+
+    async def _override_session():
+        async with TestSessionLocal() as s:
+            yield s
+
+    probe.dependency_overrides[get_session] = _override_session
+
+    @probe.get("/whoami")
+    async def _whoami(user: User = Depends(get_current_user)):
+        return {"id": user.id, "role": user.role}
+
+    @probe.get("/admin-only")
+    async def _admin_only(user: User = Depends(require_admin_user)):
+        return {"ok": True, "id": user.id}
+
+    transport = ASGITransport(app=probe)
+    async with AsyncClient(transport=transport, base_url="http://probe") as c:
+        yield c

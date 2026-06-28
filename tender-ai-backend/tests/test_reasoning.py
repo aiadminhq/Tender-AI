@@ -18,6 +18,7 @@ from sqlalchemy import select  # noqa: F401  保留與其他測試一致的匯�
 from app.core.errors import EntityNotFound
 from app.models.behavior import Evaluation, Event, User
 from app.models.knowledge import KeywordWeight
+from app.models.preference import UserManualKeyword
 from app.models.tender import DailyTender, Source, Tender
 from app.services import reasoning as svc
 from tests.conftest import TestSessionLocal
@@ -88,7 +89,8 @@ async def reasoning_data(db_session):
         Evaluation(user_id=user.id, tender_id=t_goods.id, feasible="不可行", created_at=now),
     ])
 
-    # SL2 學習關鍵字（正：工程；負：勞務）。
+    # SL2 學習關鍵字（正：工程）。另存一筆 legacy 自動負權重（勞務）作為紅線探針：
+    # 系統負權重一律不得進入判準輪廓或 per-tender 計分（負分人工專屬，見 CLAUDE.md P4/P5）。
     db_session.add_all([
         KeywordWeight(term="工程", polarity="positive", weight=0.8),
         KeywordWeight(term="勞務", polarity="negative", weight=0.7),
@@ -134,12 +136,17 @@ async def test_profile_lift_direction(reasoning_data, db_session):
 
 @pytest.mark.asyncio
 async def test_profile_budget_and_keywords(reasoning_data, db_session):
-    """可行案預算區間取自可行標案；top 關鍵字依極性分流。"""
+    """可行案預算區間取自可行標案；正向學習詞進輪廓，系統負權重一律不帶出。
+
+    紅線：``kw_negative`` 只收本人「手動」迴避詞；無人工覆寫時即為空，
+    legacy 自動負權重（勞務）不得外洩到輪廓（見 CLAUDE.md P4/P5）。
+    """
     p = await svc.build_criteria_profile(db_session)
     assert p.budget_min == 150
     assert p.budget_max == 900
     assert "工程" in p.kw_positive
-    assert "勞務" in p.kw_negative
+    assert "勞務" not in p.kw_positive  # 負權重不得混進正向
+    assert p.kw_negative == []  # 無人工迴避詞 → 空（負分人工專屬）
 
 
 @pytest.mark.asyncio
@@ -180,12 +187,48 @@ async def test_explain_engineering_is_strong(reasoning_data, db_session):
 
 @pytest.mark.asyncio
 async def test_explain_labour_is_weak(reasoning_data, db_session):
-    """勞務案 → weak，類別為負向、關鍵字命中負向。"""
+    """勞務案 → weak，類別為負向；無人工迴避詞時不靠關鍵字負分（紅線）。
+
+    負向方向應由「類別 lift」（資料驅動）帶出，而非系統自動負權重關鍵字；
+    未給人工迴避詞時，計分不得出現任何負向 keyword 因子。
+    """
     out = await svc.explain_tender(db_session, reasoning_data["lab"])
     assert out.verdict == "weak"
     assert out.criteria_fit < 42
     factors = {r.factor: r for r in out.reasons}
     assert factors["category"].direction == "negative"
+    # 紅線：legacy 自動負權重（勞務）不得在計分產生負向關鍵字因子
+    assert "keyword" not in factors or factors["keyword"].direction != "negative"
+
+
+@pytest.mark.asyncio
+async def test_manual_negative_applies_in_scoring(reasoning_data, db_session):
+    """負分人工專屬紅線：唯有本人「手動」迴避詞才在 per-tender 計分產生負向關鍵字因子。
+
+    勞務案不命中任何正向學習詞——未給人工迴避詞時無 keyword 因子（即便 DB 內存有
+    legacy 自動負權重「勞務」也不得計分）；本人手動把「勞務」列為迴避詞後，計分才
+    出現 direction=negative 的 keyword 因子，且證據點明是「你設定的迴避關鍵字」。
+    """
+    uid = reasoning_data["user"]
+    lab = reasoning_data["lab"]
+
+    # before：未給人工迴避詞 → 無 keyword 因子（系統負權重不得自動計分）
+    before = await svc.explain_tender(db_session, lab, user_id=uid)
+    assert "keyword" not in {r.factor for r in before.reasons}
+
+    # 本人手動指定迴避詞「勞務」（唯一合規負分來源）
+    db_session.add(
+        UserManualKeyword(user_id=uid, term="勞務", kind="negative", excluded=False)
+    )
+    await db_session.commit()
+
+    # after：計分出現負向 keyword 因子，且證據點明來自本人設定的迴避詞
+    after = await svc.explain_tender(db_session, lab, user_id=uid)
+    factors = {r.factor: r for r in after.reasons}
+    assert "keyword" in factors
+    assert factors["keyword"].direction == "negative"
+    assert factors["keyword"].impact < 0
+    assert "迴避關鍵字" in factors["keyword"].evidence
 
 
 @pytest.mark.asyncio
@@ -230,3 +273,92 @@ async def test_api_tender_reasoning_endpoint(reasoning_data, client):
 async def test_api_tender_reasoning_404(reasoning_data, client):
     resp = await client.get(f"{REASON_BASE}/tenders/999999/reasoning")
     assert resp.status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# §3.2 分類直接映射先驗（無評估歷史時的領域先驗）
+# §3.3 預算絕對軟閾值（無個人承接區間時的概略判斷）
+# 對齊 P4_LEARNING_ANALYSIS.md §3.2/3.3 與 §5.1 測試構想。
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+async def prior_source(db_session):
+    """僅建立資料源；用於建構「無評估歷史」的冷啟動標案。"""
+    source = Source(name="PCC", base_url="https://web.pcc.gov.tw")
+    db_session.add(source)
+    await db_session.flush()
+    return source
+
+
+async def _make_tender(db_session, source, *, case_pk, category, budget, org="某機關"):
+    t = Tender(
+        source_id=source.id, case_pk=case_pk, name=f"{org}{category or ''}案",
+        org=org, category=category, budget_wan=budget, link=f"https://x.test/{case_pk}",
+    )
+    db_session.add(t)
+    await db_session.flush()
+    await db_session.commit()
+    return t.id
+
+
+@pytest.mark.asyncio
+async def test_category_prior_engineering_cold_start(db_session, prior_source):
+    """冷啟動（零評估）：工程類仍以分類先驗給正向、fit 高於基準。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="P1", category="工程", budget=200
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "category" in factors
+    assert factors["category"].direction == "positive"
+    assert out.criteria_fit > 50
+
+
+@pytest.mark.asyncio
+async def test_category_prior_goods_cold_start(db_session, prior_source):
+    """冷啟動：財物類方向尚未認證 → 中性（不扣分），不得以先驗壓低 fit。
+
+    財物/勞務 樣本少（7/5）且 0% 可行率尚未認證，依指示先視為 0.0；
+    待累積足量評估後再由 lift（資料優先分支）自然帶出方向。
+    """
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="P2", category="財物", budget=200
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "category" in factors
+    assert factors["category"].direction == "neutral"
+    assert factors["category"].impact == 0.0
+
+
+@pytest.mark.asyncio
+async def test_budget_soft_threshold_high(db_session, prior_source):
+    """無個人預算歷史：預算 ≥300 萬 → 預算軟正向（§3.3）。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="B1", category=None, budget=400
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "budget" in factors
+    assert factors["budget"].direction == "positive"
+
+
+@pytest.mark.asyncio
+async def test_budget_soft_threshold_low(db_session, prior_source):
+    """無個人預算歷史：預算 <100 萬 → 預算軟負向（§3.3）。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="B2", category=None, budget=50
+    )
+    out = await svc.explain_tender(db_session, tid)
+    factors = {r.factor: r for r in out.reasons}
+    assert "budget" in factors
+    assert factors["budget"].direction == "negative"
+
+
+@pytest.mark.asyncio
+async def test_budget_soft_threshold_neutral_zone(db_session, prior_source):
+    """100–300 萬：中性區，不產生 budget reason；299 萬亦視為中性（§5.1）。"""
+    tid = await _make_tender(
+        db_session, prior_source, case_pk="B3", category=None, budget=299
+    )
+    out = await svc.explain_tender(db_session, tid)
+    assert "budget" not in {r.factor for r in out.reasons}

@@ -65,7 +65,12 @@ export function MaximizableCard({
   }
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card", className)}>
+    <div
+      className={cn(
+        "rounded-lg border border-border bg-card shadow-[var(--elev-rest)]",
+        className,
+      )}
+    >
       <div className="border-b border-border">{header}</div>
       <div className="p-4">{children}</div>
     </div>

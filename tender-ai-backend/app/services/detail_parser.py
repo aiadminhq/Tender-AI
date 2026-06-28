@@ -45,8 +45,43 @@ _DEPOSIT_AMOUNT_RE = re.compile(r"押標金額度[：:]\s*([0-9,]+)")
 # 廠商資格代碼：一碼英文 + 六碼數字，如 E101011
 _QUALIFICATION_CODE_RE = re.compile(r"[A-Z]\d{6}")
 
+# 條目序號前綴：中文數字「一、」、阿拉伯「1.」「1、」、括號「（1）」「(1)」
+_ORDINAL_RE = re.compile(r"^\s*([一二三四五六七八九十]+、|\d+[.、]|[（(]\d+[)）])\s*")
+
+# 條目內文前後可剝除的分隔/標點（不含括號，括號可能是內文一部分）
+_STRUCT_STRIP = " \t、,，。;；:：/"
+
 # 標的分類代碼-名稱：4 碼 - 名稱，如「5179 - 其他裝修工程」
 _CATEGORY_CODE_RE = re.compile(r"(\d{4})\s*-\s*(.+)")
+
+
+@dataclass
+class StructuredItem:
+    """長文欄位結構化後的單一條目（通用「屬性／標籤／內文／參數」結構）。
+
+    刻意設計成**與欄位無關**的通用形狀，供資格摘要、附加說明等任何長文欄位重用，
+    並為後續向量化（每條目一段乾淨文字）預留位置：
+
+    * ``kind``    — 屬性：條目類型（``requirement`` 資格條件文字／``code`` 廠商資格代碼／
+      ``note`` 行內附註）。
+    * ``label``   — 標籤：條目的短標（``code`` 為代碼本身如 ``E101011``；條列為序號如 ``一``；
+      無則 ``None``）。
+    * ``content`` — 內文：條目主要文字（``code`` 為代碼後的中文名稱；條列為條文）。
+    * ``params``  — 參數：保留擴充槽（預設空 dict），未來放結構化補充（如代碼分類）。
+    """
+
+    kind: str
+    content: str
+    label: str | None = None
+    params: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return {
+            "kind": self.kind,
+            "label": self.label,
+            "content": self.content,
+            "params": self.params,
+        }
 
 
 @dataclass
@@ -59,6 +94,8 @@ class ParsedDetail:
     deposit_raw_text: str | None = None
     qualification_codes: list[str] = field(default_factory=list)
     qualification_text: str | None = None
+    # 資格摘要的結構化條目（由 qualification_text 推導，供表格呈現／後續向量化）
+    qualification_items: list[dict] = field(default_factory=list)
     category_main: str | None = None
     category_code: str | None = None
     category_name: str | None = None
@@ -135,6 +172,47 @@ def _parse_deposit(raw: str | None, out: ParsedDetail) -> None:
         out.deposit_amount_twd = int(m.group(1).replace(",", ""))
 
 
+def structure_text(raw: str | None) -> list[StructuredItem]:
+    """把換行分隔的長文（如資格摘要）切成通用結構化條目。
+
+    純函式、不連網、**冪等**：輸入相同字串恆得相同條目，故可從已落庫的
+    ``qualification_text`` 離線回填，毋須重抓 PCC。規則：
+
+    * 逐行處理（資格摘要由 ``<ol><li>`` 攤平為多行；分行即條目邊界）。
+    * 行內含廠商資格代碼（``[A-Z]\\d{6}``）→ 依代碼切出 ``code`` 條目，``label`` 為代碼、
+      ``content`` 為代碼後到下一代碼間的中文名稱；代碼前的引言文字另成 ``note``。
+    * 否則為 ``requirement`` 條目；若有「一、／1.／（1）」序號前綴則剝入 ``label``。
+
+    解析屬**盡力而為**的啟發式（對齊本檔既有 category／deposit 解析風格）：攤平已遺失
+    ``<ol>`` 階層，故同層與子項條目並列；這對表格呈現可接受，且忠於已落庫文字。
+    """
+    if not raw:
+        return []
+    items: list[StructuredItem] = []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        matches = list(_QUALIFICATION_CODE_RE.finditer(line))
+        if matches:
+            head = line[: matches[0].start()].strip(_STRUCT_STRIP)
+            if head:
+                items.append(StructuredItem(kind="note", content=head))
+            for i, m in enumerate(matches):
+                end = matches[i + 1].start() if i + 1 < len(matches) else len(line)
+                name = line[m.end() : end].strip(_STRUCT_STRIP)
+                items.append(StructuredItem(kind="code", label=m.group(0), content=name))
+        else:
+            mo = _ORDINAL_RE.match(line)
+            if mo:
+                seq = mo.group(1).rstrip("、.").strip("（()）")
+                body = line[mo.end() :].strip(_STRUCT_STRIP)
+                items.append(StructuredItem(kind="requirement", label=seq, content=body))
+            else:
+                items.append(StructuredItem(kind="requirement", content=line))
+    return items
+
+
 def _parse_qualification(raw: str | None, out: ParsedDetail) -> None:
     if not raw:
         return
@@ -144,6 +222,7 @@ def _parse_qualification(raw: str | None, out: ParsedDetail) -> None:
         if code not in seen:
             seen.append(code)
     out.qualification_codes = seen
+    out.qualification_items = [it.to_dict() for it in structure_text(raw)]
 
 
 def _parse_category(raw: str | None, out: ParsedDetail) -> None:

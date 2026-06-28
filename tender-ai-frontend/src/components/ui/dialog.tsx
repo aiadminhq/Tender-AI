@@ -10,6 +10,7 @@ export function Dialog({
   children,
   footer,
   width = "sm:max-w-5xl",
+  surfaceClassName = "bg-card",
 }: {
   open: boolean;
   onClose: () => void;
@@ -17,6 +18,8 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
   width?: string;
+  /** 彈窗面板底色（預設白卡 bg-card；房規：不用灰底 bg-popover）。 */
+  surfaceClassName?: string;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -43,12 +46,13 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative flex max-h-[90vh] w-full max-w-[95vw] flex-col rounded-xl border border-border bg-popover shadow-2xl animate-in fade-in zoom-in-95 duration-200",
+          "relative flex max-h-[90vh] w-full max-w-[95vw] flex-col rounded-xl border border-border shadow-[var(--elev-overlay)] animate-in fade-in zoom-in-95 duration-200 ease-out",
+          surfaceClassName,
           width,
         )}
       >
         <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div className="min-w-0 text-[14px] font-semibold tracking-tight text-foreground">
+          <div className="min-w-0 text-[15px] font-semibold tracking-tight text-foreground">
             {title}
           </div>
           <button

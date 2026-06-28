@@ -87,6 +87,9 @@ class TenderRevision(Base):
     deposit_raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     qualification_codes: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     qualification_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 資格摘要結構化條目（由 qualification_text 推導的衍生投影；通用「屬性/標籤/內文/參數」結構，
+    # 供前端表格呈現與後續向量化）。離線冪等回填可重算，不破壞 revision 不可變語義。
+    qualification_items: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     category_main: Mapped[str | None] = mapped_column(String(16), nullable=True)
     category_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
     category_name: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -43,7 +43,7 @@ export function AccountSecurity() {
       return;
     }
     setBusy(true);
-    const res = await changePassword(user.id, oldPw, newPw);
+    const res = await changePassword(oldPw, newPw);
     setBusy(false);
     if (res.ok) {
       refreshUser(res.user);

@@ -1,10 +1,19 @@
 # Tender AI — UI/UX v2 開發計畫(N1–N4)
 
+> 📍 現況（2026-06-25）：🟢 大致完成。Knowvio 設計語言（淺色預設＋橙色主色、分層 elevation、ease-out 動效）全域套用；標案列表類別 icon/顏色、詳情常態規格表皆已上。最新進度以 docs/governance/05-進度與白話術語.md 進度表為準。
+
 > **給接手 agent**:本文件假設你對本 codebase 零脈絡。每個工作包(N1–N4)都列出「現況 → 目標 → 要碰的檔案 → 介面 → 步驟 → 驗收 → Layer B 注意」。**先設計再實作,每個工作包動工前先取得人類同意**(本專案規矩)。
 >
 > **最後更新**:2026-06-19
 > **分支**:在 `codex/card-swipe` 上開發(或人類指定的 `claude/<主題>` 分支);未經同意不推到別的分支、不開 PR。
 > **不在範圍**:速配配對(swipe)/收藏頁——人類指示往後推,本輪不碰;後端 scraper / 向量訓練不碰。
+>
+> **⚠️ 進度更新(2026-06-23)**:N1✅、N2✅ 已完成(見文末 §D-2)。**下文 N4 對「空殼」的敘述已過時**,實況如下,閱讀時請以此為準(N4/N3 的版型與 primitive 規劃仍可參考):
+>
+> - `assistant-page.tsx`(`/assistant`)**已非空殼**——已改建為小助手「整頁指揮中心」(左對話 `AssistantUIThread`＋右情境 `AssistantContextPanel`),採官方 **`@assistant-ui/react`**,與右下角 FAB 非阻擋浮窗共用 runtime;**非**本文 N4 原案的「聊天頁＋資料範圍設定」。
+> - `push-page.tsx`(`/push`)**已接線**(`fetchPushDigest`/`runPush`/`markPushRead`),且推播/小助手/帳號安全等設定已落在 `settings-page`。
+> - `insights-page.tsx`(`/insights`)**仍為部分 mock**,N3 洞察視覺化未完整落地。
+> - Switch/Select/Tabs 等 primitive 視實作進度為準(部分已補)。
 
 ---
 

@@ -15,7 +15,7 @@ from app.models.knowledge import (
     KeywordWeightRevision,
     UserKeywordWeight,
 )
-from app.models.preference import PreferenceProfile
+from app.models.preference import PreferenceProfile, UserManualKeyword
 from app.models.tender import Source, Tender
 from tests.conftest import TestSessionLocal
 
@@ -137,29 +137,38 @@ async def learning_data(db_session):
 
 
 @pytest.mark.asyncio
-async def test_learn_keywords_extracts_polarity(learning_data, db_session):
-    """測試：positive 詞應出現在可行標案，negative 詞在不可行標案。"""
+async def test_learn_keywords_positive_only_negatives_are_candidates(
+    learning_data, db_session
+):
+    """紅線：可行詞自動學成 positive；偏負向詞只列「候選建議」，絕不自動寫負權重。
+
+    「工程」偏可行 → positive 權重；「勞務」偏不可行 → 不得寫入任何 KeywordWeight，
+    只能出現在 stats['negative_candidates']（附理由，供人工審核）。
+    """
     stats = await learn_keywords(session_factory=TestSessionLocal, min_support=1)
 
     # 驗證樣本數
     assert stats["feasible_samples"] == 2
     assert stats["infeasible_samples"] == 2
 
-    # 驗證關鍵字產出（期望「工程」為 positive，「勞務」為 negative）
-    kw_results = (
-        await db_session.execute(select(KeywordWeight))
-    ).scalars()
-    kws = list(kw_results)
-
-    # 應有多個關鍵字被提取
+    kws = list((await db_session.execute(select(KeywordWeight))).scalars())
     assert len(kws) > 0
 
-    # 檢查「工程」和「勞務」的極性
+    # 紅線①：keyword_weights 內絕不存在任何「自動產生」的負向列。
+    assert all(kw.polarity != "negative" for kw in kws)
+
     by_term = {kw.term: kw for kw in kws}
     if "工程" in by_term:
         assert by_term["工程"].polarity == "positive"
-    if "勞務" in by_term:
-        assert by_term["勞務"].polarity == "negative"
+    # 紅線②：「勞務」偏不可行，不得被寫成（任何極性的）權重。
+    assert "勞務" not in by_term
+
+    # 紅線③：「勞務」應改列為「候選建議」，且附審核理由。
+    cand_terms = {c["term"] for c in stats["negative_candidates"]}
+    assert "勞務" in cand_terms
+    labour = next(c for c in stats["negative_candidates"] if c["term"] == "勞務")
+    assert labour["infeasible_count"] > labour["feasible_count"]
+    assert labour["reason"]  # 附人工審核理由
 
 
 @pytest.mark.asyncio
@@ -318,7 +327,7 @@ async def test_learn_keywords_writes_personal_line(learning_data, db_session):
     assert stats["user_keyword_weights_written"] > 0
     assert stats["preference_profiles_written"] == 1
 
-    # 個人權重：本人專屬，含 工程(positive) 與 勞務(negative)
+    # 個人權重：本人專屬，只自動學「正向」；負分人工專屬，學習不得自動產生負向。
     ukws = {
         u.term: u
         for u in (
@@ -331,9 +340,12 @@ async def test_learn_keywords_writes_personal_line(learning_data, db_session):
     }
     assert ukws  # 非空
     assert ukws["工程"].polarity == "positive"
-    assert ukws["勞務"].polarity == "negative"
+    # 紅線：個人線也絕不自動產生負向；「勞務」偏不可行也不得被寫成權重。
+    assert all(u.polarity != "negative" for u in ukws.values())
+    assert "勞務" not in ukws
 
-    # 高層輪廓：偏好類別含 工程；預算區間取本人可行案（500、800）
+    # 高層輪廓：偏好類別含 工程；預算區間取本人可行案（500、800）。
+    # 避免詞只取本人「手動」迴避詞；本案未手動設定，故 avoid_keywords 應為空。
     profile = (
         await db_session.execute(
             select(PreferenceProfile).where(
@@ -343,9 +355,47 @@ async def test_learn_keywords_writes_personal_line(learning_data, db_session):
     ).scalar_one()
     assert "工程" in profile.preferred_categories
     assert "工程" in profile.top_keywords
-    assert "勞務" in profile.avoid_keywords
+    assert profile.avoid_keywords == []
     assert profile.budget_min == 500
     assert profile.budget_max == 800
+
+
+@pytest.mark.asyncio
+async def test_avoid_keywords_come_from_manual_only(learning_data, db_session):
+    """紅線：preference_profiles.avoid_keywords 只能來自本人「手動」迴避詞。
+
+    手動把「勞務」標為迴避（UserManualKeyword kind=negative）後，它應出現在
+    avoid_keywords；但 user_keyword_weights 仍不得出現任何自動負向列。
+    """
+    user = learning_data["user"]
+    db_session.add(
+        UserManualKeyword(
+            user_id=user.id, term="勞務", kind="negative", excluded=False
+        )
+    )
+    await db_session.commit()
+
+    await learn_keywords(session_factory=TestSessionLocal, min_support=1)
+
+    profile = (
+        await db_session.execute(
+            select(PreferenceProfile).where(PreferenceProfile.user_id == user.id)
+        )
+    ).scalar_one()
+    # 手動迴避詞進 avoid_keywords。
+    assert "勞務" in profile.avoid_keywords
+
+    # 但個人權重表仍不得有任何自動負向列（手動迴避不寫進 user_keyword_weights）。
+    ukws = list(
+        (
+            await db_session.execute(
+                select(UserKeywordWeight).where(
+                    UserKeywordWeight.user_id == user.id
+                )
+            )
+        ).scalars()
+    )
+    assert all(u.polarity != "negative" for u in ukws)
 
 
 @pytest.mark.asyncio

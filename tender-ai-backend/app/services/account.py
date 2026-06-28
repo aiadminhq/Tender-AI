@@ -11,14 +11,14 @@ Phase 2 工作。此處只強制可驗證的業務規則（白名單前置、信
 """
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import delete as sa_delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import DomainValidationError, EntityNotFound, PermissionDenied
 from app.core.security import hash_password, verify_password
 from app.models.behavior import User
 from app.models.preference import PreferenceProfile
-from app.services.behavior import get_or_create_default_user
+from app.services.behavior import DEFAULT_USER_NAME, get_or_create_default_user
 
 # 合作範圍網域：白名單帳號原則上須為此網域（見 CLAUDE.md Layer B 治理）
 ALLOWED_EMAIL_DOMAIN = "@hqdesign.tw"
@@ -200,3 +200,25 @@ async def set_whitelist(
     await session.flush()
     await session.refresh(user)
     return user
+
+
+async def delete_account(session: AsyncSession, email: str) -> None:
+    """管理員自名單移除帳號（與 set_whitelist 的網域守衛對稱）。
+
+    信箱須為 @hqdesign.tw，否則 422；查無帳號 → 404；系統佔位帳號（name=default）
+    為保護對象、不可刪 → 403。其餘以 DB 端 ON DELETE CASCADE 連帶清除該使用者
+    的 Layer B 衍生列（events／states／evals…），故用 Core delete 直下、不走 ORM
+    關聯載入。移除須真正落地，否則前端 hydration 會於重整時把帳號併回（復活）。
+    """
+    email_norm = (email or "").strip().lower()
+    if not email_norm.endswith(ALLOWED_EMAIL_DOMAIN):
+        raise DomainValidationError(f"email must be under {ALLOWED_EMAIL_DOMAIN}")
+    user = (
+        await session.execute(select(User).where(User.email == email_norm))
+    ).scalar_one_or_none()
+    if user is None:
+        raise EntityNotFound(f"account {email_norm} not found")
+    if user.name == DEFAULT_USER_NAME:
+        raise PermissionDenied("system default account cannot be removed")
+    await session.execute(sa_delete(User).where(User.id == user.id))
+    await session.flush()

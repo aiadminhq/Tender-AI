@@ -1,7 +1,7 @@
 // 小助手首次聚光導覽（Phase 1，純前端、免 migration）。
 // 半透明遮罩 + 聚光圈點亮右下啟動鈕，coach-mark 分步解說；
 // 完成或跳過後寫入 localStorage 旗標,之後不再自動跳出。
-// 旗標讀寫沿用 assistant-window.tsx 的 try/catch 寫法,隱私模式/quota 滿時靜默降級。
+// 旗標讀寫用 try/catch 包覆,隱私模式/quota 滿時靜默降級。
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles } from "lucide-react";
@@ -86,7 +86,7 @@ export function AssistantOnboarding({
       {/* 聚光圈：自身透明,靠 box-shadow 罩住四周形成「光圈中的啟動鈕」。 */}
       <div
         aria-hidden
-        className="pointer-events-none fixed bottom-[4.75rem] right-3 h-14 w-14 rounded-2xl outline outline-2 outline-offset-2 outline-white/85 shadow-[0_0_0_9999px_rgba(15,23,42,0.55)] md:bottom-5 md:right-5"
+        className="pointer-events-none fixed bottom-[4.75rem] right-3 h-16 w-16 rounded-2xl outline outline-2 outline-offset-2 outline-white/85 shadow-[0_0_0_9999px_rgba(15,23,42,0.55)] md:bottom-5 md:right-5"
       />
 
       {/* 對準啟動鈕的透明熱區：點它＝完成導覽並開啟小助手。 */}
@@ -95,7 +95,7 @@ export function AssistantOnboarding({
         aria-label={t("assistantOpen")}
         title={t("assistantOpen")}
         onClick={() => finish(true)}
-        className="fixed bottom-20 right-4 h-12 w-12 rounded-2xl md:bottom-6 md:right-6"
+        className="fixed bottom-20 right-4 h-14 w-14 rounded-2xl md:bottom-6 md:right-6"
       />
 
       {/* coach-mark 卡片：分步解說 + 上一步／下一步／開始使用／跳過。 */}

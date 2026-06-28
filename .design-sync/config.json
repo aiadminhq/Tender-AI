@@ -1,0 +1,50 @@
+{
+  "projectId": "bcb28899-30d2-47b1-ae7a-d7aa4af2cfeb",
+  "shape": "package",
+  "pkg": "tender-ai-frontend",
+  "globalName": "TenderUI",
+  "entry": "./tender-ai-frontend/.design-sync-entry.tsx",
+  "tsconfig": "tsconfig.app.json",
+  "srcDir": "src/components/ui",
+  "cssEntry": ".design-sync-tw.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "runtimeFontPrefixes": [
+    "Inter",
+    "Noto Sans TC",
+    "JetBrains Mono",
+    "SF Pro Text",
+    "SF Mono"
+  ],
+  "provider": {
+    "component": "ThemeProvider",
+    "inner": { "component": "AppProvider" }
+  },
+  "overrides": {
+    "Card": { "cardMode": "column" },
+    "Dialog": { "cardMode": "single", "viewport": "560x760" },
+    "Sheet": { "cardMode": "single", "viewport": "560x760" }
+  },
+  "componentSrcMap": {
+    "Avatar": "src/components/ui/avatar.tsx",
+    "Badge": "src/components/ui/badge.tsx",
+    "Button": "src/components/ui/button.tsx",
+    "Card": "src/components/ui/card.tsx",
+    "Dialog": "src/components/ui/dialog.tsx",
+    "FeasibilityMeter": "src/components/ui/feasibility-meter.tsx",
+    "Input": "src/components/ui/input.tsx",
+    "MaximizableCard": "src/components/ui/maximizable-card.tsx",
+    "Separator": "src/components/ui/separator.tsx",
+    "Sheet": "src/components/ui/sheet.tsx",
+    "TierBadge": "src/components/ui/tier-badge.tsx",
+    "Alert": "src/components/ui/alert.tsx",
+    "CategoryBadge": "src/components/ui/category-badge.tsx",
+    "Select": "src/components/ui/select.tsx",
+    "Switch": "src/components/ui/switch.tsx",
+    "Tabs": "src/components/ui/tabs.tsx",
+    "TrendBadge": "src/components/ui/trend-badge.tsx",
+    "BarSpark": "src/components/ui/sparkline.tsx",
+    "LineSpark": "src/components/ui/sparkline.tsx",
+    "ChartContainer": "src/components/ui/chart.tsx",
+    "ButtonVariants": null
+  }
+}

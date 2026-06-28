@@ -98,6 +98,20 @@ class AttachmentItem(BaseModel):
     error: str | None = None
 
 
+class StructuredItem(BaseModel):
+    """長文欄位結構化後的單一條目（通用「屬性/標籤/內文/參數」結構）。
+
+    對應 detail_parser.StructuredItem：kind 為屬性（如 requirement/code/note），
+    label 為標籤（資格碼或序號，可空），content 為內文，params 為保留擴充的參數。
+    皆 Layer A 公開、可由原始文字重算。
+    """
+
+    kind: str
+    label: str | None = None
+    content: str
+    params: dict = Field(default_factory=dict)
+
+
 class RevisionDetail(BaseModel):
     """單案最新詳情版本（tender_revisions 現值投影，皆 Layer A 公開欄）。
 
@@ -113,6 +127,7 @@ class RevisionDetail(BaseModel):
     deposit_raw_text: str | None = None
     qualification_codes: list[str] = Field(default_factory=list)
     qualification_text: str | None = None
+    qualification_items: list[StructuredItem] = Field(default_factory=list)
     category_main: str | None = None
     category_name: str | None = None
     category_raw: str | None = None

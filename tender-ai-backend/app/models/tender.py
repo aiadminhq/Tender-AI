@@ -74,6 +74,10 @@ class Tender(Base):
     )
     # 日報註記與擴充元數據（daily_report_potency、is_urgent 等）
     annotations: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # 物化的「團隊線可行性分數」（0–100；reasoning.compute_team_fit 衍生、可重算）。
+    # 由 app/jobs/score_team_feasibility.py 離線批次寫入；查詢端據此分帶為高/中/低潛力。
+    # NULL = 尚未物化（如新進標案或從未跑過物化 job）→ 查詢端回退報表分級。
+    feasibility_team: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     source: Mapped["Source"] = relationship(back_populates="tenders")
 

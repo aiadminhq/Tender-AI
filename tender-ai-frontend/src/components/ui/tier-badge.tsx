@@ -41,7 +41,7 @@ export function TierBadge({
         className,
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full", m.dot)} />
+      <span className={cn("size-1.5 rounded-full", m.dot)} />
       {STRINGS[lang][m.key]}
     </span>
   );

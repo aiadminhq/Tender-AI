@@ -25,6 +25,32 @@ def tender_text(name: str, org: str | None = None, category: str | None = None) 
     return " ".join(p for p in (name, org, category) if p)
 
 
+def decision_text(
+    name: str,
+    org: str | None = None,
+    category: str | None = None,
+    *,
+    criteria: dict | None = None,
+    rationale: str | None = None,
+) -> str:
+    """組裝「決策向量」被嵌入的原文（P5）：標案公開特徵 + 判準 + 評估理由。
+
+    刻意「不」納入結論詞（可行/不可行），讓決策向量與「候選標案查詢向量」
+    （只有標案特徵）落在相容的語意空間；結論以 metadata 欄位保留供聚合。
+    判準鍵以排序確保可重現；空值略過。不含人名／email（隱私鐵則）。
+    """
+    parts = [tender_text(name, org, category)]
+    if criteria:
+        kv = "；".join(
+            f"{k}={v}" for k, v in sorted(criteria.items()) if v not in (None, "")
+        )
+        if kv:
+            parts.append(f"判準 {kv}")
+    if rationale:
+        parts.append(f"理由 {rationale}")
+    return "。".join(p for p in parts if p)
+
+
 class EmbeddingError(RuntimeError):
     """Embedding 後端呼叫失敗，或回傳格式／維度／數量異常。"""
 

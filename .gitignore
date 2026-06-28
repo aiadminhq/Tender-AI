@@ -19,6 +19,9 @@ plans/**/preview.html
 # ── 其他專案產出（報表站台屬 tender-bot 產物，非本 repo 源碼）──
 tender-reports/
 
+# ── Node（任何層級的 node_modules 一律不入版控；含 repo 根與技能安裝產生的）──
+node_modules/
+
 # ── 前端（保險：巢狀 .gitignore 已涵蓋，這裡再兜一層）──
 tender-ai-frontend/node_modules/
 tender-ai-frontend/dist/
@@ -45,8 +48,27 @@ tender-ai-frontend/dist/
 **/data/downloads/
 **/backfill_report.json
 
+# ── 每日管線運行產物（外部 repo git 快取／運行日誌／DB 備份）──────────────
+# 別的 repo 的 GitHub 存檔預設放專案外；即使覆寫路徑回專案內也兜底。
+# 只有處理完成的 Layer A/B/C 結果才可入庫，這些來源/中間/運維資料一律不入版控。
+**/data/tender-reports-cache/
+**/data/pipeline-logs/
+**/data/backups/
+
 # ── 設計參考圖庫（本機靈感素材，非源碼；視覺方向已被 plans/uiux-v2-draft.html 吸收）──
 Dashboar UI REF/
 
+# ── 設計標註 round-trip 收件匣（開發期工具產物，由前端標註層寫入供 CLI 讀取，不入版控）──
+design-feedback/
+
 # ── 本機工具設定（Preview MCP launch 設定，機器相關）──
 tender-ai-frontend/.claude/
+
+# ── design-sync 建置產物（可重建，不入版控；durable 的 config/NOTES/barrel/previews 仍入庫）──
+ds-bundle/
+.ds-sync/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules/
+# Tailwind 4 編譯出的完整 CSS（cssEntry heal 用，可重新產生）
+tender-ai-frontend/.design-sync-tw.css

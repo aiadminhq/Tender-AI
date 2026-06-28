@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,6 +39,45 @@ class PreferenceProfile(Base):
     # 預算區間（由本人可行樣本的 budget 推導；無樣本則 None）
     budget_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     budget_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+class UserManualKeyword(Base):
+    """Layer B 個人化：使用者在推理卡上「手動」覆寫的關鍵字（add／remove）。
+
+    與系統「學習」出的關鍵字（``KeywordWeight`` 團隊線、``UserKeywordWeight``
+    個人線）正交：這裡只存**人親手下的決定**，讀取時由 ``manual_keywords`` 合併
+    回判準輪廓（``build_criteria_profile``）。複合主鍵 ``(user_id, term, kind)``。
+
+    - ``kind``：``positive``（偏好）｜``negative``（迴避）｜``engaged``（常點開）。
+    - ``excluded``：``False`` ＝手動新增此詞；``True`` ＝把某個學習詞從清單隱藏。
+      同一 (user, term, kind) 只一列，靠切換 ``excluded`` 表達 add／remove。
+
+    **治理**：手動「迴避」(``kind=negative``, ``excluded=False``) 即「負分一律由
+    人手動給」的唯一合規路徑——系統不得自動產生負分（見記憶
+    ``negative-keywords-human-only``）。個人化線只用本人資料、只服務本人，
+    **不需共享同意**，不進團隊庫、不對他人揭露（CLAUDE.md Layer B 治理）。
+    """
+    __tablename__ = "user_manual_keywords"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    term: Mapped[str] = mapped_column(String(128), primary_key=True)
+    # 'positive'（偏好） | 'negative'（迴避） | 'engaged'（常點開）
+    kind: Mapped[str] = mapped_column(String(16), primary_key=True)
+    # False=手動新增此詞；True=隱藏某個學習詞
+    excluded: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

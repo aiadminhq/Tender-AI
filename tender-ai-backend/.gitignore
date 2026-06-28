@@ -18,6 +18,14 @@ __pycache__/
 data/private/
 data/downloads/
 backfill_report.json
+backfill_category_report.json
+self_evolve_report.json
+
+# 每日管線運行產物：外部公開 repo 的 git clone 快取、運行日誌、DB 備份。
+# 屬「來源／中間／運維」資料，非處理完成的 Layer A/B/C 結果，一律不入版控。
+data/tender-reports-cache/
+data/pipeline-logs/
+data/backups/
 
 # OS
 .DS_Store

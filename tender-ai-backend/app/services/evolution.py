@@ -210,6 +210,7 @@ def _log_to_dict(log: EvolutionLog) -> dict:
         "revision_rows": log.revision_rows,
         "top_positive": log.top_positive or [],
         "top_negative": log.top_negative or [],
+        "negative_candidates": log.negative_candidates or [],
         "signals": log.signals or {},
         "created_at": log.created_at.isoformat() if log.created_at else None,
     }
@@ -255,6 +256,8 @@ async def run_evolution(
             revision_rows=stats["revision_rows"],
             top_positive=top_positive,
             top_negative=top_negative,
+            # 疑似迴避詞候選（附理由的建議，供人工審核；非自動負權重）
+            negative_candidates=stats.get("negative_candidates") or [],
             signals=signals,
         )
         session.add(log)

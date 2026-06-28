@@ -24,6 +24,9 @@ from app.services import knowledge as knowledge_svc
 
 CHAT = "/api/v1/assistant/chat"
 
+# 小助手接入測試走 /chat 的 Ollama 生成路徑；產品預設大腦已改 cli/Claude Code，固定回 ollama。
+pytestmark = pytest.mark.usefixtures("ollama_brain")
+
 
 def _vec(dims: dict[int, float]) -> list[float]:
     """組 1024 維向量：只有 dims 指定的索引非零，其餘為 0。"""

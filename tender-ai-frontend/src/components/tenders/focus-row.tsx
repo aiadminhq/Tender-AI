@@ -3,14 +3,17 @@ import { ChevronDown, ChevronRight, ArrowRight, Eye } from "lucide-react";
 import type { Tender } from "@/types/domain";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
-import { formatBudget, formatDateLong } from "@/lib/format";
+import { formatBudget, formatDateLong, isValidDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   Fact,
   LabelTags,
   DaysLeftBanner,
+  CAT_KEY,
 } from "@/components/tenders/detail-bits";
 import { FocusDeadline } from "@/components/tenders/focus-deadline";
+import { JudgmentActions } from "@/components/tenders/tender-row";
+import { CategoryIcon } from "@/components/ui/category-badge";
 import { daysLeft } from "@/lib/format";
 
 // 今日焦點單列：精簡 header（密度收斂）＋ 同一張卡內可展開的初步比對面板。
@@ -32,31 +35,47 @@ export function FocusRow({
   const { feasOf } = useAppData();
   const navigate = useNavigate();
   const score = feasOf(tender).score;
-  const dleft = tender.deadline ? daysLeft(tender.deadline) : null;
+  const dleft = isValidDate(tender.deadline) ? daysLeft(tender.deadline) : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
-      {/* 精簡 header：整列可點切換展開（R1/R2） */}
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        aria-label={expanded ? t("collapseRow") : t("expandRow")}
-        className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors hover:bg-accent/50"
-      >
-        <span className="grid size-5 shrink-0 place-items-center text-ink-dim">
-          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
-          {tender.title}
-        </span>
-        <span className="tnum shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-medium text-signal">
-          {score}
-        </span>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--card-shadow)]">
+      {/* 精簡 header：左側可點切換展開（R1/R2）；右側三分判斷鈕（收合即顯，需求 b）。 */}
+      <div className="flex items-center gap-2 px-4 py-2.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-label={expanded ? t("collapseRow") : t("expandRow")}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-0.5 text-left transition-colors hover:bg-accent/50"
+        >
+          <span className="grid size-5 shrink-0 place-items-center text-ink-dim">
+            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
+          <CategoryIcon category={tender.category} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] text-ink">
+              {tender.title}
+            </span>
+            {/* 收合即顯更多資訊（需求 a）：機關 · 預算 · 類別 */}
+            <span className="block truncate text-[11px] text-ink-dim">
+              {tender.org}
+              {" · "}
+              <span className="tnum">{formatBudget(tender.budget, lang)}</span>
+              {" · "}
+              {t(CAT_KEY[tender.category])}
+            </span>
+          </span>
+          <span className="tnum shrink-0 rounded-full bg-signal/10 px-2 py-0.5 text-[11px] font-medium text-signal">
+            {score}
+          </span>
+          <span className="shrink-0">
+            <FocusDeadline iso={tender.deadline} />
+          </span>
+        </button>
         <span className="shrink-0">
-          <FocusDeadline iso={tender.deadline} />
+          <JudgmentActions tender={tender} />
         </span>
-      </button>
+      </div>
 
       {/* 同卡展開面板：初步比對 + 兩顆入口（R3/R4） */}
       {expanded && (
@@ -95,6 +114,21 @@ export function FocusRow({
             >
               {t("viewFullDetail")} <ArrowRight size={14} />
             </Button>
+          </div>
+          {/* 就地評分區：在展開面板直接做三分判斷＋寫原因，重用 JudgmentActions
+              （→ JudgmentReasonDialog → tokenize → Layer C 即時學習，具名／可回退）。 */}
+          <div className="flex items-center justify-between gap-3 border-t border-hairline pt-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-ink">
+                {t("focusJudgePrompt")}
+              </p>
+              <p className="truncate text-[11px] text-ink-dim">
+                {t("focusJudgeHint")}
+              </p>
+            </div>
+            <span className="shrink-0">
+              <JudgmentActions tender={tender} />
+            </span>
           </div>
         </div>
       )}

@@ -22,7 +22,7 @@ import argparse
 import asyncio
 import hashlib
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 
 from sqlalchemy import and_, func, or_, select, update
@@ -77,6 +77,7 @@ async def _select_targets(
     ttl_hours: int,
     now: datetime,
     limit: int | None,
+    since: date | None = None,
 ) -> list[tuple[int, str, str]]:
     """挑出待 enrich 標的,回傳 ``[(tender_id, case_pk, source_name), ...]``(id 序)。
 
@@ -127,6 +128,10 @@ async def _select_targets(
         is_retriable = Tender.id.in_(due_failures)
 
         stmt = stmt.where(or_(is_new, is_stale, is_retriable))
+
+    # 可選日期窗:只收 first_seen >= since 的標的(catch-up / 只補近期報表用)。
+    if since is not None:
+        stmt = stmt.where(Tender.first_seen >= since)
 
     if limit is not None:
         stmt = stmt.limit(limit)
@@ -318,6 +323,7 @@ async def _process_one(
         deposit_raw_text=parsed.deposit_raw_text,
         qualification_codes=parsed.qualification_codes,
         qualification_text=parsed.qualification_text,
+        qualification_items=parsed.qualification_items or None,
         category_main=parsed.category_main,
         category_code=parsed.category_code,
         category_name=parsed.category_name,
@@ -353,6 +359,7 @@ async def run_enrich(
     ttl_hours: int = 24,
     trigger: str = "manual",
     rate_limit_s: float = 1.0,
+    since: date | None = None,
     now: datetime | None = None,
     session_factory=None,
     archive_base_dir: Path | None = None,
@@ -402,6 +409,7 @@ async def run_enrich(
             ttl_hours=ttl_hours,
             now=now,
             limit=limit,
+            since=since,
         )
         stats["targeted"] = len(targets)
 
@@ -492,8 +500,13 @@ def main() -> None:
     ap.add_argument(
         "--rate-limit", type=float, default=1.0, help="每筆抓取間隔秒數(預設 1.0)",
     )
+    ap.add_argument(
+        "--since", default=None,
+        help="只 enrich first_seen >= 此日期(YYYY-MM-DD;catch-up / 只補近期報表用)",
+    )
     args = ap.parse_args()
 
+    since = date.fromisoformat(args.since) if args.since else None
     stats = asyncio.run(
         run_enrich(
             only_missing=not args.all,
@@ -502,6 +515,7 @@ def main() -> None:
             ttl_hours=args.ttl_hours,
             trigger=args.trigger,
             rate_limit_s=args.rate_limit,
+            since=since,
         )
     )
     print(

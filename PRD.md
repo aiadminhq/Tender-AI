@@ -5,7 +5,7 @@ category: development
 tags: [tender-ai, prd, nextjs, fastapi, postgres, pgvector, rag, learning-loop]
 status: in-progress
 created: 2026-06-17
-updated: 2026-06-18
+updated: 2026-06-23
 author: claude-cowork
 ---
 
@@ -116,6 +116,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 全欄位 + PCC 原始連結 + RAG「相似歷史標案/相似可行案」+「招標文件摘要」+ 操作：⭐ 儲存、轉發、進度（觀望/備標中/已投/得標/放棄）、1–5 星、可行性評估（rubric）、自由註記。
 
 - 驗收：每個操作即時寫入行為層；可行性助手給出帶理由的建議。
+- **現況（2026-06-25）**：詳情已改為**常態性規格表**（履約／資格／押標金／附件等分區常駐），欄位顯隱由後台**團隊欄位顯示設定** `DetailFieldVisibilityConfig`（`GET/PUT /settings/detail-fields`）統一控制；三分判斷（✓/✗/⭐）即時回寫並學習（見 §13.7）。
 
 ### 6.4 RAG 語意搜尋頁
 
@@ -138,7 +139,7 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 在既有網站嵌入可串流回覆的「標案助手」，第一階段採 **assistant-ui** 作為 React 對話介面，後端沿用 FastAPI Agent/RAG API。assistant-ui 官方支援 Next.js，亦可透過 custom runtime／AI SDK runtime 整合任何 React-based framework；因此目前 Vite + React 前端可直接導入，**不以遷移 Next.js 為前置條件**。若日後改採 Next.js，可使用 App Router + AI SDK v6 route handler，保留相同對話元件與 Agent tool contract。
 
-- **入口**：全站浮動按鈕、標案詳情頁側欄；帶入目前頁面、標案 ID、篩選條件與登入使用者作為受控 context。
+- **入口**：全站右下角 FAB 浮鈕（非阻擋式 popover，無遮罩、主畫面照常可操作）＋浮窗標題列「指揮中心」連結至整頁工作台 `/assistant`（左對話、右情境，依 `?tender=<id>` 帶入當前標案）；帶入目前頁面、標案 ID、篩選條件與登入使用者作為受控 context。
 - **第一階段能力**：自然語言搜尋、單案問答、相似案、案件比較、推薦理由、引用原始公告與文件頁碼。
 - **Agent tools（先唯讀）**：`search_tenders`、`get_tender_detail`、`get_current_revision`、`search_documents`、`compare_tenders`、`explain_recommendation`、`get_user_saved_tenders`。
 - **回答規則**：日期／預算／分類等精確條件先走 SQL；內容問題走 Hybrid RAG；無 citation 不得斷言資格、金額或期限；更正公告須標示 revision。
@@ -216,6 +217,12 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 > P2 應最早上線——讓 David 操作從第一天就被記錄，後續學習才有燃料。
 
+### 10.1 巨觀三階段路線圖（選對案 → 備好標 → 送得出）
+
+上表的 P1–P5 整體構成巨觀路線圖的 **Phase 1「選對案」**（現況幾近完成）。其後規劃 **Phase 2「備好標」**（公司知識庫 Layer D ＋ 需求抽取器 ＋ 資格清單/欄位回填/規格比對/文案生成四元件，目標備標 60–80%）與 **Phase 3「送得出」**（半自動人機協作上傳，憑證簽章與送出必為人工）。三階段以「承接」動作串成流水線，並新增公司機密的 **Layer D**（永不外流／不進公開 repo）。
+
+完整設計見 `docs/superpowers/specs/2026-06-27-three-phase-product-roadmap-design.md`。
+
 ---
 
 ## 11. 風險與待決
@@ -232,48 +239,86 @@ Persona 紅旗（取自 UI/UX 診斷）：現況報表頁零篩選、a11y 不足
 
 - **詞彙**：潛力分級（🟢≤14/🟡15–30/🔴≥31）、⭐ 期間最優先、承接（David 決定投入備標）、可行性分數（學習迴圈輸出）。
 - **相關檔案**：`design-handoff-claude-design.md`、`規劃-後台資料庫與RAG學習迴圈.md`、`tender-reports/`（歷史資料 32 份）、`tender-bot/CLAUDE.md`（技術約束）、`plans/tender-ai-integrated-roadmap/`（整合視覺計畫：雙語詳情 wireframe／prototype 與字體・視覺房規）。
+- **assistant-ui UX 規劃**：`docs/superpowers/specs/2026-06-27-assistant-ui-tender-assistant-ux-design.md`（不串接後端的流程、情境、問題類型與 UI 優化藍圖）。
 - **assistant-ui 技術依據**：[官方文件](https://www.assistant-ui.com/docs)、[安裝說明](https://www.assistant-ui.com/docs/installation)、[AI SDK v6 runtime](https://www.assistant-ui.com/docs/runtimes/ai-sdk/v6)、[GitHub（MIT）](https://github.com/assistant-ui/assistant-ui)。
 - **查證附記**：截圖標案「醫院衛浴更新與感控改善工程」經 PCC 全文檢索查證為 demo 資料，非真實標案。
 
 ---
 
-## 13. 開發狀態快照（2026-06-18）
+## 13. 開發狀態快照（2026-06-25）
 
-> 回填自實作 session；本節隨開發更新，為「PRD 規劃 vs 實際落地」對照。各階段一覽見 §10 Roadmap。
+> 回填自實作 session；本節隨開發更新，為「PRD 規劃 vs 實際落地」對照。各階段一覽見 §10 Roadmap。詳盡盤點另見 `plans/project-status-assessment/plan.mdx`。
+>
+> **誠實標記**：✅＝真資料跑過、確認 OK；🟢＝程式已寫完並接上、待能連線（PCC／Ollama）的環境補跑驗收。2026-06-24 一批多屬後者（雲端連不到 PCC／Ollama、向量仍 0 筆）。各功能設計凍結見 `docs/superpowers/specs/`（每份頂部有狀態橫幅）。
 
 ### 13.1 技術選型偏移（與 §5 差異）
 
 - **前端**：實際採 **Vite 8 + React 19 + TypeScript（strict）+ Tailwind v4 + react-router-dom 7**，非原訂 Next.js。原因：本期為內部工具 + demo，無 SSR 需求、Vite 啟動／建置快；日後若需 SSR/SEO 再評估遷移。路由為 BrowserRouter 真實路徑。
-- **後端**：**FastAPI + SQLAlchemy 2.0 async + psycopg 3 + Pydantic v2 + PostgreSQL 16 + pgvector**，符合 §5；embeddings 用本地模型（bge-m3＝1024 維）。皆 brew 原生、無容器。
-- **預覽**：開發站非 vite dev，而是靜態 build 經自製 `serve-tender.py` 服務（沙箱限制使然）；改前端需 rebuild 才反映。
+- **後端**：**FastAPI + SQLAlchemy 2.0 async + psycopg 3 + Pydantic v2 + PostgreSQL 16 + pgvector**，符合 §5；embeddings 用本地模型（bge-m3＝1024 維、HNSW cosine）。皆 brew 原生、無容器。
+- **預覽**：兩種——**vite dev（:5173，HMR、優先）** 與靜態 build（:8771，須 rebuild + cache-bust）。
 
-### 13.2 後端 API 現況（FastAPI `/api/v1`，CORS 放行本機任意埠）
+### 13.2 後端 API 現況（FastAPI `/api/v1`，40 路由，CORS 放行本機任意埠）
 
-| 範圍     | Endpoint                                                         | 狀態                                |
-| -------- | ---------------------------------------------------------------- | ----------------------------------- |
-| 標案清單 | `GET /tenders`（filter/sort/page，page_size ≤ 200）              | ✅ live                             |
-| 標案詳情 | `GET /tenders/{id}` → 主檔＋歷史快照＋user_state                 | ✅ 已實作（前端尚未取用）           |
-| 行為     | `POST /tenders/{id}/{save,accept,rate,note,share}`、`/events` 等 | ✅ 已實作（前端尚未回寫）           |
-| 語意     | `GET /search/semantic`、`GET /search/similar/{id}`               | ✅ 端點就緒（embedding 索引待確認） |
+| 範圍      | Endpoint                                                                                                                                                                                                                           | 狀態                                                                                                                                  |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 標案清單  | `GET /tenders`（filter/sort/page，page_size ≤ 200）                                                                                                                                                                                | ✅ live、前端已接                                                                                                                     |
+| 標案詳情  | `GET /tenders/{id}` → 主檔＋歷史快照＋user_state（含履約/資格/押標金/附件）                                                                                                                                                        | ✅ live、前端 `/tenders/:id` 已取用                                                                                                   |
+| 理由      | `GET /tenders/{id}/reasoning`、`/reasoning/profile`                                                                                                                                                                                | ✅ live、前端已接（profile 視圖待確認）                                                                                               |
+| 行為      | `POST /tenders/{id}/{save,accept,rate,note,share,evaluate}`、`/events`、saved-searches                                                                                                                                             | ✅ live、前端已回寫（具名 user_id）。`evaluate`＝三分判斷（✓/✗/⭐）即時學習，owner 知情覆寫可即時寫團隊負權重（負分人工紅線唯一例外） |
+| 語意      | `GET /search/semantic`、`GET /search/similar/{id}`                                                                                                                                                                                 | 🐞 端點 live，但向量 0 筆，待灌入後驗收                                                                                               |
+| 助手      | `POST /assistant/chat`（NDJSON 串流，provider 路由＋progress 暫態）、threads                                                                                                                                                       | 🟢 已接（CLI／Ollama 通），待真資料／工具鏈端到端驗收                                                                                 |
+| 設定      | `GET/PUT /settings/brain`（小助手大腦：provider／模型／CLI agent，單列）；`GET/PUT /settings/detail-fields`（詳情**團隊欄位顯示設定** `DetailFieldVisibilityConfig`）                                                              | ✅ live（CLI 切片）、前端設定頁已接                                                                                                   |
+| 個人/學習 | `GET /me/preference-profile`、`GET /me/tender-decisions`（**決策回顧**，唯讀、由 Layer B 重建）、`GET /me/abandoned-keyword-candidates`（**建議迴避字根**，只建議不寫權重）、`POST /me/keywords`（人工**加入迴避** kind=negative） | 🟢 已接，前端 `/decisions`＋規則頁已取用                                                                                              |
+| 推播      | `GET/POST /push/{digest,run,read}`                                                                                                                                                                                                 | 🟢 live、前端 `/push` 已接                                                                                                            |
+| 進化      | `POST /evolution/run`、`GET /evolution/status`（self-evolve 閘：consent-aware ≥50 且較上批有新增）                                                                                                                                 | 🟢 live、前端 `/evolution` 已接                                                                                                       |
+| 帳號      | `POST /auth/login`、`GET /me`、`PUT /me/{consent,password}`、`/admin/*`                                                                                                                                                            | ✅ live、前端登入/設定已接                                                                                                            |
 
-### 13.3 前端六畫面狀態（對應 §6）
+### 13.3 前端畫面狀態（對應 §6，AppShell + 12 頁 + 全站浮窗）
 
-- **6.1 儀表板**：✅ 今日焦點／KPI 已對接 live 標案；即時動態、看板計數仍為 seed。
-- **6.2 標案列表**：✅ 已對接 live（`GET /tenders?sort=feas&page_size=200`）；filter bar／排序／RWD 表格↔卡片完成。
-- **6.3 標案詳情**：🟡 右側抽屉（peek）已具雛形（標籤／事實格／量表／註記／承接·略過），但**只吃清單列資料、未打 detail endpoint**；PCC 原始連結、案號、招標方式、歷史快照走勢、相似案尚未呈現。**完整詳情頁（彈窗／獨立路由）為下一步**（見 §13.4）。
-- **6.4 語意搜尋頁**：⬜ 後端就緒、前端頁未建。
-- **6.5 後台 admin**：🟡 規則頁有重點／排除關鍵字摘要（mock）；手動重跑／log／匯出未建。
-- **6.6 登入頁**：⬜ 未建（demo 階段無 auth）。
+- **6.1 儀表板**：✅ 今日焦點／KPI 已對接 live 標案；三層下鑽（清單→就地展開→彈窗→`/tenders/:id`）已收口。
+- **6.2 標案列表**：✅ live（`GET /tenders?sort=feas&page_size=200`）；filter bar／排序／RWD 表格↔卡片完成。
+- **6.3 標案詳情**：🟢 完整詳情頁 `/tenders/:id` 已建，詳情改為**常態性規格表**（事實格／量表／歷史快照／相似案／PCC 原文／履約·資格·押標金·附件區塊），欄位顯隱由後台**團隊欄位顯示設定**（`DetailFieldVisibilityConfig`）控制；列表彈窗 `TenderDrawer` 並存；列表類別專屬 icon／顏色（工程／財物／勞務）。
+- **6.4 語意搜尋頁**：🐞 `/search` 已建（`searchSemantic` → 表格，含 search 埋點）；向量 0 筆，灌入後才見真結果。
+- **6.5 後台 admin**：🟢 規則頁（聚焦/避免/硬排除＋關鍵字編輯，**列表框選加關鍵字即同步進規則頁**）完整；設定頁含推播/小助手/**小助手大腦（provider 路由：Ollama／CLI 已通／BYOK 延後）**/詳情欄位顯示/帳號安全/管理者改密；手動重跑改走 `/evolution` 面板，log／匯出未建。
+- **6.6 登入頁**：✅ `/login` 已建（白名單 @hqdesign.tw、auth-context、改密、管理者重置）。
+- **6.7 標案助手**：🟢 FAB 非阻擋浮窗（`@assistant-ui/react`）＋整頁指揮中心 `/assistant`；Phase 1 引導、Phase 2 全螢幕完成，Phase 3 情境接檢索／Phase 4 留存待補。
+- **其他**：`/swipe` 速配（配對判斷原因＋關鍵字歸因 ABCD）、`/decisions` **決策回顧**（唯讀，由 Layer B 行為重建本人存留／淘汰清單）、`/kanban` 看板（具名註記＋轉傳）、`/insights` 洞察（部分 mock）、`/push` 推播、`/evolution` 進化、`/settings` 設定皆已建。
 
-### 13.4 進行中規劃：標案詳情強化（本次評估）
+### 13.4 已落地：標案詳情強化（原本次評估，已完成）
 
-需求：①每列點擊展開更多資訊；②「查看完整詳情」按鈕 → 彈窗或獨立頁面。
-方案分三增量：peek 補欄位（PCC 連結／案號／招標方式）→ 獨立詳情頁 `/tenders/:id` 取 `GET /tenders/{id}`（含歷史快照走勢）→ RAG 相似案／行為回寫。落地後回填本節。
+需求①每列點擊展開更多資訊、②「查看完整詳情」→ 獨立頁面，**皆已落地**：今日焦點兩段式下鑽（就地展開→彈窗）＋ 獨立詳情頁 `/tenders/:id`（取 `GET /tenders/{id}`、含歷史快照與相似案）＋ 行為回寫（具名）。enrich 已補履約/資格/押標金/附件欄位，詳情 API 與前端 `RevisionDetailBlock` 同步到位。
 
 ### 13.5 已知債務
 
-- 清單僅取前 200／共 1125 筆，待分頁。
-- `category` 後端多為 null，前端暫由標案名稱啟發式回推。
-- feasibility／supplierCoverage／score 為 tier 衍生佔位，待 P4／P5。
+- 清單分頁仍取前 200／共 ~1,136 筆，待真分頁。
+- `category` 後端約 79%（~900/1,136）為 null，是知識學習特徵覆蓋天花板；回填走 `backfill_category`（只補 NULL、冪等、offline）。
+- feasibility／supplierCoverage／score 部分仍為 tier 衍生佔位，續隨 P4/P5 真實 lift 數據收斂。
 - 多數 live 標案截止日早於今日 → 顯示「已截止」（資料屬實，非 bug）。
-- 行為（承接／收藏／註記）目前存 localStorage，未回寫後端 Layer B。
+- PCC 詳情頁「常駐型 CAPTCHA」阻擋全自動補詳情，需瀏覽器互動式抓取（架構級決策）。
+- 登入信任邊界為 Phase 1 輕量版（admin 以 `X-User-Role` 標頭把關），session/token Phase 2 待補。
+
+### 13.6 小助手大腦可選（provider 路由器，CLI 切片已落地）
+
+讓操作者在設定頁選擇「小助手視窗」背後由哪個大腦回答。開發期單機單操作者 → **全域單列設定**（`assistant_brain_config` id=1，get-or-create）。
+
+- **三 provider 路由**（`app/services/brain.py`，依 `config.provider` 分派，未知 → `BrainError`）：
+  - `ollama`：包現行 `llm.stream_chat`，逐塊 yield `delta`（增量），本機模型可換。
+  - `cli`：以 headless agentic CLI 為大腦（目前支援 `claude -p … --output-format stream-json`）。CLI 已注入 `tender-ai-brain` MCP，**全自主**呼叫 MCP 工具；text 區塊累積、`tool_use` → `progress` 暫態（如「查詢中：search_tenders」）、`result` → 一則 `delta`。
+  - `byok`：自帶金鑰走雲端（Anthropic messages stream）；system 訊息抽到頂層 `system`。
+- **串流協定**：`BrainChunk(kind="delta"|"progress")`。`delta` 為增量（前端累積後 REPLACE）；`progress` 為暫態狀態（直接轉發、不落地、不入留存）。非 CLI 大腦不發 progress → 恆為 null，前端 `lib/assistant.ts` 以 `evt.type` 區分、向後相容。
+- **祕密隔離（紅線）**：BYOK 金鑰本體只進 `.env`（`settings.anthropic_api_key`）；`/settings/brain` 只讀寫非密欄位，`byok_key_set` 由 `.env` 即時推導，永不回傳金鑰本體。**CLI 切片完全不碰任何祕密。**
+- **Layer B 安全點**：CLI 全自主路徑的 Layer B 邊界由 **MCP 工具輸出層**把關（去識別化／白名單），非靠 `assistant.py` 組 prompt；`llm.py` 一律不把 Layer B 行為塞進外部模型 prompt。
+- **交付切片序**：CLI（已落地）＞ BYOK ＞ Ollama 換模型。設計細節見 `docs/superpowers/specs/2026-06-23-assistant-brain-picker-design.md`。
+
+### 13.7 2026-06-24／25 一批（學習迴圈收口 + Knowvio 全域）
+
+> 此批多為「程式已寫完並接上」（🟢），最終驗收待能連線（PCC／Ollama）、向量灌入的環境補跑。各功能凍結見 `docs/superpowers/specs/`。
+
+- **三分判斷即時學習**：詳情／滑卡的 ✓可行／✗不可行／⭐精選 → `POST /tenders/{id}/evaluate` → `realtime_learn.learn_after_evaluation`。**owner 知情覆寫**＝負分人工專屬紅線的唯一例外：使用者本人的 ✗ 判斷可即時寫團隊負權重（保留 append-only／consent-aware／具名／可回退安全網）；一般批次 `learn_keywords` 與自演化 job 仍**不得**自動種負分。
+- **決策回顧 `/decisions`**：唯讀端點 `GET /me/tender-decisions`，由 Layer B 行為訊號重建本人「存留／淘汰」清單，供檢視與校正。
+- **建議迴避字根**：`GET /me/abandoned-keyword-candidates` 在累積足夠 lift 時把可疑詞**列為候選＋附理由**，只建議不寫權重；由人在規則頁按「加入迴避」（`POST /me/keywords` kind=negative）確認。
+- **框選關鍵字同步**：列表框選加關鍵字即同步進規則頁（寫後端、鏡射本地清單），不再只是本地暫存。
+- **詳情常態規格表＋團隊欄位設定**：詳情改常態性規格表，欄位顯隱由 `DetailFieldVisibilityConfig`（`GET/PUT /settings/detail-fields`）控制；列表類別專屬 icon／顏色。
+- **自演化觸發閘**：`app/jobs/self_evolve.py` 預設 team 線 consent-aware 樣本 **≥50** 且較上批有新增才重跑 `learn_keywords`，完全離線／冪等，`force=True` 可手動覆寫。
+- **Knowvio 全域設計**：淺色為預設主題＋橙色主色（`#f97316`）、分層 elevation（rest→hover→overlay）、ease-out 動效；token 真值見 `tender-ai-frontend/src/index.css`，原則見 `tender-ai-design-system.md`（已標 v0.1 基線＋現況註記）。
+- **白名單種子＋admin**：`app/jobs/seed_members.py` 種子帳號（預設密碼 `admin`、首登強制改密、白名單 `@hqdesign.tw`），admin（Christian＋Aaron）可新增帳號／重設密碼。

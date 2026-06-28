@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.hqdesign.tenderai.daily</string>
+
+  <!-- 每日 10:15（台灣本機時間）觸發；比 repo 10:00 發布晚 15 分，確保已取得當日報表 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>10</integer>
+    <key>Minute</key><integer>15</integer>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/scripts/automation/run_claude_daily.sh</string>
+  </array>
+
+  <!-- 開機/喚醒時若已過排程時間，補跑一次 -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/data/pipeline-logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/data/pipeline-logs/launchd.err.log</string>
+</dict>
+</plist>

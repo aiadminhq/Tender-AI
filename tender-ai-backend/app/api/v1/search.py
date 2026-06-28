@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.schemas.search import SemanticHit, SemanticSearchResponse
+from app.schemas.search import (
+    DecisionRecommendation,
+    SemanticHit,
+    SemanticSearchResponse,
+)
 from app.services import search as search_svc
 
 router = APIRouter(prefix="/search", tags=["search"])
@@ -29,3 +33,13 @@ async def similar_tenders(
     session: AsyncSession = Depends(get_session),
 ) -> list[SemanticHit]:
     return await search_svc.similar_tenders(session, tender_id, limit=limit)
+
+
+@router.get("/recommend/{tender_id}", response_model=DecisionRecommendation)
+async def recommend_from_decisions(
+    tender_id: int,
+    limit: int = Query(default=5, ge=1, le=50),
+    session: AsyncSession = Depends(get_session),
+) -> DecisionRecommendation:
+    """以相似的已評估案例（決策向量）給候選標案一個可解釋的承接傾向。"""
+    return await search_svc.recommend_from_decisions(session, tender_id, limit=limit)

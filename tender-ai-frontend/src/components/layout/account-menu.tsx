@@ -14,6 +14,7 @@ export function AccountMenu() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -22,7 +23,11 @@ export function AccountMenu() {
         setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      // Esc 關閉後把焦點交還觸發鈕（鍵盤可及性：不讓焦點掉到 body）。
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     window.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
@@ -43,8 +48,11 @@ export function AccountMenu() {
   return (
     <div className="relative" ref={ref}>
       <button
+        ref={triggerRef}
         onClick={() => setOpen((o) => !o)}
         aria-label={display.name}
+        aria-haspopup="true"
+        aria-expanded={open}
         className="flex items-center gap-1.5 rounded-full p-0.5 pr-1.5 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
       >
         <Avatar user={display} size="sm" />
@@ -52,7 +60,7 @@ export function AccountMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-[var(--elev-overlay)] animate-in fade-in slide-in-from-top-1 duration-150">
           <div className="flex items-center gap-2.5 px-2.5 py-2">
             <Avatar user={display} size="md" />
             <div className="min-w-0 flex-1">

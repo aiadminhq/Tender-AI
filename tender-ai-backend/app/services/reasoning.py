@@ -29,6 +29,7 @@ from app.core.errors import EntityNotFound
 from app.models.behavior import Event, Evaluation
 from app.models.knowledge import KeywordWeight
 from app.models.tender import DailyTender, Source, Tender
+from app.services import manual_keywords
 from app.schemas.reasoning import (
     CategorySignal,
     CriteriaProfileOut,
@@ -53,6 +54,26 @@ _W_BUDGET_OUT = -0.10
 _W_KEYWORD = 0.15
 _W_KEYWORD_CAP = 0.25
 _W_BEHAVIOR = 0.06
+
+# §3.2 分類直接映射先驗：當該分類「尚無個人評估歷史」時，以領域知識給方向
+# （對齊 learn_keywords._CATEGORY_POLARITY；資料一旦累積即改以 lift 為準，資料優先）。
+# 僅納入「方向已認證」的類別；財物/勞務 樣本少且 0% 可行率尚未認證，見 _CATEGORY_UNVERIFIED。
+_CATEGORY_PRIOR = {
+    "工程": "positive",      # 樣本 100% 可行（方向明確）
+    "營繕工程": "positive",  # 樣本 100% 可行（方向明確）
+}
+# 方向「待認證」的類別：樣本顯示偏低可行率但尚未認證 → 冷啟動先給中性 0.0（不扣分），
+# 待累積足量評估後改由 lift（資料優先分支）自然帶出方向。
+_CATEGORY_UNVERIFIED = {"財物", "勞務"}
+# 先驗影響量：足以定方向（base 0.5 → 0.68 / 0.32），但弱於有資料時的 lift。
+_W_CATEGORY_PRIOR = 0.18
+
+# §3.3 預算絕對軟閾值：當「尚無個人承接區間」時的退場信號（萬元）。
+# 弱信號，不主導；有個人預算歷史時改走 in/out-range 個人化邏輯。
+_BUDGET_HI_WAN = 300
+_BUDGET_LO_WAN = 100
+_W_BUDGET_SOFT_HI = 0.08
+_W_BUDGET_SOFT_LO = -0.06
 
 _LAPLACE = 1.0  # 加法平滑（每類別 +1 可行 +1 不可行的先驗）
 
@@ -152,20 +173,18 @@ async def build_criteria_profile(
         profile.budget_max = max(feas_budgets)
         profile.budget_median = int(statistics.median(feas_budgets))
 
-    # SL2 學習關鍵字 top 正/負
-    kws = list((await session.execute(select(KeywordWeight))).scalars())
-    pos = sorted(
-        (k for k in kws if k.polarity != "negative"),
-        key=lambda k: k.weight or 0.0,
-        reverse=True,
+    # SL2 學習關鍵字：只取正向 top（負向避免詞一律人工專屬，學習詞不得帶出負向）。
+    pos_rows = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(KeywordWeight.polarity != "negative")
+            )
+        ).scalars()
     )
-    neg = sorted(
-        (k for k in kws if k.polarity == "negative"),
-        key=lambda k: k.weight or 0.0,
-        reverse=True,
-    )
+    pos = sorted(pos_rows, key=lambda k: k.weight or 0.0, reverse=True)
     profile.kw_positive = [k.term for k in pos[:6]]
-    profile.kw_negative = [k.term for k in neg[:6]]
+    # 避免詞預設空；本人「手動」迴避詞由下方 apply_overrides 併入（負分人工專屬紅線）。
+    profile.kw_negative = []
 
     # 行為訊號：你「點開／點連結／停留」最多的類別/城市
     ev_stmt = (
@@ -188,6 +207,22 @@ async def build_criteria_profile(
             city_ctr[city] += 1
     profile.engaged_categories = [c for c, _ in cat_ctr.most_common(3)]
     profile.engaged_cities = [c for c, _ in city_ctr.most_common(3)]
+
+    # Phase 2：套上本人在推理卡上的「手動」關鍵字覆寫（add／remove）。
+    # 手動「迴避」詞（kind=negative）即唯一合規負分來源：合併後既進顯示輪廓
+    # （kw_negative），也由 explain_tender 取用驅動 per-tender 計分（負分人工專屬
+    # 紅線）；系統學習詞只供正向，永不帶出負分。
+    if user_id is not None:
+        overrides = await manual_keywords.list_overrides(session, user_id)
+        if overrides:
+            profile.kw_positive, profile.kw_negative, profile.engaged_categories = (
+                manual_keywords.apply_overrides(
+                    profile.kw_positive,
+                    profile.kw_negative,
+                    profile.engaged_categories,
+                    overrides,
+                )
+            )
     return profile
 
 
@@ -265,38 +300,70 @@ def _haystack(t: Tender) -> str:
 
 
 def _keyword_reason(
-    t: Tender, kws: list[KeywordWeight]
+    t: Tender,
+    positive_kws: list[KeywordWeight],
+    manual_negatives: list[str],
+    learned_negatives: list[KeywordWeight] | None = None,
 ) -> tuple[float, ReasonCode | None]:
-    """掃描 SL2 學習關鍵字命中，回傳 (impact, reason_code|None)。"""
+    """掃描關鍵字命中，回傳 (impact, reason_code|None)。
+
+    - 正向來自 SL2 閉合學習（``positive_kws``，可由資料自動學）。
+    - 負向有兩源：
+      1. ``manual_negatives``：本人手動指定的迴避詞，全強度（1.0）計負。
+      2. ``learned_negatives``：即時判斷學習派生的團隊負權（帶 NEG_LEARN_NOTE
+         標記、consent-aware），以「權重幅度」柔性計負。此為 2026-06-24 本人
+         明確覆寫「負分人工專屬」紅線後的路徑（見設計規格 §2.1）。
+    """
     hay = _haystack(t)
     pos: list[str] = []
-    neg: list[str] = []
+    neg: list[str] = []  # 人工迴避詞
+    learned_neg: list[str] = []  # 學習派生負權
     signed = 0.0
-    for k in kws:
+    for k in positive_kws:
         term = (k.term or "").strip()
         if not term or term not in hay:
             continue
-        if k.polarity == "negative":
-            signed -= float(k.weight or 0.0)
-            neg.append(term)
-        else:
-            signed += float(k.weight or 0.0)
-            pos.append(term)
-    if not pos and not neg:
+        signed += float(k.weight or 0.0)
+        pos.append(term)
+    for term in manual_negatives:
+        term = (term or "").strip()
+        if not term or term not in hay:
+            continue
+        # 人工迴避詞以全強度（1.0）計負，貫徹「人說要避開就避開」。
+        signed -= 1.0
+        neg.append(term)
+    for k in (learned_negatives or []):
+        term = (k.term or "").strip()
+        if not term or term not in hay:
+            continue
+        # 學習負權以幅度（lift）柔性計負（weight 存正幅度，此處施加負號）。
+        signed -= float(k.weight or 0.0)
+        learned_neg.append(term)
+    if not pos and not neg and not learned_neg:
         return 0.0, None
     impact = max(-_W_KEYWORD_CAP, min(_W_KEYWORD_CAP, signed * _W_KEYWORD))
     bits: list[str] = []
     if pos:
         bits.append(f"命中正向關鍵字「{'、'.join(pos[:4])}」")
     if neg:
-        bits.append(f"命中負向關鍵字「{'、'.join(neg[:4])}」")
+        bits.append(f"命中你設定的迴避關鍵字「{'、'.join(neg[:4])}」")
+    if learned_neg:
+        bits.append(f"命中團隊判斷學到的負向關鍵字「{'、'.join(learned_neg[:4])}」")
+    if neg and learned_neg:
+        evidence_tail = "（正向來自 SL2 閉合學習；負向含你的人工迴避詞與團隊判斷學習）"
+    elif neg:
+        evidence_tail = "（正向來自 SL2 閉合學習；負向為你人工指定的迴避詞）"
+    elif learned_neg:
+        evidence_tail = "（正向來自 SL2 閉合學習；負向為團隊判斷即時學習所得）"
+    else:
+        evidence_tail = "（來自 SL2 閉合學習）"
     return impact, ReasonCode(
         factor="keyword",
         label="學習關鍵字",
-        value="、".join((pos + neg)[:4]),
+        value="、".join((pos + neg + learned_neg)[:4]),
         direction=_direction(impact),
         impact=round(impact, 4),
-        evidence="；".join(bits) + "（來自 SL2 閉合學習）",
+        evidence="；".join(bits) + evidence_tail,
     )
 
 
@@ -312,18 +379,23 @@ async def _latest_snapshot(session: AsyncSession, tender_id: int):
     return (row[0], row[1]) if row else (None, None)
 
 
-async def explain_tender(
-    session: AsyncSession, tender_id: int, user_id: int | None = None
-) -> TenderReasoningOut:
-    """對單一標案輸出可中標推理（fit + 逐條 reason code + 結論）。查無 → 404。"""
-    t = await session.get(Tender, tender_id)
-    if t is None:
-        raise EntityNotFound(f"tender {tender_id} not found")
+# --------------------------------------------------------------------------- #
+# 計分核心（純函式）：供 explain_tender（個人線）與物化 job（團隊線）共用
+# --------------------------------------------------------------------------- #
+def accumulate_fit(
+    t: Tender,
+    profile: CriteriaProfile,
+    positive_kws: list[KeywordWeight],
+    manual_negatives: list[str],
+    learned_negatives: list[KeywordWeight] | None = None,
+    days_left: int | None = None,
+) -> tuple[float, list[tuple[float, ReasonCode]], list[ReasonCode]]:
+    """逐項疊加 criteria fit（**未** clamp），回傳 (fit_raw, weighted, neutral)。
 
-    profile = await build_criteria_profile(session, user_id)
-    tier, days_left = await _latest_snapshot(session, tender_id)
-    kws = list((await session.execute(select(KeywordWeight))).scalars())
-
+    純函式：只讀傳入的 profile／關鍵字，不碰 DB、**不讀標案分級（tier）**，因此可同時
+    供 explain_tender（個人線）與物化 job（團隊線）共用，且不會循環依賴報表分級。
+    ``days_left`` 僅驅動中性「截止急迫」提示，不影響 fit。
+    """
     weighted: list[tuple[float, ReasonCode]] = []
     neutral: list[ReasonCode] = []
     fit = profile.base_rate
@@ -350,14 +422,46 @@ async def explain_tender(
                 ),
             ))
         else:
-            neutral.append(ReasonCode(
-                factor="category",
-                label="標的類別",
-                value=t.category,
-                direction="neutral",
-                impact=0.0,
-                evidence=f"「{t.category}」類尚無評估紀錄，無法判定偏好",
-            ))
+            prior = _CATEGORY_PRIOR.get(t.category)
+            if prior == "positive":
+                impact = _W_CATEGORY_PRIOR
+                fit += impact
+                weighted.append((
+                    impact,
+                    ReasonCode(
+                        factor="category",
+                        label="標的類別",
+                        value=t.category,
+                        direction=_direction(impact),
+                        impact=round(impact, 4),
+                        evidence=(
+                            f"「{t.category}」類採購在領域經驗中普遍可承接"
+                            "（分類先驗；待你累積評估後改以實際偏好為準）"
+                        ),
+                    ),
+                ))
+            elif t.category in _CATEGORY_UNVERIFIED:
+                # 方向待認證：先給中性 0.0、不扣分，但說明與「全無紀錄」不同。
+                neutral.append(ReasonCode(
+                    factor="category",
+                    label="標的類別",
+                    value=t.category,
+                    direction="neutral",
+                    impact=0.0,
+                    evidence=(
+                        f"「{t.category}」類過往樣本可行率偏低，但樣本數不足、方向尚未認證，"
+                        "暫不納入評分（待累積評估後改以實際偏好為準）"
+                    ),
+                ))
+            else:
+                neutral.append(ReasonCode(
+                    factor="category",
+                    label="標的類別",
+                    value=t.category,
+                    direction="neutral",
+                    impact=0.0,
+                    evidence=f"「{t.category}」類尚無評估紀錄，無法判定偏好",
+                ))
 
     # 2) 地點（次要因素）
     if t.city:
@@ -409,9 +513,38 @@ async def explain_tender(
                     evidence=f"預算 {t.budget_wan} 萬落在你承接區間 {lo}–{hi} 萬之外",
                 ),
             ))
+    elif t.budget_wan is not None:
+        # §3.3 尚無個人承接區間 → 絕對軟閾值（弱信號；100–300 萬視為中性不發 reason）
+        if t.budget_wan >= _BUDGET_HI_WAN:
+            impact = _W_BUDGET_SOFT_HI
+        elif t.budget_wan < _BUDGET_LO_WAN:
+            impact = _W_BUDGET_SOFT_LO
+        else:
+            impact = 0.0
+        if impact != 0.0:
+            fit += impact
+            weighted.append((
+                impact,
+                ReasonCode(
+                    factor="budget",
+                    label="預算規模",
+                    value=f"{t.budget_wan} 萬",
+                    direction=_direction(impact),
+                    impact=round(impact, 4),
+                    evidence=(
+                        f"預算約 {t.budget_wan} 萬，"
+                        + ("達工程案常見規模（≥300 萬），偏向可承接"
+                           if impact > 0 else
+                           "偏小（<100 萬），多為小型採購，承接價值較低")
+                        + "（預算軟閾值；尚無你的承接區間時的概略判斷）"
+                    ),
+                ),
+            ))
 
     # 4) SL2 學習關鍵字
-    kw_impact, kw_reason = _keyword_reason(t, kws)
+    kw_impact, kw_reason = _keyword_reason(
+        t, positive_kws, manual_negatives, learned_negatives
+    )
     if kw_reason is not None:
         fit += kw_impact
         weighted.append((kw_impact, kw_reason))
@@ -445,17 +578,77 @@ async def explain_tender(
             ),
         ))
 
-    fit = max(0.03, min(0.97, fit))
-    criteria_fit = round(fit * 100)
+    return fit, weighted, neutral
+
+
+def finalize_criteria_fit(fit_raw: float) -> int:
+    """clamp 到 [0.03, 0.97] 後映射為 0–100 整數（與原 explain_tender 等價）。"""
+    return round(max(0.03, min(0.97, fit_raw)) * 100)
+
+
+def verdict_for(criteria_fit: int) -> tuple[str, str]:
+    """由 criteria_fit 推結論碼與標題（門檻 62／42 與文案與原版不變）。"""
     if criteria_fit >= 62:
-        verdict = "strong"
-        headline = "判準高度吻合，建議優先評估投標"
-    elif criteria_fit >= 42:
-        verdict = "consider"
-        headline = "部分判準吻合，建議進一步評估"
-    else:
-        verdict = "weak"
-        headline = "與你的承標判準偏離，多半可略過"
+        return "strong", "判準高度吻合，建議優先評估投標"
+    if criteria_fit >= 42:
+        return "consider", "部分判準吻合，建議進一步評估"
+    return "weak", "與你的承標判準偏離，多半可略過"
+
+
+def compute_team_fit(
+    t: Tender,
+    profile: CriteriaProfile,
+    positive_kws: list[KeywordWeight],
+    learned_negatives: list[KeywordWeight] | None = None,
+) -> int:
+    """團隊線可行性分數（0–100）：物化 job 專用。
+
+    等同 explain_tender 的 criteria_fit，但以**團隊線 profile**（``user_id=None``）、
+    **無個人手動迴避詞**（manual_negatives=[]，貫徹「負分人工專屬」團隊紅線），
+    且不計截止急迫中性項（本就不影響分數）。
+    """
+    fit_raw, _, _ = accumulate_fit(t, profile, positive_kws, [], learned_negatives)
+    return finalize_criteria_fit(fit_raw)
+
+
+async def explain_tender(
+    session: AsyncSession, tender_id: int, user_id: int | None = None
+) -> TenderReasoningOut:
+    """對單一標案輸出可中標推理（fit + 逐條 reason code + 結論）。查無 → 404。"""
+    t = await session.get(Tender, tender_id)
+    if t is None:
+        raise EntityNotFound(f"tender {tender_id} not found")
+
+    profile = await build_criteria_profile(session, user_id)
+    tier, days_left = await _latest_snapshot(session, tender_id)
+    # 正向學習詞：所有非負極性。
+    positive_kws = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(KeywordWeight.polarity != "negative")
+            )
+        ).scalars()
+    )
+    # 負向兩源：①本人手動迴避詞（profile.kw_negative）。②即時判斷學習派生的團隊
+    # 負權——只取帶標記（notes 非空）者；遺留的「自動」負向（notes 為 NULL）仍被
+    # 忽略並由 learn_keywords 清除，維持紅線測試與向後相容。
+    manual_negatives = list(profile.kw_negative)
+    learned_negatives = list(
+        (
+            await session.execute(
+                select(KeywordWeight).where(
+                    KeywordWeight.polarity == "negative",
+                    KeywordWeight.notes.is_not(None),
+                )
+            )
+        ).scalars()
+    )
+
+    fit, weighted, neutral = accumulate_fit(
+        t, profile, positive_kws, manual_negatives, learned_negatives, days_left
+    )
+    criteria_fit = finalize_criteria_fit(fit)
+    verdict, headline = verdict_for(criteria_fit)
 
     weighted.sort(key=lambda x: abs(x[0]), reverse=True)
     reasons = [rc for _, rc in weighted] + neutral

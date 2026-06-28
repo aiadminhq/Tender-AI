@@ -1,0 +1,5 @@
+  [1/220] PCC/71252818 → captcha
+  ⚠ 撞 CAPTCHA,中止整批;剩餘 219 筆 deferred
+enrich 完成(run #9）｜目標 220｜新版 0｜未變 0｜附件 0｜室內命中 0｜失敗 1（含 CAPTCHA 1）
+⚠ 撞 CAPTCHA 已中止;219 筆 deferred 留待下輪退避重試
+ENRICH_EXIT=0

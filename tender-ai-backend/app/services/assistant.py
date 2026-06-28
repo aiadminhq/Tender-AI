@@ -23,6 +23,7 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Any, AsyncIterator
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,11 +32,17 @@ from app.schemas.assistant import (
     AssistantChatDeltaOut,
     AssistantChatDoneOut,
     AssistantChatMetaOut,
+    AssistantChatProgressOut,
     AssistantChatRequest,
     AssistantSourceOut,
     AssistantToolContractOut,
+    PreferenceSuggestionOut,
 )
 from app.schemas.tender import TenderQuery
+from app.services.preference_capture import detect_standing_preference
+from app.services import assistant_store
+from app.services import brain as brain_svc
+from app.services import brain_config as brain_config_svc
 from app.services import llm
 from app.services import query as query_svc
 from app.services import search as search_svc
@@ -106,6 +113,44 @@ def _extract_requested_tender_id(prompt: str) -> int | None:
     return None
 
 
+def _focus_tender_id(payload: AssistantChatRequest) -> int | None:
+    """從 ``request.context`` 取出使用者「目前正在檢視」的標案 id（情境感知接線）。
+
+    前端浮窗／指揮中心右欄已知道當前 tenderId，經 ``context`` 帶上來；接受
+    ``focus_tender_id`` / ``tender_id`` 兩種鍵、容忍字串數字。缺值或非正整數回 None
+    （退回純文字檢索，向後相容）。這條路讓「這案我們適合嗎」這種沒打編號的問題，
+    也能對到使用者眼前那一案，消弭「視覺感知、對話卻不感知」的斷裂。
+    """
+    ctx = payload.context
+    if not isinstance(ctx, dict):
+        return None
+    for key in ("focus_tender_id", "tender_id"):
+        raw = ctx.get(key)
+        if raw is None:
+            continue
+        try:
+            tid = int(str(raw).strip())
+        except (TypeError, ValueError):
+            continue
+        if tid > 0:
+            return tid
+    return None
+
+
+def _store_scope(payload: AssistantChatRequest) -> str:
+    """留存用的 scope：浮窗 assistant ｜ 指揮中心整頁 assistant_page。
+
+    前端經 ``context.scope`` 帶上來；缺值預設 "assistant"。此值僅供 thread 顯示分流，
+    與 meta 內描述檢索範圍的 ``scope`` 字串不同。
+    """
+    ctx = payload.context
+    if isinstance(ctx, dict):
+        raw = ctx.get("scope")
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip()[:32]
+    return "assistant"
+
+
 def _split_query(prompt: str) -> list[str]:
     return [part for part in _SPLIT_RE.split(prompt.strip()) if part]
 
@@ -155,7 +200,7 @@ def _source_payload(item, *, kind: str, score: float | None = None) -> Assistant
 
 
 async def _collect_candidates(
-    session: AsyncSession, prompt: str
+    session: AsyncSession, prompt: str, focus_tender_id: int | None = None
 ) -> list[AssistantEvidence]:
     candidates: list[AssistantEvidence] = []
     seen: set[int] = set()
@@ -165,6 +210,26 @@ async def _collect_candidates(
             return
         seen.add(item.tender_id)
         candidates.append(item)
+
+    # 情境感知：使用者正在檢視的標案釘選為「第一筆」證據，並一併帶出其相似案，
+    # 讓沒打編號的指代（「這案」「它」）也對得到眼前那一案。查無此案就靜默略過，
+    # 退回純文字檢索（向後相容）。
+    if focus_tender_id is not None:
+        try:
+            focus = await query_svc.get_tender_detail(
+                session, focus_tender_id, user_id=None
+            )
+            add(_source_payload(focus, kind="tender"))
+        except Exception:  # noqa: BLE001 — 查無/異常都不阻斷其餘檢索
+            pass
+        try:
+            similar_hits = await search_svc.similar_tenders(
+                session, focus_tender_id, limit=5
+            )
+        except Exception:  # noqa: BLE001
+            similar_hits = []
+        for hit in similar_hits:
+            add(_source_payload(hit, kind="similar", score=hit.score))
 
     query = TenderQuery(
         q=prompt or None,
@@ -312,11 +377,13 @@ def _build_chat_messages(
     prompt: str,
     evidence: list[AssistantEvidence],
     knowledge: list[KnowledgeEvidence],
+    focus_note: str = "",
 ) -> list[dict[str, str]]:
     """組裝餵給 Ollama 的訊息：grounding system + 既有對話歷史（純文字）。"""
     system = (
         f"{_GROUNDING_SYSTEM}\n\n"
-        f"[候選標案清單]\n{_evidence_block(evidence)}\n\n"
+        + (f"[目前檢視情境]\n{focus_note}\n\n" if focus_note else "")
+        + f"[候選標案清單]\n{_evidence_block(evidence)}\n\n"
         f"[知識庫片段]\n{_knowledge_block(knowledge)}"
     )
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
@@ -340,11 +407,33 @@ def _json_line(payload: object) -> str:
 
 
 async def stream_chat_events(
-    session: AsyncSession, payload: AssistantChatRequest
+    session: AsyncSession,
+    payload: AssistantChatRequest,
+    *,
+    owner_user_id: str = "default",
 ) -> AsyncIterator[str]:
     prompt = _latest_user_prompt(payload)
-    evidence = await _collect_candidates(session, prompt)
+    focus_id = _focus_tender_id(payload)
+    # thread id：前端帶上來就沿用，缺值由後端產生（uuid hex）並於 meta 回傳。
+    thread_id = (payload.thread_id or "").strip() or uuid4().hex
+    store_scope = _store_scope(payload)
+    evidence = await _collect_candidates(session, prompt, focus_tender_id=focus_id)
     knowledge = await _collect_knowledge(session, prompt)
+
+    # 情境提示：把「正在檢視的那一案」明說給 LLM，讓未帶編號的指代預設指向它。
+    focus_note = ""
+    if focus_id is not None:
+        focus_item = next(
+            (e for e in evidence if e.kind == "tender" and e.tender_id == focus_id),
+            None,
+        )
+        if focus_item is not None:
+            focus_note = (
+                f"使用者目前正在檢視 標案 #{focus_id}「{focus_item.title}」。"
+                "若提問用「這案／這個標案／這標／它」等指稱而未明確給編號，"
+                "預設就是指這一案；請優先針對它回答（是否值得投標、可行度、"
+                "截止急迫性），需要時再以清單中的相似案做比較。"
+            )
 
     sources: list[AssistantSourceOut] = [
         AssistantSourceOut(
@@ -373,27 +462,86 @@ async def stream_chat_events(
         for k in knowledge
     )
 
+    # 對話中的「長期條件」偵測（confirm-to-remember）：只當建議帶給前端，
+    # 不在此寫入、不碰評分；使用者按確認後前端才 POST state_preference 事件。
+    pref = detect_standing_preference(prompt)
+    preference_suggestion = (
+        PreferenceSuggestionOut(
+            kind=pref.kind,  # type: ignore[arg-type]
+            op=pref.op,  # type: ignore[arg-type]
+            value=pref.value,
+            raw=pref.raw,
+        )
+        if pref is not None
+        else None
+    )
+
+    # 對話留存（Phase 4）：建串（冪等）＋寫入使用者提問，立即 commit 讓 GET 取得。
+    # 留存失敗只 rollback、不阻斷對話（HTTP 仍正常串流）。Layer B 預設不具名/不共享。
+    try:
+        await assistant_store.ensure_thread(
+            session, thread_id, scope=store_scope, owner_user_id=owner_user_id
+        )
+        if prompt:
+            await assistant_store.append_message(
+                session, thread_id, role="user", content=prompt
+            )
+        await session.commit()
+    except Exception:  # noqa: BLE001 — 留存非關鍵路徑，失敗不影響回答
+        await session.rollback()
+
     meta = AssistantChatMetaOut(
         scope="tender_sql + semantic_search + knowledge_base",
+        thread_id=thread_id,
         prompt=prompt,
         sources=sources,
         tool_contract=AssistantToolContractOut(),
+        preference_suggestion=preference_suggestion,
     )
     yield _json_line(meta.model_dump())
 
+    answer_text = ""
     used_llm = False
     if settings.assistant_use_llm:
-        messages = _build_chat_messages(payload, prompt, evidence, knowledge)
+        # 載入全域大腦設定（單列 get-or-create）；失敗退回 None → brain 預設 ollama。
+        try:
+            brain_cfg = await brain_config_svc.get_or_create(session)
+        except Exception:  # noqa: BLE001
+            await session.rollback()
+            brain_cfg = None
+        messages = _build_chat_messages(
+            payload, prompt, evidence, knowledge, focus_note
+        )
+        history = [
+            {"role": m["role"], "content": m["content"]}
+            for m in messages
+            if m["role"] in ("user", "assistant")
+        ]
         acc: list[str] = []
         since_flush = 0
         start = time.monotonic()
         try:
-            async for chunk in llm.stream_chat(messages):
-                acc.append(chunk)
-                since_flush += len(chunk)
+            # 依設定分派 provider（ollama/cli/byok）。delta=增量（此處累積成全文，前端
+            # replace）；progress=agentic 暫態狀態（直接轉發、不累積、不留存）。
+            async for bc in brain_svc.stream(
+                config=brain_cfg,
+                messages=messages,
+                prompt=prompt,
+                history=history,
+                focus_note=focus_note,
+            ):
+                if bc.kind == "progress":
+                    yield _json_line(
+                        AssistantChatProgressOut(text=bc.text).model_dump()
+                    )
+                    if time.monotonic() - start > settings.chat_deadline:
+                        break
+                    continue
+                acc.append(bc.text)
+                since_flush += len(bc.text)
                 # 累積全文（前端 delta 為 replace 語意）；以字數／換行門檻聚合，
                 # 避免逐 token 噴出 O(N^2) 的 NDJSON 行。
-                if since_flush >= 24 or "\n" in chunk:
+                if since_flush >= 24 or "\n" in bc.text:
                     yield _json_line(
                         AssistantChatDeltaOut(text="".join(acc)).model_dump()
                     )
@@ -406,8 +554,9 @@ async def stream_chat_events(
                 yield _json_line(
                     AssistantChatDeltaOut(text="".join(acc)).model_dump()
                 )
+                answer_text = final_text
                 used_llm = True
-        except llm.LlmError:
+        except brain_svc.BrainError:
             used_llm = False
         except Exception:  # noqa: BLE001 — 生成端任何異常都退回模板，維持 HTTP 200
             used_llm = False
@@ -416,6 +565,7 @@ async def stream_chat_events(
         # Fallback：Ollama 不可用／逾時／空輸出 → 退回既有模板（HTTP 仍 200）。
         # delta 為 replace 語意，故即便前面已串出部分 LLM 文字，這裡會整段覆蓋。
         answer = _format_answer(prompt, evidence, knowledge)
+        answer_text = answer
         paragraphs = [chunk.strip() for chunk in answer.split("\n\n") if chunk.strip()]
         running: list[str] = []
         for paragraph in paragraphs:
@@ -424,5 +574,19 @@ async def stream_chat_events(
             yield _json_line(
                 AssistantChatDeltaOut(text="\n\n".join(running)).model_dump()
             )
+
+    # 留存助手回答（含來源卡，僅公開 A 層欄位）；失敗只 rollback、不影響已串出的回應。
+    try:
+        if answer_text:
+            await assistant_store.append_message(
+                session,
+                thread_id,
+                role="assistant",
+                content=answer_text,
+                sources=[s.model_dump(mode="json") for s in sources],
+            )
+            await session.commit()
+    except Exception:  # noqa: BLE001
+        await session.rollback()
 
     yield _json_line(AssistantChatDoneOut().model_dump())

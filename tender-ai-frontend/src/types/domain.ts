@@ -96,6 +96,22 @@ export interface TenderAttachment {
   error?: string | null;
 }
 
+/** 通用「屬性／標籤／內文／參數」結構條目（對應後端 StructuredItem）。
+ *
+ * 由長文欄位（目前為資格要求摘要 qualification_text）離線結構化而來，供表格呈現與後續向量化；
+ * 設計成跨欄位可複用：`kind` 為條目型別（code 資格代碼／requirement 要求項／note 說明），
+ * `label` 為標籤（代碼或項次，可空），`content` 為內文，`params` 為延伸參數。 */
+export interface StructuredItem {
+  /** 條目型別：code（資格代碼）／requirement（要求項）／note（說明）等 */
+  kind: string;
+  /** 標籤：資格代碼或項次（無則為 null） */
+  label?: string | null;
+  /** 內文 */
+  content: string;
+  /** 延伸參數（預設空物件，保留向量化／結構化擴充） */
+  params: Record<string, unknown>;
+}
+
 /** 單案最新詳情版本（對應後端 RevisionDetail，皆 Layer A 公開欄位）。
  *
  * 僅在 enrich job 於「能連到 PCC 招標網」的環境跑過後才有值；未 enrich 時為 null，
@@ -114,8 +130,10 @@ export interface TenderRevisionDetail {
   depositRawText?: string | null;
   /** 廠商資格代碼 */
   qualificationCodes: string[];
-  /** 資格要求摘要 */
+  /** 資格要求摘要（原始長文） */
   qualificationText?: string | null;
+  /** 資格要求摘要的結構化條目（供表格呈現）；後端未落庫時由 qualificationText 即時結構化 */
+  qualificationItems: StructuredItem[];
   /** 採購類別大類（工程/財物/勞務） */
   categoryMain?: string | null;
   /** 採購類別名稱 */
@@ -234,13 +252,109 @@ export interface User {
   color: string;
 }
 
+// ── 投標看板（Notion 式）：白名單成員 / 投標流程階段 / 子任務 / 投標專案 ──
+// 新世界一律用 number id（對齊後端 users.id），與舊 KanbanCard 的 string id 兩層並存。
+
+/** 白名單成員（對齊後端 users 表；前端事實來源為 tender:members，可被 fetchAccounts 補強）。 */
+export interface Member {
+  /** 對齊後端 users.id；mock 種子用小正整數 */
+  id: number;
+  name: string;
+  /** @hqdesign.tw（合作範圍） */
+  email: string | null;
+  /** "admin" | "member" | … */
+  role: string | null;
+  /** 第 1 段同意：管理員開通白名單；唯有 true 才可被指派（Issue #1 名單來源） */
+  whitelistActive: boolean;
+  /** 第 2 段同意：本人同意行為具名共享（僅顯示，唯讀，不在前端切換） */
+  consentShared: boolean;
+  /** 由 authDisplay 衍生（頭像縮寫） */
+  initials: string;
+  /** 由 authDisplay 衍生（頭像底色） */
+  color: string;
+}
+
+/** 投標流程階段，1:1 對齊後端 TenderUserState.status（觀望/備標中/已投/得標/放棄）。 */
+export type BidStage =
+  | "watching"
+  | "preparing"
+  | "submitted"
+  | "won"
+  | "abandoned";
+
+/** 看板欄位順序（觀望→備標中→已投標→得標→放棄）。 */
+export const BID_STAGE_ORDER: BidStage[] = [
+  "watching",
+  "preparing",
+  "submitted",
+  "won",
+  "abandoned",
+];
+
+export type SubtaskStatus = "todo" | "doing" | "done";
+export type SubtaskPriority = "low" | "mid" | "high";
+
+export interface Subtask {
+  id: string;
+  title: string;
+  description?: string;
+  /** 指派給某 Member（白名單）；null＝未指派 */
+  assigneeId?: number | null;
+  status: SubtaskStatus;
+  priority?: SubtaskPriority;
+  /** 截止日（ISO date） */
+  dueDate?: string | null;
+  tags?: string[];
+  /** 建立者（currentMemberId） */
+  createdBy?: number | null;
+  createdAt: string;
+}
+
+/** 投標專案（新看板的卡）；以 tenderId 對齊 Layer A 標案，可無（手動建立）。 */
+export interface TenderProject {
+  id: string;
+  /** 有則卡片可點開 TenderDrawer（Issue #2） */
+  tenderId?: string;
+  title: string;
+  stage: BidStage;
+  tier?: Tier;
+  /** 截止投標（ISO date） */
+  deadline?: string;
+  /** 專案負責人（白名單成員）；null＝未指派 */
+  ownerId?: number | null;
+  subtasks: Subtask[];
+  /** 複用既有 KanbanNote（author 存成員 name 字串） */
+  notes?: KanbanNote[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 投標看板檢視狀態（存 tender:board:view）。 */
+export interface BoardView {
+  /** 只看與我相關（owner 或任一子任務指派含當前帳號） */
+  mineOnly: boolean;
+  /** 依成員過濾（owner 或子任務指派含此成員）；null＝不限 */
+  memberFilter: number | null;
+  /** 依階段過濾；null＝全部 */
+  stageFilter: BidStage | null;
+}
+
 export type ActivityKind =
   | "accept"
   | "skip"
   | "comment"
   | "move"
   | "import"
-  | "rule";
+  | "rule"
+  | "judge";
+
+/**
+ * 標案三分判斷（需求 D：✓/✗/⭐ 語意明確區分）。
+ * - feasible：✓ 我可以做
+ * - featured：⭐ 精選（強正向，feasible=可行＋featured）
+ * - infeasible：✗ 不做（即時寫團隊負權，2026-06-24 覆寫紅線後）
+ */
+export type Verdict = "feasible" | "featured" | "infeasible";
 
 export interface ActivityItem {
   id: string;
@@ -253,11 +367,15 @@ export interface ActivityItem {
 }
 
 export type SortKey = "score" | "deadline" | "budget" | "feasibility";
+/** 排序方向：asc 升冪、desc 降冪 */
+export type SortDir = "asc" | "desc";
 
 export interface FilterState {
   query: string;
   sources: SourceKey[];
   tiers: Tier[];
+  /** 預算下限（TWD），null = 不限 */
+  minBudget: number | null;
   /** 預算上限（TWD），null = 不限 */
   maxBudget: number | null;
   /** 只看命中重點關鍵字 */
@@ -265,6 +383,8 @@ export interface FilterState {
   /** 隱藏硬排除項 */
   hideExcluded: boolean;
   sort: SortKey;
+  /** 排序方向（搭配 sort）；切換排序欄時重設為該欄預設方向 */
+  sortDir: SortDir;
   /** 採購類別篩選（空=不限） */
   categories: Category[];
   /** 機關名稱關鍵字（包含比對） */

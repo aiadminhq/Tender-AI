@@ -25,3 +25,14 @@ class DomainValidationError(Exception):
     def __init__(self, detail: str = "unprocessable entity") -> None:
         self.detail = detail
         super().__init__(detail)
+
+
+class AuthNotConfigured(RuntimeError):
+    """AUTH_SECRET 未設定：fail-closed 拒絕簽發／驗證 token；API 層轉 503（可辨識，非不透明 500）。"""
+
+    def __init__(
+        self,
+        detail: str = "伺服器鑑權尚未設定（AUTH_SECRET），暫時無法處理需登入的請求",
+    ) -> None:
+        self.detail = detail
+        super().__init__(detail)

@@ -1,0 +1,363 @@
+<RichText id="intro">
+
+# PCC 彈性搜尋、多 transport 抓取與現有資料庫注入計畫
+
+> 📍 現況（2026-06-25）：🔲 規劃中。彈性匯入尚未落地；現以既有 `app/jobs/ingest_daily_reports.py`／`backfill.py` 為主。需能連 PCC 的環境推進。最新進度以 docs/governance/05-進度與白話術語.md 進度表為準。
+
+目標是把政府電子採購網（PCC）的搜尋條件從硬編碼改為可重用的 typed criteria，先以「**履約地點為台北市／新北市、預算不超過 5,000 萬、截止日距 Asia/Taipei 今日 1–10 天**」作為預設 profile，再把命中標案冪等寫入既有 PostgreSQL Corpus。列表沿用 HTTP adapter；詳情新增 Playwright persistent context、CDP attach 與 OpenCLI 診斷備案，但所有 transport 最終都回到既有 `FetchResult` → `detail_parser` → revision-first DB 流程，不建立第二套 parser 或資料 sink。
+
+本計畫是核准門檻；核准前只新增此規劃文件，不修改後端原始碼或資料庫。
+
+</RichText>
+
+<Callout id="primary-decision" tone="decision">
+
+**採用 `research_enrich` 作為唯一 live PCC → DB 主流程，但拆成兩階段並讓詳情 transport 可替換。** 第一階段從 PCC 列表直接解析名稱、機關、採購性質、預算、截止日與連結並 upsert `tenders`；第二階段透過 batch-scoped `DetailFetcher` 抓原始 HTML，再沿用既有 `is_captcha_page`／`parse_pcc_detail`、附件歸檔與 immutable revision。這可避免 CAPTCHA 讓核心列表資料無法入庫，也避免各備案各寫一套 parser。
+
+</Callout>
+
+<Callout id="current-window" tone="info">
+
+以目前 Asia/Taipei 日期 **2026-06-22** 與建議預設「剩餘 1–10 天」計算，本次查詢截止區間為 **2026-06-23 至 2026-07-02（含首尾）**。執行時由本地時區動態計算，不把這組日期寫死。
+
+</Callout>
+
+<RichText id="grounding-heading">
+
+### 現況證據與取捨
+
+</RichText>
+
+<Table
+  id="existing-patterns"
+  columns={["既有路徑", "可重用能力", "本次判定"]}
+  rows={[
+    ["tender-ai-backend/app/jobs/research_enrich.py", "雙北 discovery、case_pk 去重、詳情解析、附件歸檔、CrawlRun／失敗帳本、revision-first DB 寫入", "作為主幹；修正搜尋契約並讓列表資料先落庫"],
+    ["tender-ai-backend/app/jobs/backfill.py 與 ingest_daily_reports.py", "離線 HTML 解析與冪等匯入", "保留作歷史／備援，不作本次 live 主路徑"],
+    ["../tender-bot/tender_daily.py", "已測 PCC session、列表欄位解析、預算／截止日／機關篩選", "只借用解析模式；不 import，避免 logging、GitHub 發報與排程副作用"],
+  ]}
+/>
+
+<Callout id="query-gaps" tone="risk">
+
+現有 `PCCAdapter._ADVANCED_QUERY` 有三個漏案風險：`dateType=isNow` 只查當日公告；`TENDER_RANGE_3` 只查「查核金額以上未達巨額」；單頁 `pageSize=50` 沒有追下一頁。PCC 頁面本身另提供「截止投標」日期區間、採購級距「不限」與分頁，因此本次須同時修正三者，不能只把日期加 10 天。
+
+</Callout>
+
+<RichText id="criteria-heading">
+
+### 彈性搜尋契約
+
+新增 `PCCSearchCriteria` value object，由 CLI 建立並傳入 adapter；remote query 與本地 defense-in-depth 驗證共用同一份 criteria。金額對外以「萬元」表達、送 PCC 時轉為 TWD，避免現有 `Tender.budget_wan` 與 PCC 元值混用。
+
+</RichText>
+
+<Table
+  id="criteria-table"
+  columns={["條件", "CLI", "預設值", "處理方式"]}
+  rows={[
+    ["履約縣市", "--city（可重複）", "台北市、新北市", "逐城市送 `execLocation`，跨城市以 case_pk 去重"],
+    ["預算", "--budget-min-wan / --budget-max-wan", "0 / 5000", "PCC minBudget/maxBudget + 本地邊界驗證；上限 inclusive"],
+    ["截止窗", "--deadline-min-days / --deadline-max-days", "1 / 10", "以 Asia/Taipei local date 轉 `spdtStartDate/spdtEndDate`；兩端 inclusive"],
+    ["採購性質", "--category（可重複）", "工程、財物、勞務全部", "遠端按類別查詢或不限，本地再核對"],
+    ["標案關鍵字", "--keyword（可重複）", "空＝不過濾", "名稱任一命中；室內裝修關鍵字仍作 annotation，不偷變成硬排除"],
+    ["招標方式", "--tender-method（可重複）", "空＝不限", "列表欄位本地比對，避免暴露 PCC enum"],
+    ["詳情抓取", "--skip-details / --rate-limit", "抓取／2 秒", "列表先 commit；詳情 CAPTCHA 只中止第二階段"],
+    ["分頁護欄", "--page-size / --max-pages", "50 / 100", "依 `d-*-p` 追頁；無新 case_pk、無下一頁或達上限即停"],
+  ]}
+/>
+
+<Code
+  id="default-command"
+  filename="manual command"
+  language="bash"
+  caption="預設 profile 等價的可重現命令；實作後先 dry-run，再正式入庫。"
+  code={"uv run python -m app.jobs.research_enrich \\\n+  --city 台北市 --city 新北市 \\\n+  --budget-max-wan 5000 \\\n+  --deadline-min-days 1 --deadline-max-days 10 \\\n+  --dry-run\n+\n+uv run python -m app.jobs.research_enrich \\\n+  --city 台北市 --city 新北市 \\\n+  --budget-max-wan 5000 \\\n+  --deadline-min-days 1 --deadline-max-days 10 \\\n+  --trigger manual\n"}
+/>
+
+<RichText id="flow-heading">
+
+### 目標資料流
+
+</RichText>
+
+<Mermaid
+  id="ingestion-flow"
+  source={"flowchart LR\n  A[CLI criteria] --> B[PCC advanced query builder]\n  B --> C[雙北 x 類別 x 全部分頁]\n  C --> D[parse_list_items]\n  D --> E[本地條件驗證與 case_pk 去重]\n  E --> F[(tenders upsert)]\n  F --> G{skip details?}\n  G -- yes --> K[CrawlRun 完成]\n  G -- no --> H[fetch_detail + rate limit]\n  H --> I[(snapshot + immutable revision)]\n  I --> K\n  H -- CAPTCHA/failure --> J[crawl_failures + deferred]\n  J --> K"}
+  caption="列表入庫是核心成功條件；詳情 enrich 是可降級的第二階段。"
+/>
+
+<RichText id="transport-heading">
+
+### 詳情抓取 transport 備案
+
+列表查詢繼續使用目前 `_pcc_http.py` 的 `requests`／`SkipSSLAdapter`，因它速度快、可分頁且不需要真人狀態。只有詳情頁在 HTTP 回傳 CAPTCHA 時才切到 browser transport。所有 browser 路徑皆為**本機、headed、human-in-the-loop**：允許使用者手動完成 PCC 驗證後重用 session，但不實作 CAPTCHA 自動辨識、破解或 stealth 欺騙。
+
+</RichText>
+
+<Table
+  id="transport-matrix"
+  columns={["工具／transport", "定位", "狀態與優點", "限制／啟用條件"]}
+  rows={[
+    ["HTTP requests + SkipSSLAdapter", "預設列表；詳情第一嘗試", "既有、最快、測試完整，維持 tender_daily 相容策略", "詳情遇常駐 CAPTCHA 即停止，不重試轟站"],
+    ["Playwright persistent context", "主要 browser fallback", "專用 userDataDir 保存手動驗證後的 cookie/localStorage；headed、可排程重用", "只能本機；同一 profile 不可多開；先做單案 spike 才升格 production"],
+    ["Playwright CDP attach", "操作員備案", "附著已開啟且已通過驗證的 Chromium browser，只導頁與讀 DOM", "Chrome 136+ 必須使用非預設 user-data-dir；CDP fidelity 低於 Playwright protocol；宿主瀏覽器須常駐"],
+    ["OpenCLI Browser Bridge／CDP", "探索與診斷備案", "現有 v1.7.3 可 `doctor`、`explore`、`cascade`、`record`，重用真實 browser session", "`web read` 產出 Markdown，不符合 `detail_parser` 的 raw HTML 契約；未有 PCC adapter 前不直接入庫"],
+    ["FileDetailFetcher／離線 HTML spool", "最後保底與重播", "人工瀏覽器另存 raw HTML 後，完全離線走既有 parser／revision job", "非全自動；只讀受控目錄且檔名必須匹配 case_pk manifest"],
+  ]}
+/>
+
+<Mermaid
+  id="detail-transport-flow"
+  source={"flowchart TD\n  A[待 enrich case_pk] --> B[HTTP DetailFetcher]\n  B -->|正常 HTML| P[既有 detail_parser]\n  B -->|CAPTCHA| C{browser fallback 已啟用?}\n  C -->|Playwright profile ready| D[Persistent context]\n  C -->|操作員 browser ready| E[CDP attach]\n  C -->|否| F[crawl_failure + human_required]\n  D -->|手動驗證後 DOM| P\n  E -->|目前 tab DOM| P\n  D -->|仍是 CAPTCHA| F\n  E -->|仍是 CAPTCHA| F\n  P --> G[content hash + snapshot + revision]\n  H[OpenCLI explore / record] -. 診斷 selector 或 network .-> D\n  H -. 不直接寫 DB .-> E"}
+  caption="transport 只負責取得原始 HTML；CAPTCHA 判斷、解析、去重與持久化仍只有一套。"
+/>
+
+<Callout id="browser-security" tone="warning">
+
+Browser profile 等同登入憑證：Playwright profile 固定放在 `tender-ai-backend/data/private/pcc-browser-profile/`（既有 gitignore 覆蓋）、目錄權限限本機使用者，禁止寫 log、commit、上傳或放入一般備份。CDP 只綁 `127.0.0.1`，啟動前檢查 `/json/version` 與 `/json/list`，禁止 ngrok／公開 reverse proxy，且不得關閉或接管非 PCC 分頁。不同 transport 不能同時持有同一 profile，需以 lock file 阻止重疊排程。
+
+</Callout>
+
+<Callout id="chrome-136" tone="risk">
+
+**CDP 的「日常 Chrome default profile」假設需修正。** Chrome 136 起，remote debugging flags 對 default data directory 不再生效；必須指定非預設 `--user-data-dir`。因此備案實作為「專用 CDP profile」或經驗證可用的 Comet CDP session，而不是承諾直接附著一般 Chrome default profile。參考 [Chrome remote debugging 安全變更](https://developer.chrome.com/blog/remote-debugging-port) 與 [Playwright `connect_over_cdp`／`launch_persistent_context`](https://playwright.dev/python/docs/api/class-browsertype)。
+
+</Callout>
+
+<RichText id="spike-heading">
+
+### 最小 Playwright spike（先做、通過才整合）
+
+Spike 只處理一個已知 `case_pk`：啟動 headed persistent context → 導向 `PCCAdapter.detail_url(case_pk)` → 若出現 CAPTCHA，由人手動完成 → 取得 `page.content()` → 呼叫既有 `is_captcha_page` 與 `parse_pcc_detail`。**不連 DB、不下載附件、不跑整批、不改 parser。** 成功條件是同一 profile 關閉後重開，第二次能在無重新驗證或可接受的人工作業下取得正常 DOM，且 parser 解析出 case 名稱、預算／截止或既有 fixture 對應的關鍵欄位。
+
+</RichText>
+
+<Code
+  id="playwright-spike-command"
+  filename="local spike command"
+  language="bash"
+  caption="規劃中的命令介面；實作完成後於可操作 GUI 的本機執行。"
+  code={"uv sync --extra browser\nuv run python scripts/spike_pcc_playwright.py \\\n+  --case-pk 71248861 \\\n+  --profile-dir data/private/pcc-browser-profile \\\n+  --headed\n"}
+/>
+
+<Table
+  id="spike-gates"
+  columns={["Gate", "通過條件", "失敗處置"]}
+  rows={[
+    ["S1 啟動與 profile", "headed browser 使用專用 profile，lock 與關閉流程正常", "不進 production；先修 profile lifecycle"],
+    ["S2 CAPTCHA handoff", "偵測驗證頁後等待人操作，不自動解題、不持續重整", "記 human_required 並安全結束"],
+    ["S3 parser 相容", "page.content 原樣交給 parse_pcc_detail 並取得有效 ParsedDetail", "只修 transport／DOM readiness；不得 fork parser"],
+    ["S4 session 重用", "關閉再開同一 profile，session 可重用或可預期地提示人工介入", "若每次必驗證，降級為 operator-only，不掛無人排程"],
+    ["S5 無副作用", "不寫 DB、不抓附件、不外洩 cookies，輸出僅狀態與欄位摘要", "清除 spike 產物並停止"],
+  ]}
+/>
+
+<RichText id="opencli-heading">
+
+### OpenCLI 的合理角色
+
+OpenCLI 不先包成 production fetcher。第一階段用 `opencli doctor` 驗證 Browser Bridge／CDP，用 `opencli cascade <PCC URL>` 與 `opencli explore <PCC URL> --goal ...` 判斷是否存在比 DOM 自動化更穩定的同源 request，再以 `opencli record` 在真人操作期間記錄 network candidate。只有當它能穩定輸出**未改寫的 raw HTML 或與 `ParsedDetail` 等價且可測的明確 contract**，才新增 PCC adapter；目前 `opencli web read` 只輸出 Markdown，不能餵給 `detail_parser`，因此僅作診斷與 selector/network 研究工具。版本先鎖目前已驗證的 `1.7.3`，不在本任務順手升級至 `1.8.4`。
+
+</RichText>
+
+<Code
+  id="opencli-probe-command"
+  filename="OpenCLI diagnostic commands"
+  language="bash"
+  caption="只做 browser／network 診斷；輸出留在 data/private，不直接入庫。"
+  code={"opencli doctor\nopencli cascade 'https://web.pcc.gov.tw/...' --site pcc --verbose\nopencli explore 'https://web.pcc.gov.tw/...' \\\n+  --site pcc --goal 'identify stable detail request and raw DOM source' --verbose\nopencli record 'https://web.pcc.gov.tw/...' \\\n+  --site pcc --out data/private/pcc-opencli --timeout 60000 --verbose\n"}
+/>
+
+<RichText id="persistence-heading">
+
+### 入庫契約與邊界
+
+</RichText>
+
+<DataModel
+  id="persistence-model"
+  entities={[
+    {
+      id: "sources",
+      name: "sources",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "name", type: "varchar", nullable: false },
+      ],
+    },
+    {
+      id: "tenders",
+      name: "tenders",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "source_id", type: "int", fk: "sources.id" },
+        { name: "case_pk", type: "varchar" },
+        { name: "budget_wan", type: "int", nullable: true },
+        { name: "deadline_iso", type: "date", nullable: true },
+        { name: "city", type: "varchar", nullable: true },
+      ],
+    },
+    {
+      id: "tender_revisions",
+      name: "tender_revisions",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "tender_id", type: "int", fk: "tenders.id" },
+        { name: "content_hash", type: "char(64)" },
+      ],
+    },
+    {
+      id: "crawl_runs",
+      name: "crawl_runs",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "notes.criteria", type: "jsonb" },
+        { name: "status", type: "varchar" },
+      ],
+    },
+  ]}
+  relations={[
+    { from: "tenders", to: "sources", kind: "n-1" },
+    { from: "tender_revisions", to: "tenders", kind: "n-1" },
+  ]}
+/>
+
+<Callout id="no-migration" tone="info">
+
+現有 `UNIQUE(source_id, case_pk)`、`Tender` 欄位、JSONB `CrawlRun.notes` 與 revision schema 已足夠；搜尋條件快照寫入 `notes.criteria`，第一版**不新增 migration、不建立 saved-search 資料表、不改 frontend**。若之後要讓使用者在 UI 儲存 profiles，再獨立設計 API／權限／資料模型。
+
+</Callout>
+
+<RichText id="implementation-heading">
+
+### 實作工作包
+
+0. **先完成單案 Playwright spike。** 新增本機-only `scripts/spike_pcc_playwright.py` 與 optional `browser` dependency；以專用 profile、headed 模式跑通「人工驗證 → page.content → 既有 parser」。S1–S5 未全過前，不修改 production transport 選擇、不掛排程。
+1. **建立 typed criteria 與日期／金額正規化。** 在 `app/adapters/pcc.py` 定義 `PCCSearchCriteria`、`PCCListItem` 與驗證規則；`research_enrich.py` 的 argparse 只負責轉成 criteria。以 `ZoneInfo("Asia/Taipei")` 決定今日，拒絕負數、min > max、未知縣市與未知類別，錯誤訊息不得帶 DB URL。
+2. **重構 advanced query 與完整分頁。** 用結構化 params 取代 `_ADVANCED_QUERY` 字串：`dateType=isSpdt`、`spdtStartDate/spdtEndDate`、`tenderRange=TENDER_RANGE_ALL`、預算與履約地點依 criteria 注入。解析總筆數／下一頁連結，逐頁抓取並以「新 case_pk 數」防無限迴圈。
+3. **列表解析先成為可靠資料源。** 新增 `parse_list_items`，抽出 case_pk、name、org、category、tender_method、budget_wan、deadline_roc／iso、link；保留 `parse_list_case_pks` 作相容 wrapper。沿用 `tender_daily.py` 已驗證的欄位位置概念，但以表頭／selector 防止固定 table index 漂移。
+4. **兩階段冪等入庫。** `_discover` 改收 `PCCListItem`，用 `(source_id, case_pk)` upsert；新舊案都更新公開現值與 `last_seen`，不覆蓋非空詳情欄位為空。列表 transaction 完成後才跑現有 `_process_one`。`CrawlRun.notes` 記錄 criteria、查詢頁數、列表命中、去重數、入庫數、詳情 deferred／failed，並保存 `created_case_pks`／`updated_case_pks`，讓首批復原範圍可被稽核而不是靠時間猜測。
+5. **抽出 batch-scoped async `DetailFetcher`。** 現有 job 已在 asyncio 內，不能直接混用 Playwright sync API；建立 async fetcher lifecycle，一個 run 只啟動一次 HTTP session／browser context。HTTP provider 以 `asyncio.to_thread` 包裝目前同步 `PCCAdapter.fetch_detail`，Playwright／CDP provider 使用 async API，File provider 從 manifest 指定的 raw HTML 讀取，全部回傳既有 `FetchResult`。Browser provider 以 `page.goto` 的 Response 保留 status/content-type，再於人工驗證完成後取 `page.content()` 與 `extract_source_revision_key`。`_process_one` 改為 `await fetcher.fetch_detail(case_pk)`，parser 與 transaction 不動。
+6. **整合 Playwright、CDP 與 file replay，但不做靜默接管。** CLI 增加 `--detail-transport http|playwright|cdp|file` 與明確 `--fallback-transport`；預設仍是 `http`。只有使用者配置 fallback 時，HTTP CAPTCHA 才對同一 case 重試一次 browser transport。CDP preflight 必須驗證 localhost endpoint、PCC target 與專用 profile，不得任意操作其他 tabs；file mode 必須同時提供 `--detail-html-dir` 與 case_pk manifest。
+7. **保留 OpenCLI 診斷腳本。** 新增只讀 `scripts/probe_pcc_opencli.py` 或等價 wrapper，依序執行 `doctor`／`cascade`／`record` 並保存到 `data/private/pcc-opencli/`；不把 Markdown 當 raw HTML、不直接呼叫 DB。若未來產生 PCC adapter，另開工作包審核輸出 contract 與版本 pin。
+8. **加入安全 dry-run。** `--dry-run` 可連 PCC 列表、跑完整分頁與本地驗證，但不建立 Source／Tender／CrawlRun、不抓詳情；`--detail-dry-run` 則只處理指定單案、禁止 DB／附件寫入。正式模式才寫 DB。
+9. **驗證後執行一次正式注入。** 先確認 Alembic `head`、備份現有 DB，再 dry-run；人工抽查至少 5 筆 PCC 原頁的履約地點／預算／截止日，通過後正式執行並用 SQL/API 驗證總數、邊界與重跑冪等。排程不與第一批資料綁死；只有 Playwright S4 通過才允許 browser fallback 無人排程，否則固定為 operator-assisted。
+
+</RichText>
+
+<RichText id="files-heading">
+
+### 預計檔案範圍
+
+</RichText>
+
+<FileTree
+  id="files-touched"
+  title="只動後端 PCC ingestion 範圍"
+  entries={[
+    { path: "tender-ai-backend/app/adapters/pcc.py", change: "modified", note: "typed criteria、列表 item parser、query builder、pagination" },
+    { path: "tender-ai-backend/app/adapters/pcc_detail.py", change: "added", note: "async HTTP／persistent-context／CDP／file DetailFetcher；只回 FetchResult" },
+    { path: "tender-ai-backend/app/jobs/research_enrich.py", change: "modified", note: "CLI flags、dry-run、兩階段 upsert、run metrics" },
+    { path: "tender-ai-backend/app/jobs/enrich_details.py", change: "modified", note: "注入 batch-scoped async DetailFetcher；parser／revision 邏輯不變" },
+    { path: "tender-ai-backend/scripts/spike_pcc_playwright.py", change: "added", note: "單案 headed persistent-context spike，零 DB 寫入" },
+    { path: "tender-ai-backend/scripts/check_pcc_cdp.py", change: "added", note: "localhost 9222 preflight、PCC target 檢查，不操作其他 tabs" },
+    { path: "tender-ai-backend/scripts/probe_pcc_opencli.py", change: "added", note: "OpenCLI doctor／cascade／record 診斷 wrapper，輸出到 data/private" },
+    { path: "tender-ai-backend/pyproject.toml", change: "modified", note: "Playwright 放 optional browser extra，不強迫 CI 安裝 browser" },
+    { path: "tender-ai-backend/uv.lock", change: "modified", note: "鎖定 optional browser dependency" },
+    { path: "tender-ai-backend/tests/test_pcc_list.py", change: "modified", note: "query contract、全部級距、截止窗、分頁、解析邊界" },
+    { path: "tender-ai-backend/tests/test_research_enrich.py", change: "modified", note: "條件傳遞、list-first 入庫、CAPTCHA 降級、冪等" },
+    { path: "tender-ai-backend/tests/test_pcc_detail_fetchers.py", change: "added", note: "mock HTTP／Playwright／CDP／file lifecycle、fallback 次數、profile lock；不啟動真 browser" },
+    { path: "tender-ai-backend/tests/fixtures/pcc_list_page_2.html", change: "added", note: "離線分頁 fixture；由受治理連線擷取後固定" },
+    { path: "tender-ai-backend/README.md", change: "modified", note: "dry-run、正式注入、排程與復原命令" },
+  ]}
+/>
+
+<Callout id="scope-boundary" tone="warning">
+
+目前工作樹有未提交的 frontend／assistant WIP；本計畫實作時不得碰 `tender-ai-frontend/`、既有 `plans/project-status-assessment/` 或上層 `plan-blocks.md`。若後端上述檔案在動工前出現新 WIP，必須停下回報重疊。
+
+</Callout>
+
+<RichText id="verification-heading">
+
+### 測試與驗收
+
+</RichText>
+
+<Checklist
+  id="acceptance-checklist"
+  items={[
+    { id: "criteria-unit", label: "所有 public criteria 正常、邊界與錯誤條件都有 unit tests" },
+    { id: "query-contract", label: "URL/params 明確包含 spdt window、TENDER_RANGE_ALL、雙北與 50,000,000 TWD 上限" },
+    { id: "pagination", label: "2+ 頁 fixture 全部收齊；重複頁或無新 PK 能安全停止" },
+    { id: "list-first", label: "詳情 CAPTCHA／HTTP error 時，符合條件的 Tender 仍已完整 upsert" },
+    { id: "fetch-contract", label: "HTTP／Playwright／CDP／file 都只回 FetchResult；detail_parser 與 revision 寫入沒有分叉" },
+    { id: "playwright-spike", label: "單案 persistent-context spike 通過 S1–S5，關閉重開後 session 行為已記錄" },
+    { id: "captcha-human", label: "CAPTCHA 僅提示人工完成；未實作自動解題、stealth patch 或無限 refresh" },
+    { id: "cdp-security", label: "CDP 僅綁 127.0.0.1、使用非預設 profile、只選 web.pcc.gov.tw target" },
+    { id: "profile-lock", label: "同一 browser profile 的並行 run 會被 lock 拒絕，cookies／路徑不出現在 log" },
+    { id: "opencli-boundary", label: "OpenCLI 診斷輸出不直接入庫；Markdown 不會誤送 detail_parser" },
+    { id: "idempotency", label: "同條件重跑不增加 Tender；內容相同不增加 revision" },
+    { id: "timezone", label: "Asia/Taipei 跨 UTC 日界測試通過，1–10 日窗口不偏一天" },
+    { id: "targeted-tests", label: "pytest test_pcc_list.py + test_research_enrich.py 全綠（現況 baseline 10 passed）" },
+    { id: "full-suite", label: "完整 pytest 通過，Alembic current 仍為 head，無 schema drift" },
+    { id: "live-dry-run", label: "live dry-run 命中資料經 5 筆人工抽查，PCC 原頁與解析值一致" },
+    { id: "db-verification", label: "正式注入後 SQL/API 只含雙北、budget_wan <= 5000、days_left 在核准窗口內" },
+  ]}
+/>
+
+<RichText id="rollback-heading">
+
+### 上線與復原
+
+第一輪先手動執行，不直接掛排程。正式注入前保留 DB backup 與 `CrawlRun.id`；若解析契約錯誤，以該 run 的 criteria／時間與新建 case_pk 清單產生 rollback 清單，人工確認後只刪除本 run 新建且沒有 Layer B 關聯的 Tender。既有 Tender 的公開現值更新不可用整庫 rollback 粗暴覆蓋，應由重新抓取或 backup 比對恢復。首輪成功後，才把完全相同的 CLI 參數放到 DB 同主機的 cron／launchd。Browser transport 必須與 DB job 同機、具 GUI session 與 profile lock；雲端／CI 只跑 mocks 和 fixtures。若 persistent session 每次仍需 CAPTCHA，排程只做列表入庫，詳情固定改為操作員手動批次，不以重試迴圈施壓 PCC。
+
+</RichText>
+
+<RichText id="questions-heading">
+
+### Open Questions
+
+</RichText>
+
+<QuestionForm
+  id="open-questions"
+  questions={[
+    {
+      id: "deadline-semantics",
+      title: "『還有十天』要採哪一種截止窗口？",
+      subtitle: "此選擇只改 criteria 預設，不改架構。",
+      mode: "single",
+      options: [
+        { id: "within-1-10", label: "剩餘 1–10 天", detail: "排除今天截止，納入未來 10 天內；建議預設。", recommended: true },
+        { id: "exact-day-10", label: "剛好第 10 天", detail: "只收截止日等於 today + 10 的案件。" },
+        { id: "at-least-10", label: "至少還有 10 天", detail: "收 deadline >= today + 10，需另定最大天數。" },
+      ],
+      required: true,
+    },
+    {
+      id: "relevance-scope",
+      title: "『相關專案』是否要用室內裝修關鍵字硬過濾？",
+      subtitle: "現有系統可把關鍵字當 annotation／排序訊號，不必漏掉未命名為裝修的工程。",
+      mode: "single",
+      options: [
+        { id: "all-annotate", label: "全部入庫再標注", detail: "四個硬條件命中就入庫，室內關鍵字只標注／排序；建議。", recommended: true },
+        { id: "keyword-only", label: "只收關鍵字命中", detail: "資料量較小，但可能漏掉名稱不明顯的相關工程。" },
+        { id: "engineering-only", label: "只收工程類", detail: "排除財物與勞務，即使名稱命中裝修需求。" },
+      ],
+      required: true,
+    },
+    {
+      id: "schedule-host",
+      title: "首批驗證後是否要每日自動執行？",
+      mode: "single",
+      options: [
+        { id: "manual-first", label: "先手動、後排程", detail: "完成 dry-run 與首次 DB 驗證後，再部署到 DB 同主機；建議。", recommended: true },
+        { id: "daily-local", label: "立即每日排程", detail: "需同時確認執行主機、secret、log retention 與告警。" },
+      ],
+      required: true,
+    },
+  ]}
+  submitLabel="確認實作方向"
+/>

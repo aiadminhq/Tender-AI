@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Moon,
   PanelLeftClose,
@@ -14,7 +15,10 @@ import { Input } from "@/components/ui/input";
 import { BrandMark } from "@/components/brand";
 import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 import { PushBell } from "@/components/push/push-bell";
+import { AnnotationToggle } from "@/components/annotate/annotation-toggle";
 import { AccountMenu } from "./account-menu";
+import { NAV } from "./nav-items";
+import type { TextKey } from "@/i18n/strings";
 import { cn } from "@/lib/utils";
 
 export function Topbar() {
@@ -28,7 +32,18 @@ export function Topbar() {
     toggleSidebar,
   } = useApp();
   const { filter, setFilter } = useAppData();
+  const location = useLocation();
   const [refreshing, setRefreshing] = useState(false);
+
+  const activeKey = useMemo<TextKey>(() => {
+    if (location.pathname === "/assistant-studio") return "navAssistantStudio";
+    const exact = NAV.find((item) => item.to === location.pathname);
+    if (exact) return exact.key;
+    const parent = NAV.find(
+      (item) => item.to !== "/" && location.pathname.startsWith(item.to),
+    );
+    return parent?.key ?? "appName";
+  }, [location.pathname]);
 
   const refresh = () => {
     if (refreshing) return;
@@ -37,72 +52,99 @@ export function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-canvas/85 px-4 backdrop-blur md:px-6">
-      <div className="md:hidden">
-        <BrandMark size={24} />
-      </div>
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-card/90 px-4 backdrop-blur md:px-6">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="md:hidden">
+          <BrandMark size={30} />
+        </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleSidebar}
-        aria-label={t(sidebarCollapsed ? "expandSidebar" : "collapseSidebar")}
-        title={t(sidebarCollapsed ? "expandSidebar" : "collapseSidebar")}
-        className="hidden md:inline-flex"
-      >
-        {sidebarCollapsed ? (
-          <PanelLeftOpen size={16} />
-        ) : (
-          <PanelLeftClose size={16} />
-        )}
-      </Button>
-
-      <div className="relative max-w-md flex-1">
-        <Search
-          size={15}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-dim"
-        />
-        <Input
-          value={filter.query}
-          onChange={(e) => setFilter({ query: e.target.value })}
-          placeholder={t("search")}
-          className="pl-9"
-        />
-      </div>
-
-      <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
-          onClick={refresh}
-          aria-label={t("refresh")}
-          title={refreshing ? t("refreshing") : t("refresh")}
+          onClick={toggleSidebar}
+          aria-label={t(sidebarCollapsed ? "expandSidebar" : "collapseSidebar")}
+          title={t(sidebarCollapsed ? "expandSidebar" : "collapseSidebar")}
+          className="hidden rounded-md text-ink-muted hover:bg-ink/5 hover:text-ink md:inline-flex"
         >
-          <RefreshCw size={16} className={cn(refreshing && "animate-spin")} />
+          {sidebarCollapsed ? (
+            <PanelLeftOpen size={18} strokeWidth={1.5} />
+          ) : (
+            <PanelLeftClose size={18} strokeWidth={1.5} />
+          )}
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          aria-label={t("theme")}
-          title={t("theme")}
-        >
-          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleLang}
-          aria-label={t("language")}
-          title={t("language")}
-        >
-          <span className="text-[11px] font-semibold">
-            {lang === "zh" ? "EN" : "中"}
+
+        <div className="flex min-w-0 items-center gap-2 text-[14px]">
+          <span className="hidden truncate text-ink-muted sm:inline">
+            HQdesign
           </span>
-        </Button>
-        <PushBell />
-        <AssistantLauncher />
-        <AccountMenu />
+          <span className="hidden text-ink-dim sm:inline">/</span>
+          <span className="truncate font-semibold text-ink">
+            {t(activeKey)}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+        <div className="relative hidden w-full max-w-[34rem] md:block">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-dim"
+          />
+          <Input
+            name="global-search"
+            value={filter.query}
+            onChange={(e) => setFilter({ query: e.target.value })}
+            placeholder={t("search")}
+            className="h-10 rounded-lg border-transparent bg-ink/5 pl-10 text-[13px] shadow-none focus-visible:border-ring/30 focus-visible:bg-card focus-visible:ring-ring/20"
+          />
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={refresh}
+            aria-label={t("refresh")}
+            title={refreshing ? t("refreshing") : t("refresh")}
+            className="rounded-md text-ink-muted hover:bg-ink/5 hover:text-ink"
+          >
+            <RefreshCw
+              size={17}
+              strokeWidth={1.6}
+              className={cn(refreshing && "animate-spin")}
+            />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label={t("toggleTheme")}
+            title={t("toggleTheme")}
+            className="rounded-md text-ink-muted hover:bg-ink/5 hover:text-ink"
+          >
+            {theme === "dark" ? (
+              <Sun size={17} strokeWidth={1.6} />
+            ) : (
+              <Moon size={17} strokeWidth={1.6} />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleLang}
+            aria-label={t("toggleLang")}
+            title={t("toggleLang")}
+            className="rounded-md text-ink-muted hover:bg-ink/5 hover:text-ink"
+          >
+            <span className="text-[11px] font-semibold">
+              {lang === "zh" ? "EN" : "中"}
+            </span>
+          </Button>
+          {import.meta.env.DEV && <AnnotationToggle />}
+          <PushBell />
+          {location.pathname !== "/assistant-studio" && <AssistantLauncher />}
+          <AccountMenu />
+        </div>
       </div>
     </header>
   );

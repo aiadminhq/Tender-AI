@@ -14,6 +14,7 @@ from app.services.detail_parser import (
     extract_source_revision_key,
     is_captcha_page,
     parse_pcc_detail,
+    structure_text,
 )
 
 FIX = Path(__file__).parent / "fixtures"
@@ -225,3 +226,45 @@ def test_extract_source_revision_key():
     assert extract_source_revision_key(_load("pcc_detail_full.html")) == "01"
     assert extract_source_revision_key(_load("pcc_detail_corrected.html")) == "02"
     assert extract_source_revision_key("<html></html>") is None
+
+
+# --------------------------------------------------------------------------- #
+# structure_text：資格摘要結構化為通用「屬性/標籤/內文/參數」條目
+# --------------------------------------------------------------------------- #
+def test_structure_text_codes_and_requirements_from_full_fixture():
+    d = parse_pcc_detail(_load("pcc_detail_full.html"))
+    items = d.qualification_items
+    assert isinstance(items, list) and items
+
+    # 代碼行被依代碼切成 code 條目：label＝代碼、content＝其後中文名稱
+    codes = [it for it in items if it["kind"] == "code"]
+    assert [c["label"] for c in codes] == ["E101011", "E102011"]
+    assert codes[0]["content"] == "綜合營造業丙等(含以上)"
+    assert "土木包工業" in codes[1]["content"]
+
+    # 非代碼行為 requirement 條目
+    reqs = [it for it in items if it["kind"] == "requirement"]
+    assert any("廠商登記或設立之證明" == r["content"] for r in reqs)
+
+    # 通用結構鍵齊備、params 預設空 dict
+    for it in items:
+        assert set(it) == {"kind", "label", "content", "params"}
+        assert it["params"] == {}
+
+
+def test_structure_text_ordinal_prefix_stripped_to_label():
+    items = [it.to_dict() for it in structure_text("一、廠商登記\n2.納稅證明\n（3）其他資格")]
+    assert items[0] == {"kind": "requirement", "label": "一", "content": "廠商登記", "params": {}}
+    assert items[1]["label"] == "2" and items[1]["content"] == "納稅證明"
+    assert items[2]["label"] == "3" and items[2]["content"] == "其他資格"
+
+
+def test_structure_text_note_before_codes():
+    items = [it.to_dict() for it in structure_text("符合下列任一：E101011綜合營造業、E102011土木包工業")]
+    assert items[0]["kind"] == "note" and items[0]["content"] == "符合下列任一"
+    assert [it["label"] for it in items if it["kind"] == "code"] == ["E101011", "E102011"]
+
+
+def test_structure_text_empty_and_none():
+    assert structure_text(None) == []
+    assert structure_text("   \n  \n") == []

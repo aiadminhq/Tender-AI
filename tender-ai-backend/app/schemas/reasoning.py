@@ -65,6 +65,99 @@ class CriteriaProfileOut(BaseModel):
     confidence: Literal["low", "medium", "high"]  # 依樣本量推導的可信度
 
 
+class ManualKeywordIn(BaseModel):
+    """推理卡手動關鍵字覆寫輸入（Phase 2）。
+
+    ``action=add`` 把詞加入該清單；``action=remove`` 把詞移出（隱藏學習詞，
+    或撤回先前的手動新增）。``kind=negative`` 即「人工迴避」合規路徑。
+    """
+
+    term: str = Field(min_length=1, max_length=128)
+    kind: Literal["positive", "negative", "engaged"]
+    action: Literal["add", "remove"]
+
+
+class KeywordToken(BaseModel):
+    """速覽判斷原因表單的可選關鍵字（字或詞）。"""
+
+    term: str
+    in_title: bool  # 出現在標案名稱（vs 僅出現在機關）
+
+
+class NegativeCandidate(BaseModel):
+    """系統建議的『疑似迴避』候選（附理由）。
+
+    僅為**建議**：唯有本人在表單中按下確認，才會經 ``POST /me/keywords``
+    寫入 ``kind=negative``（負分人工專屬唯一合規路徑）。此端點本身不寫任何負權重。
+    """
+
+    term: str
+    lift: float
+    reason: str
+
+
+class KeywordCandidatesOut(BaseModel):
+    """速覽配對判斷原因表單的關鍵字候選（唯讀）。"""
+
+    tender_id: int
+    title: str
+    org: str | None = None
+    words: list[KeywordToken] = Field(default_factory=list)  # jieba 斷詞（詞）
+    chars: list[KeywordToken] = Field(default_factory=list)  # CJK 單字（字）
+    # ✓/⭐ 前端預選：本人學習正向詞 ∩ 本標案文字
+    positive_hits: list[str] = Field(default_factory=list)
+    # ✗ 前端預選但需人確認：系統建議的疑似迴避候選（附理由，非自動負分）
+    recommended_negative: list[NegativeCandidate] = Field(default_factory=list)
+
+
+class AbandonedRootCandidate(BaseModel):
+    """本人淘汰標案聚合出的『建議迴避字根』候選（唯讀、附證據）。
+
+    僅為**建議**：採納與否由人拍板，真正歸負分只發生在本人於規則頁按下「加入迴避」、
+    經 ``POST /me/keywords``（``kind=negative``）寫入。此候選本身不寫任何負權重。
+    """
+
+    term: str
+    kind: Literal["word", "root"]  # word=jieba 斷詞；root=2-gram 字根
+    count: int  # 出現在幾件你淘汰的標案（文件頻次，每案至多計一次）
+    sample_titles: list[str] = Field(default_factory=list)  # 最多 3 筆示例標題
+
+
+class AbandonedKeywordCandidatesOut(BaseModel):
+    """規則頁「建議迴避字根」清單（由本人淘汰行為聚合，唯讀）。"""
+
+    user_id: int | None = None
+    abandoned_count: int = 0  # 納入統計的淘汰標案數
+    candidates: list[AbandonedRootCandidate] = Field(default_factory=list)
+
+
+class TenderDecisionItem(BaseModel):
+    """本人對單一標案的處置（決策回顧 / 評分管理用，唯讀）。
+
+    ``disposition`` 對齊前端 ``Disposition``：accepted（打勾承接）／starred（星星收藏）／
+    skipped（叉叉淘汰）。``reason``／``by``／``at`` 主要用於淘汰案：``by`` 為登入帳號名
+    （具名貢獻者，Layer B 白名單內共享）；``at`` 為 ISO datetime。
+    """
+
+    tender_id: int
+    disposition: Literal["accepted", "starred", "skipped"]
+    title: str
+    org: str | None = None
+    tier: str | None = None  # 取最新每日快照（high/mid/low/priority）；無快照為 None
+    deadline_iso: str | None = None  # ISO date（YYYY-MM-DD）
+    reason: str | None = None  # 淘汰理由（速覽 pass payload.reason → 評估 rationale）
+    by: str | None = None  # 具名貢獻者（登入帳號名）
+    at: str | None = None  # 決策時間（ISO datetime）
+
+
+class TenderDecisionsOut(BaseModel):
+    """本人標案處置清單（由 Layer B 行為訊號重建，唯讀）。"""
+
+    user_id: int | None = None
+    counts: dict[str, int] = Field(default_factory=dict)  # {accepted, starred, skipped}
+    decisions: list[TenderDecisionItem] = Field(default_factory=list)
+
+
 class TenderReasoningOut(BaseModel):
     """單一標案的可中標推理。"""
 

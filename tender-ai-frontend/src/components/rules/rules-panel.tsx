@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Ban, CircleSlash, Settings2, Sparkles, Target } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { AbandonedRoots } from "./abandoned-roots";
 import { KeywordEditor } from "./keyword-editor";
+import { LearnedWeights } from "./learned-weights";
 import { RulesWorkspace } from "./rules-workspace";
 
 export function RulesPanel() {
@@ -15,10 +18,13 @@ export function RulesPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <p className="flex flex-1 items-start gap-2 rounded-lg border border-signal/30 bg-signal/8 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-muted">
-          <Sparkles size={15} className="mt-px shrink-0 text-signal" />
+        <Alert
+          variant="info"
+          className="flex-1 rounded-lg px-3.5 py-2.5 text-ink-muted"
+          icon={<Sparkles size={15} className="mt-px text-signal" />}
+        >
           {t("rulesHint")}
-        </p>
+        </Alert>
         <Button
           variant="secondary"
           size="sm"
@@ -28,6 +34,13 @@ export function RulesPanel() {
           <Settings2 size={14} />
           {t("advancedEdit")}
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <h2 className="text-[15px] font-semibold text-ink">
+          {t("rulesMyKeywords")}
+        </h2>
+        <p className="text-[12px] text-ink-muted">{t("rulesMyKeywordsDesc")}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -56,6 +69,10 @@ export function RulesPanel() {
           accent="danger"
         />
       </div>
+
+      <LearnedWeights />
+
+      <AbandonedRoots />
 
       <Dialog
         open={advancedOpen}

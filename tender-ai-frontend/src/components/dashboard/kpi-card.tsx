@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TrendBadge } from "@/components/ui/trend-badge";
 
 // KPI 強調色（克制：圖示底色帶 12% alpha，數字維持 ink）。
 const accentMap = {
@@ -19,28 +21,48 @@ export function KpiCard({
   icon: Icon,
   accent = "neutral",
   hint,
+  delta,
+  suffix,
+  spark,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: LucideIcon;
   accent?: KpiAccent;
   hint?: string;
+  /** 趨勢百分比（示意），給定才顯示綠/紅趨勢徽章。 */
+  delta?: number;
+  /** 數字後綴（如 % / 天）。 */
+  suffix?: string;
+  /** 迷你趨勢圖（BarSpark / LineSpark / StreakDots）。 */
+  spark?: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 transition-colors duration-150 hover:border-ink-dim/30">
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-[12px] text-ink-muted">{label}</span>
+    <div className="rounded-lg border border-border bg-card p-4 shadow-[var(--elev-rest)] transition-[box-shadow,transform,border-color] duration-200 ease-out-quart hover:-translate-y-0.5 hover:border-ink-dim/30 hover:shadow-[var(--elev-hover)]">
+      <div className="flex items-center gap-2">
         <span
           className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center rounded-md",
+            "grid size-7 shrink-0 place-items-center rounded-md",
             accentMap[accent],
           )}
         >
           <Icon size={15} strokeWidth={2} />
         </span>
+        <span className="truncate text-[12px] text-ink-muted">{label}</span>
+        {delta != null && (
+          <TrendBadge delta={delta} className="ml-auto shrink-0" />
+        )}
       </div>
-      <div className="tnum mt-2.5 text-[24px] font-semibold leading-none text-ink">
-        {value}
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <div className="tnum text-[24px] font-semibold leading-none text-ink">
+          {value}
+          {suffix && (
+            <span className="ml-0.5 text-[14px] font-medium text-ink-dim">
+              {suffix}
+            </span>
+          )}
+        </div>
+        {spark && <div className="h-9 w-[84px] shrink-0">{spark}</div>}
       </div>
       {hint && <div className="mt-1.5 text-[11px] text-ink-dim">{hint}</div>}
     </div>

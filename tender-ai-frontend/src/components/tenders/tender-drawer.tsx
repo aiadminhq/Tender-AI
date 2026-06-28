@@ -4,10 +4,12 @@ import {
   ArrowRight,
   Ban,
   Check,
+  Clock,
   ExternalLink,
   Link,
   Mail,
   Star,
+  UserPlus,
   X,
 } from "lucide-react";
 import type { Tender, TenderRevisionDetail } from "@/types/domain";
@@ -19,6 +21,7 @@ import {
   formatDateLong,
   formatRelative,
   daysLeft,
+  isValidDate,
 } from "@/lib/format";
 import { trackEvent } from "@/lib/events";
 import {
@@ -26,25 +29,27 @@ import {
   postShare,
   fetchTenderDetail,
   fetchSimilarTenders,
+  fetchDecisionRecommendation,
   type SimilarTender,
+  type DecisionRecommendation,
 } from "@/lib/api";
 import { load, save } from "@/lib/storage";
 import { Dialog } from "@/components/ui/dialog";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import {
   Fact,
-  MeterRow,
   SectionLabel,
   LabelTags,
-  FeasibilityBadge,
-  DaysLeftBanner,
   RevisionDetailBlock,
   SimilarCasesList,
+  DecisionRecommendationBlock,
   RatingStars,
 } from "@/components/tenders/detail-bits";
+import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
 import { cn } from "@/lib/utils";
 
 export function TenderDrawer({
@@ -63,6 +68,10 @@ export function TenderDrawer({
     toggleStar,
     accept,
     skip,
+    projects,
+    addProjectNote,
+    addSubtask,
+    assignableMembers,
     isExcluded,
     excludeReasonOf,
     feasOf,
@@ -71,10 +80,22 @@ export function TenderDrawer({
   const [text, setText] = useState("");
   const [rating, setRating] = useState(0);
   const [isPublic, setIsPublic] = useState(false);
+  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [acceptReason, setAcceptReason] = useState("");
+  const [acceptReasonTags, setAcceptReasonTags] = useState<string[]>([]);
+  const [acceptAssignees, setAcceptAssignees] = useState<number[]>([]);
+  const [pendingAccept, setPendingAccept] = useState<{
+    tenderId: string;
+    reason: string;
+    assigneeIds: number[];
+  } | null>(null);
   // 後端 revision 詳情與相似案（彈窗開啟時按 tenderId 抓取）。
   const [revision, setRevision] = useState<TenderRevisionDetail | null>(null);
   const [similar, setSimilar] = useState<SimilarTender[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
+  // 承接傾向決策推薦（P5）；後端／決策向量不可用時 rec=null，區塊優雅退化。
+  const [rec, setRec] = useState<DecisionRecommendation | null>(null);
+  const [recLoading, setRecLoading] = useState(false);
 
   // 切換不同標案時清空草稿：用「prop 變更時於 render 期調整 state」取代 effect。
   const [lastTenderId, setLastTenderId] = useState(tender?.id);
@@ -83,6 +104,10 @@ export function TenderDrawer({
     setText("");
     setRating(0);
     setIsPublic(false);
+    setAcceptDialogOpen(false);
+    setAcceptReason("");
+    setAcceptReasonTags([]);
+    setAcceptAssignees([]);
     // 從 localStorage 還原評價與可見性
     setRating(
       load<{ star: number }>(`rating:${tender?.id ?? ""}`, { star: 0 }).star,
@@ -99,6 +124,8 @@ export function TenderDrawer({
       setRevision(null);
       setSimilar([]);
       setSimilarLoading(false);
+      setRec(null);
+      setRecLoading(false);
       return;
     }
     const controller = new AbortController();
@@ -121,14 +148,64 @@ export function TenderDrawer({
       .finally(() => {
         if (!signal.aborted) setSimilarLoading(false);
       });
+    setRec(null);
+    setRecLoading(true);
+    fetchDecisionRecommendation(tenderId, 8, signal)
+      .then((d) => {
+        if (!signal.aborted) setRec(d);
+      })
+      .catch(() => {
+        if (!signal.aborted) setRec(null);
+      })
+      .finally(() => {
+        if (!signal.aborted) setRecLoading(false);
+      });
     return () => controller.abort();
   }, [tenderId]);
+
+  useEffect(() => {
+    if (!pendingAccept) return;
+    const project = projects.find((p) => p.tenderId === pendingAccept.tenderId);
+    if (!project) return;
+
+    if (pendingAccept.reason.trim()) {
+      addProjectNote(project.id, `承接原因：${pendingAccept.reason}`);
+    }
+    for (const memberId of pendingAccept.assigneeIds) {
+      const member = assignableMembers.find((m) => m.id === memberId);
+      addSubtask(project.id, {
+        title: "承接評估與資料補齊",
+        description: member
+          ? `由 ${member.name} 負責確認資格、預算、期限與投標風險。`
+          : "確認資格、預算、期限與投標風險。",
+        assigneeId: memberId,
+        priority: "high",
+        tags: ["承接", "資格確認"],
+      });
+    }
+    setPendingAccept(null);
+  }, [
+    pendingAccept,
+    projects,
+    addProjectNote,
+    addSubtask,
+    assignableMembers,
+  ]);
 
   const comments = tender ? commentsOf(tender.id) : [];
   const starred = tender ? isStarred(tender.id) : false;
   const excluded = tender ? isExcluded(tender) : false;
   const reason = excluded && tender ? excludeReasonOf(tender) : undefined;
-  const dleft = tender ? daysLeft(tender.deadline) : 0;
+  const feas = tender ? feasOf(tender) : null;
+  // 可行性加減項拆解（移到快照格的 hover 提示，沿用原 FeasibilityBadge 行為）。
+  const feasTip =
+    feas && feas.breakdown.length
+      ? feas.breakdown
+          .map((b) => `${b.delta >= 0 ? "+" : ""}${b.delta} ${b.label}`)
+          .join("  ")
+      : t("feasDefault");
+  const validDeadline = !!tender && isValidDate(tender.deadline);
+  const dleft = tender && validDeadline ? daysLeft(tender.deadline) : 0;
   const deadlineTone =
     dleft < 0
       ? "text-ink-dim"
@@ -176,10 +253,9 @@ export function TenderDrawer({
     >
       {tender && (
         <div className="space-y-4">
-          {/* 標題列下方：標籤列 + 可行性徽章 + 收藏鈕 */}
+          {/* 標題列下方：標籤列 + 收藏鈕（可行性分數移入下方快照格） */}
           <div className="flex flex-wrap items-center gap-2">
             <LabelTags tender={tender} lang={lang} t={t} />
-            <FeasibilityBadge result={feasOf(tender)} t={t} />
             <button
               type="button"
               onClick={() => toggleStar(tender.id)}
@@ -198,21 +274,49 @@ export function TenderDrawer({
 
           {/* 排除提示 */}
           {reason && (
-            <div className="flex items-start gap-2 rounded-md border border-danger/30 bg-danger/8 px-3 py-2 text-[12px] text-danger">
-              <Ban size={14} className="mt-0.5 shrink-0" />
+            <Alert variant="danger" icon={<Ban size={14} className="mt-0.5" />}>
               <span>{reason}</span>
-            </div>
+            </Alert>
           )}
 
           {/* 主體雙欄 grid */}
           <div className="grid gap-6 md:grid-cols-3">
             {/* 左欄：主資訊（2/3） */}
             <div className="space-y-5 md:col-span-2">
-              {/* 截止日警示條 */}
-              <DaysLeftBanner daysLeft={dleft} t={t} />
-
-              {/* 可行性量表 */}
-              <MeterRow label={t("feasibility")} value={feasOf(tender).score} />
+              {/* 快照格：可行性分數 + 漸層條（hover 看加減項拆解）＋ 急迫度。
+                  合併原本散落的可行性徽章／量表／截止警示，消除重複顯示。 */}
+              <div
+                title={`${t("feasBreakdown")}: ${feasTip}`}
+                className="rounded-md border border-border bg-surface-1 px-4 py-3.5"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-ink-dim">
+                    {t("feasibility")}
+                  </span>
+                  <span className="tnum text-[22px] font-semibold leading-none text-signal">
+                    {feasOf(tender).score}
+                  </span>
+                </div>
+                <FeasibilityMeter
+                  value={feasOf(tender).score}
+                  className="mt-2.5"
+                />
+                {dleft < 7 && (
+                  <div
+                    className={cn(
+                      "mt-3 flex items-center gap-1.5 text-[12px] font-medium",
+                      dleft < 0 ? "text-ink-dim" : "text-danger",
+                    )}
+                  >
+                    <Clock size={13} className="shrink-0" />
+                    <span>
+                      {dleft < 0
+                        ? t("deadlinePassed")
+                        : `${dleft} ${t("daysLeft")}`}
+                    </span>
+                  </div>
+                )}
+              </div>
 
               {/* 下一步 */}
               {tender.nextStep && (
@@ -237,11 +341,13 @@ export function TenderDrawer({
                 </Fact>
                 <Fact label={t("colDeadline")} num>
                   {formatDateLong(tender.deadline, lang)}
-                  <span className={cn("ml-1.5 text-[11px]", deadlineTone)}>
-                    {dleft < 0
-                      ? t("deadlinePassed")
-                      : `${dleft} ${t("daysLeft")}`}
-                  </span>
+                  {validDeadline && (
+                    <span className={cn("ml-1.5 text-[11px]", deadlineTone)}>
+                      {dleft < 0
+                        ? t("deadlinePassed")
+                        : `${dleft} ${t("daysLeft")}`}
+                    </span>
+                  )}
                 </Fact>
                 {tender.caseNo && (
                   <Fact label={t("caseNo")} num>
@@ -275,6 +381,17 @@ export function TenderDrawer({
 
               {/* 後端詳情（履約／資格／押標金／附件）；未 enrich 時優雅退化為空狀態 */}
               <RevisionDetailBlock revision={revision} lang={lang} t={t} />
+
+              {/* 承接傾向（P5 決策推薦）：聚合相似已評估案例給可解釋傾向 */}
+              <div>
+                <SectionLabel>{t("decisionLeaning")}</SectionLabel>
+                <DecisionRecommendationBlock
+                  rec={rec}
+                  loading={recLoading}
+                  t={t}
+                  onSelect={onClose}
+                />
+              </div>
 
               {/* 相似案（向量檢索）；點擊後關閉彈窗並導向該案 */}
               <div>
@@ -385,9 +502,7 @@ export function TenderDrawer({
               <div>
                 <SectionLabel>{t("comments")}</SectionLabel>
                 {comments.length === 0 ? (
-                  <p className="text-[12px] text-ink-dim">
-                    {lang === "en" ? "No notes yet" : "尚無註記"}
-                  </p>
+                  <p className="text-[12px] text-ink-dim">{t("notesEmpty")}</p>
                 ) : (
                   <ul className="space-y-2.5">
                     {comments.map((c) => (

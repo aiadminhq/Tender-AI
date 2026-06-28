@@ -4,6 +4,11 @@
 - Layer B 行為/回饋：白名單合作範圍內共享、對外不揭露（資料永不進公開 repo，但 schema/code 需入版控）。
 - Layer C 知識/RAG：tender_vectors（P3，公開衍生向量）。
 """
+from app.models.assistant import (
+    AssistantBrainConfig,
+    AssistantMessage,
+    AssistantThread,
+)
 from app.models.behavior import (
     Annotation,
     Evaluation,
@@ -23,8 +28,9 @@ from app.models.knowledge import (
     TenderVector,
     UserKeywordWeight,
 )
-from app.models.preference import PreferenceProfile
+from app.models.preference import PreferenceProfile, UserManualKeyword
 from app.models.push import PushLog
+from app.models.settings import DetailFieldVisibilityConfig
 from app.models.revision import (
     CrawlFailure,
     CrawlRun,
@@ -53,6 +59,13 @@ __all__ = [
     "Share",
     "SavedSearch",
     "PushLog",
+    # 小助手對話留存（Phase 4）
+    "AssistantThread",
+    "AssistantMessage",
+    # 小助手「大腦」全域設定
+    "AssistantBrainConfig",
+    # 標案詳情規格表欄位顯示設定（團隊共用）
+    "DetailFieldVisibilityConfig",
     # Layer C
     "TenderVector",
     "KnowledgeChunk",
@@ -60,6 +73,7 @@ __all__ = [
     "KeywordWeightRevision",
     "UserKeywordWeight",
     "PreferenceProfile",
+    "UserManualKeyword",
     "EvolutionLog",
     "DocSummary",
     "DecisionVector",
