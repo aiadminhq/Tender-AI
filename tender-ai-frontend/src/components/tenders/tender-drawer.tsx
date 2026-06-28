@@ -9,6 +9,7 @@ import {
   Link,
   Mail,
   Star,
+  UserPlus,
   X,
 } from "lucide-react";
 import type { Tender, TenderRevisionDetail } from "@/types/domain";
@@ -67,6 +68,10 @@ export function TenderDrawer({
     toggleStar,
     accept,
     skip,
+    projects,
+    addProjectNote,
+    addSubtask,
+    assignableMembers,
     isExcluded,
     excludeReasonOf,
     feasOf,
@@ -75,6 +80,15 @@ export function TenderDrawer({
   const [text, setText] = useState("");
   const [rating, setRating] = useState(0);
   const [isPublic, setIsPublic] = useState(false);
+  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [acceptReason, setAcceptReason] = useState("");
+  const [acceptReasonTags, setAcceptReasonTags] = useState<string[]>([]);
+  const [acceptAssignees, setAcceptAssignees] = useState<number[]>([]);
+  const [pendingAccept, setPendingAccept] = useState<{
+    tenderId: string;
+    reason: string;
+    assigneeIds: number[];
+  } | null>(null);
   // 後端 revision 詳情與相似案（彈窗開啟時按 tenderId 抓取）。
   const [revision, setRevision] = useState<TenderRevisionDetail | null>(null);
   const [similar, setSimilar] = useState<SimilarTender[]>([]);
@@ -90,6 +104,10 @@ export function TenderDrawer({
     setText("");
     setRating(0);
     setIsPublic(false);
+    setAcceptDialogOpen(false);
+    setAcceptReason("");
+    setAcceptReasonTags([]);
+    setAcceptAssignees([]);
     // 從 localStorage 還原評價與可見性
     setRating(
       load<{ star: number }>(`rating:${tender?.id ?? ""}`, { star: 0 }).star,
@@ -144,6 +162,35 @@ export function TenderDrawer({
       });
     return () => controller.abort();
   }, [tenderId]);
+
+  useEffect(() => {
+    if (!pendingAccept) return;
+    const project = projects.find((p) => p.tenderId === pendingAccept.tenderId);
+    if (!project) return;
+
+    if (pendingAccept.reason.trim()) {
+      addProjectNote(project.id, `承接原因：${pendingAccept.reason}`);
+    }
+    for (const memberId of pendingAccept.assigneeIds) {
+      const member = assignableMembers.find((m) => m.id === memberId);
+      addSubtask(project.id, {
+        title: "承接評估與資料補齊",
+        description: member
+          ? `由 ${member.name} 負責確認資格、預算、期限與投標風險。`
+          : "確認資格、預算、期限與投標風險。",
+        assigneeId: memberId,
+        priority: "high",
+        tags: ["承接", "資格確認"],
+      });
+    }
+    setPendingAccept(null);
+  }, [
+    pendingAccept,
+    projects,
+    addProjectNote,
+    addSubtask,
+    assignableMembers,
+  ]);
 
   const comments = tender ? commentsOf(tender.id) : [];
   const starred = tender ? isStarred(tender.id) : false;

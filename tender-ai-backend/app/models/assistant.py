@@ -101,10 +101,12 @@ class AssistantBrainConfig(Base):
     )
     # provider=ollama 時的模型；NULL → 用 settings.chat_model。
     ollama_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # provider=cli 時的 CLI：claude（Claude Code，預設）| codex | hermes。
+    # provider=cli 時的 CLI：claude（Claude Code，預設）| codex | hermes | opencode | antigravity。
     cli_agent: Mapped[str | None] = mapped_column(
         String(32), default="claude", server_default="claude", nullable=True
     )
+    # provider=cli 時傳給該 CLI 代理的模型名稱；NULL → 用代理預設 / 不帶 model flag。
+    cli_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # provider=byok 的協定（v1 先支援 anthropic）。
     byok_protocol: Mapped[str | None] = mapped_column(String(16), nullable=True)
     byok_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)

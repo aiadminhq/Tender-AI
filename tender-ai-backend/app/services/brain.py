@@ -31,6 +31,7 @@ import httpx
 
 from app.core.config import settings
 from app.services import llm
+from app.services.brain_cli_registry import get_spec
 
 
 class BrainError(RuntimeError):
@@ -44,32 +45,10 @@ class BrainChunk:
     text: str
 
 
-# CLI provider 預設命令樣板（可在 settings 覆寫）。{prompt} 由呼叫端帶入。
-# 三家 headless agentic CLI 各有不同的「放行 MCP + 結構化輸出」旗標與輸出格式，故各自一組
-# 樣板＋專屬 parser（見下方 _parse_*_line）。共通前提：tender-ai-brain MCP 已分別注入各 CLI 的
-# 設定檔（claude=.claude.json／codex=~/.codex/config.toml／hermes=~/.hermes/config.yaml，見
-# MCP_BRIDGE.md），本層只負責「以正確旗標啟動 + 解析輸出」。
-#
-# - claude：``--allowedTools mcp__tender-ai-brain`` 明確放行本專案 MCP（headless `-p` 預設權限會
-#   擋下所有 MCP 工具呼叫→無內容→BrainError）；``stream-json`` 逐事件輸出，type=result 為最終答案。
-# - codex：``exec --json`` 將事件以 JSONL 印到 stdout（item.completed/agent_message=答案、
-#   error/turn.failed=失敗）；``--skip-git-repo-check`` 允許在非 git 工作目錄下執行。exec 為
-#   非互動模式，MCP 工具呼叫自動放行、不會卡核准。
-# - hermes：``-z/--oneshot`` 為一次性 headless；無 JSON 事件格式，stdout 即純文字答案。
-#   ``--yolo`` 跳過危險指令核准，避免 headless 卡在互動提示。
-_CLI_COMMANDS: dict[str, list[str]] = {
-    "claude": [
-        "claude", "-p", "{prompt}",
-        "--allowedTools", "mcp__tender-ai-brain",
-        "--output-format", "stream-json", "--verbose",
-    ],
-    "codex": [
-        "codex", "exec", "--json", "--skip-git-repo-check", "{prompt}",
-    ],
-    "hermes": [
-        "hermes", "-z", "{prompt}", "--yolo",
-    ],
-}
+# CLI 代理的啟動樣板、parser 種類、模型旗標等集中於 ``brain_cli_registry``（單一事實來源）。
+# 共通前提：tender-ai-brain MCP 已分別注入各 CLI 的設定檔（claude=.claude.json／
+# codex=~/.codex/config.toml／hermes=~/.hermes/config.yaml，見 MCP_BRIDGE.md），本層只負責
+# 「依註冊表以正確旗標啟動 + 依 parser 種類解析輸出」。
 
 
 async def stream(
@@ -196,19 +175,24 @@ def _build_cli_prompt(prompt: str, focus_note: str) -> str:
     return "\n\n".join(parts)
 
 
-def _cli_argv(agent: str, prompt: str) -> list[str]:
-    template = _CLI_COMMANDS.get(agent)
-    if template is None:
+def _cli_argv(agent: str, prompt: str, model: str | None = None) -> list[str]:
+    spec = get_spec(agent)
+    if spec is None:
         raise BrainError(f"CLI 大腦暫不支援：{agent}")
-    return [prompt if tok == "{prompt}" else tok for tok in template]
+    argv = [prompt if tok == "{prompt}" else tok for tok in spec.argv]
+    # 僅當設了模型且該代理支援指定模型時，把 model flag append 到尾端（非破壞性）。
+    if model and spec.model_flag:
+        argv.extend([spec.model_flag, model])
+    return argv
 
 
 async def _stream_cli(
     config: Any, *, prompt: str, focus_note: str
 ) -> AsyncIterator[BrainChunk]:
     agent = getattr(config, "cli_agent", None) or "claude"
+    model = getattr(config, "cli_model", None) or None
     full_prompt = _build_cli_prompt(prompt, focus_note)
-    argv = _cli_argv(agent, full_prompt)
+    argv = _cli_argv(agent, full_prompt, model)
 
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -263,14 +247,18 @@ async def _stream_cli(
 
 
 def _parse_cli_line(agent: str, line: str, answer_parts: list[str]) -> BrainChunk | None:
-    """依 CLI 種類分派到對應 parser。三家輸出格式不同（見 _CLI_COMMANDS 註解）。
+    """依註冊表的 parser 種類分派。各 CLI 輸出格式不同（見 brain_cli_registry）。
 
     回傳要送出的 chunk 或 None；解析不到結構的雜訊一律 None（不中斷串流）。
-    codex/hermes 失敗事件會 raise BrainError（由 assistant.py 退模板）。
+    codex 失敗事件會 raise BrainError（由 assistant.py 退模板）。
+    parser 種類：claude（stream-json）／codex（JSONL）／hermes／text（純文字逐行 delta）。
     """
-    if agent == "codex":
+    spec = get_spec(agent)
+    parser = spec.parser if spec is not None else "claude"
+    if parser == "codex":
         return _parse_codex_line(line, answer_parts)
-    if agent == "hermes":
+    if parser in ("hermes", "text"):
+        # text 與 hermes 同為純文字逐行 delta（opencode/antigravity 走此路）。
         return _parse_hermes_line(line, answer_parts)
     return _parse_claude_line(line, answer_parts)
 

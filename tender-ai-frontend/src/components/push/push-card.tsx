@@ -48,8 +48,8 @@ export function PushCard({
     <button
       onClick={onClick}
       className={cn(
-        "group flex flex-col gap-2 rounded-lg border bg-canvas px-3.5 py-3 text-left transition-colors hover:border-primary/50 hover:bg-accent",
-        isNew ? "border-primary/30" : "border-border",
+        "group flex flex-col gap-2 rounded-lg border bg-white px-3.5 py-3 text-left shadow-[0_12px_28px_-24px_rgba(15,23,42,.55)] transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_34px_-24px_rgba(15,23,42,.65)] active:translate-y-0",
+        isNew ? "border-orange-200" : "border-border",
       )}
     >
       {/* 頂列：tier + 符合度 + 新標記 */}
@@ -121,7 +121,7 @@ export function PushCard({
 
       {/* 推播理由（Layer A 可解釋聚合，不含 PII） */}
       {item.reason && (
-        <p className="rounded-md bg-card px-2.5 py-1.5 text-[11px] leading-relaxed text-ink-muted">
+        <p className="rounded-md bg-slate-50 px-2.5 py-1.5 text-[11px] leading-relaxed text-ink-muted">
           <span className="font-medium text-ink-dim">
             {t("pushReasonLabel")}：
           </span>

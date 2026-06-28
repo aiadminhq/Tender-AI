@@ -14,10 +14,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.services.brain_cli_registry import cli_agent_keys
 
 BrainProvider = Literal["ollama", "cli", "byok"]
-CliAgent = Literal["claude", "codex", "hermes"]
 ByokProtocol = Literal["anthropic"]
 
 
@@ -29,6 +30,7 @@ class BrainConfigOut(BaseModel):
     provider: BrainProvider
     ollama_model: str | None = None
     cli_agent: str | None = None
+    cli_model: str | None = None
     byok_protocol: str | None = None
     byok_base_url: str | None = None
     byok_model: str | None = None
@@ -45,10 +47,74 @@ class BrainConfigUpdate(BaseModel):
 
     provider: BrainProvider | None = None
     ollama_model: str | None = None
-    cli_agent: CliAgent | None = None
+    cli_agent: str | None = None
+    cli_model: str | None = None
     byok_protocol: ByokProtocol | None = None
     byok_base_url: str | None = None
     byok_model: str | None = None
+
+    @field_validator("cli_agent")
+    @classmethod
+    def _validate_cli_agent(cls, v: str | None) -> str | None:
+        # 註冊表驅動：值須 ∈ CLI registry keys；未知（如 "skynet"）→ 422。
+        if v is not None and v not in cli_agent_keys():
+            allowed = "、".join(cli_agent_keys())
+            raise ValueError(f"未知的 CLI 代理：{v}（可選：{allowed}）")
+        return v
+
+
+# ── 大腦測試／代理清單（brain-picker 擴充）──────────────────────────────────────
+
+
+class BrainAgentSpec(BaseModel):
+    """GET /settings/brain/agents 單筆：一個 CLI 代理的可選資訊。"""
+
+    key: str
+    label_i18n: str
+    models: list[str] = []
+    default_model: str | None = None
+    supports_model: bool = False
+    needs_local_verify: bool = False
+
+
+class BrainAgentsOut(BaseModel):
+    """GET /settings/brain/agents 的回應：CLI 代理註冊表。"""
+
+    agents: list[BrainAgentSpec] = []
+
+
+class BrainTestRequest(BaseModel):
+    """POST /settings/brain/test 的請求：以候選（未存）設定做煙測。
+
+    不含任何祕密；BYOK 金鑰仍由 .env 取得（body 不帶）。
+    """
+
+    provider: BrainProvider
+    ollama_model: str | None = None
+    cli_agent: str | None = None
+    cli_model: str | None = None
+    byok_protocol: ByokProtocol | None = None
+    byok_base_url: str | None = None
+    byok_model: str | None = None
+
+    @field_validator("cli_agent")
+    @classmethod
+    def _validate_cli_agent(cls, v: str | None) -> str | None:
+        if v is not None and v not in cli_agent_keys():
+            allowed = "、".join(cli_agent_keys())
+            raise ValueError(f"未知的 CLI 代理：{v}（可選：{allowed}）")
+        return v
+
+
+class BrainTestResult(BaseModel):
+    """POST /settings/brain/test 的回應：煙測結果（HTTP 恆 200，永不含祕密）。"""
+
+    ok: bool
+    provider: str
+    model: str | None = None
+    elapsed_ms: int = 0
+    sample: str = ""
+    error: str | None = None
 
 
 # ── 標案詳情規格表：欄位顯示設定（團隊共用，單列 id=1）────────────────────────────

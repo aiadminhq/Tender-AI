@@ -150,33 +150,27 @@ function KpiRow() {
 // 面積圖 Area
 // ════════════════════════════════════════════════════════════════════════
 
-// ① 漸層面積：每日新進標案量（單一序列，唯一允許漸層用途之一）
+// ① 入口來源每日新進量：保留 PCC，並預留多入口網站比較。
 const dailyIntake = DAYS.map((day, i) => ({
   day,
-  count: [44, 58, 61, 17, 9, 52, 67, 63, 71, 22, 11, 49, 64, 58][i],
+  pcc: [32, 41, 44, 12, 7, 38, 49, 46, 52, 16, 8, 35, 47, 42][i],
+  taipei: [8, 10, 9, 2, 1, 8, 11, 10, 12, 4, 2, 9, 11, 10][i],
+  newTaipei: [7, 9, 10, 2, 1, 7, 10, 9, 11, 4, 2, 8, 10, 9][i],
+  tmu: [3, 4, 4, 1, 0, 3, 4, 4, 5, 1, 1, 3, 4, 4][i],
+  school: [4, 5, 4, 1, 0, 4, 5, 5, 6, 2, 1, 4, 5, 5][i],
 }));
 const dailyIntakeConfig = {
-  count: { label: "新進件數", color: "var(--chart-1)" },
+  pcc: { label: "PCC 政府採購網", color: "var(--chart-1)" },
+  taipei: { label: "臺北市採購", color: "var(--chart-2)" },
+  newTaipei: { label: "新北市採購", color: "var(--chart-3)" },
+  tmu: { label: "北醫聯採", color: "var(--chart-4)" },
+  school: { label: "學校公告", color: "var(--chart-5)" },
 } satisfies ChartConfig;
 
 function DailyIntakeArea() {
   return (
     <ChartContainer config={dailyIntakeConfig} className="min-h-[260px] w-full">
       <AreaChart accessibilityLayer data={dailyIntake} margin={{ left: -8 }}>
-        <defs>
-          <linearGradient id="fillIntake" x1="0" y1="0" x2="0" y2="1">
-            <stop
-              offset="5%"
-              stopColor="var(--color-count)"
-              stopOpacity={0.8}
-            />
-            <stop
-              offset="95%"
-              stopColor="var(--color-count)"
-              stopOpacity={0.08}
-            />
-          </linearGradient>
-        </defs>
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="day"
@@ -186,29 +180,38 @@ function DailyIntakeArea() {
         />
         <YAxis tickLine={false} axisLine={false} tickMargin={8} width={28} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Area
-          dataKey="count"
-          type="natural"
-          fill="url(#fillIntake)"
-          stroke="var(--color-count)"
-          strokeWidth={2}
-        />
+        <ChartLegend content={<ChartLegendContent />} />
+        {["pcc", "taipei", "newTaipei", "tmu", "school"].map((key) => (
+          <Area
+            key={key}
+            dataKey={key}
+            type="natural"
+            fill={`var(--color-${key})`}
+            fillOpacity={0.14}
+            stroke={`var(--color-${key})`}
+            strokeWidth={2}
+          />
+        ))}
       </AreaChart>
     </ChartContainer>
   );
 }
 
-// ② 堆疊面積：三類標案每日配發（工程/財物/勞務）
+// ② 入口來源有效配對量：同一批入口，看哪些真的進入雙北/HQdesign 判斷。
 const dailyByCategory = DAYS.map((day, i) => ({
   day,
-  works: [22, 28, 31, 8, 4, 26, 33, 30, 35, 11, 5, 24, 31, 28][i],
-  goods: [12, 16, 17, 5, 3, 14, 18, 16, 19, 6, 3, 13, 17, 15][i],
-  services: [10, 14, 13, 4, 2, 12, 16, 17, 17, 5, 3, 12, 16, 15][i],
+  pcc: [14, 19, 20, 5, 3, 17, 23, 21, 25, 7, 3, 16, 22, 19][i],
+  taipei: [6, 8, 7, 2, 1, 6, 8, 8, 9, 3, 1, 7, 8, 8][i],
+  newTaipei: [5, 7, 8, 2, 1, 5, 8, 7, 8, 3, 1, 6, 8, 7][i],
+  tmu: [2, 3, 3, 1, 0, 2, 3, 3, 4, 1, 0, 2, 3, 3][i],
+  school: [3, 4, 3, 1, 0, 3, 4, 4, 5, 1, 1, 3, 4, 4][i],
 }));
 const categorySeriesConfig = {
-  works: { label: "工程", color: "var(--chart-1)" },
-  goods: { label: "財物", color: "var(--chart-2)" },
-  services: { label: "勞務", color: "var(--chart-3)" },
+  pcc: { label: "PCC 政府採購網", color: "var(--chart-1)" },
+  taipei: { label: "臺北市採購", color: "var(--chart-2)" },
+  newTaipei: { label: "新北市採購", color: "var(--chart-3)" },
+  tmu: { label: "北醫聯採", color: "var(--chart-4)" },
+  school: { label: "學校公告", color: "var(--chart-5)" },
 } satisfies ChartConfig;
 
 function DailyStackedArea() {
@@ -232,30 +235,17 @@ function DailyStackedArea() {
         <YAxis tickLine={false} axisLine={false} tickMargin={8} width={28} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <ChartLegend content={<ChartLegendContent />} />
-        <Area
-          dataKey="works"
-          type="natural"
-          stackId="a"
-          fill="var(--color-works)"
-          fillOpacity={0.4}
-          stroke="var(--color-works)"
-        />
-        <Area
-          dataKey="goods"
-          type="natural"
-          stackId="a"
-          fill="var(--color-goods)"
-          fillOpacity={0.4}
-          stroke="var(--color-goods)"
-        />
-        <Area
-          dataKey="services"
-          type="natural"
-          stackId="a"
-          fill="var(--color-services)"
-          fillOpacity={0.4}
-          stroke="var(--color-services)"
-        />
+        {["pcc", "taipei", "newTaipei", "tmu", "school"].map((key) => (
+          <Area
+            key={key}
+            dataKey={key}
+            type="natural"
+            stackId="source"
+            fill={`var(--color-${key})`}
+            fillOpacity={0.35}
+            stroke={`var(--color-${key})`}
+          />
+        ))}
       </AreaChart>
     </ChartContainer>
   );
@@ -265,17 +255,21 @@ function DailyStackedArea() {
 // 長條圖 Bar
 // ════════════════════════════════════════════════════════════════════════
 
-// ③ 基本長條：近 6 月每月新進標案數
+// ③ 多入口網站：近 6 月來源結構（細分來源，不再用單一粗長條）
 const monthlyIntake = [
-  { month: "1月", count: 820 },
-  { month: "2月", count: 910 },
-  { month: "3月", count: 1180 },
-  { month: "4月", count: 1040 },
-  { month: "5月", count: 1260 },
-  { month: "6月", count: 1190 },
+  { month: "1月", pcc: 420, taipei: 128, newTaipei: 116, tmu: 48, school: 68 },
+  { month: "2月", pcc: 460, taipei: 142, newTaipei: 132, tmu: 52, school: 74 },
+  { month: "3月", pcc: 510, taipei: 166, newTaipei: 151, tmu: 61, school: 86 },
+  { month: "4月", pcc: 488, taipei: 154, newTaipei: 143, tmu: 57, school: 79 },
+  { month: "5月", pcc: 536, taipei: 178, newTaipei: 162, tmu: 66, school: 91 },
+  { month: "6月", pcc: 502, taipei: 170, newTaipei: 156, tmu: 63, school: 88 },
 ];
 const monthlyConfig = {
-  count: { label: "標案數", color: "var(--chart-1)" },
+  pcc: { label: "PCC", color: "var(--chart-1)" },
+  taipei: { label: "臺北市", color: "var(--chart-2)" },
+  newTaipei: { label: "新北市", color: "var(--chart-3)" },
+  tmu: { label: "北醫聯採", color: "var(--chart-4)" },
+  school: { label: "學校公告", color: "var(--chart-5)" },
 } satisfies ChartConfig;
 
 function MonthlyBar() {
@@ -291,23 +285,26 @@ function MonthlyBar() {
         />
         <YAxis tickLine={false} axisLine={false} tickMargin={8} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+        <ChartLegend content={<ChartLegendContent />} />
+        {["pcc", "taipei", "newTaipei", "tmu", "school"].map((key) => (
+          <Bar key={key} dataKey={key} fill={`var(--color-${key})`} radius={3} />
+        ))}
       </BarChart>
     </ChartContainer>
   );
 }
 
-// ④ 橫向長條：各縣市標案數 Top 6（長標籤適合橫向）
+// ④ 雙北決策漏斗：只比較臺北市 / 新北市的有效決策資料。
 const cityIntake = [
-  { city: "臺北市", count: 312 },
-  { city: "新北市", count: 268 },
-  { city: "臺中市", count: 205 },
-  { city: "高雄市", count: 187 },
-  { city: "桃園市", count: 156 },
-  { city: "臺南市", count: 132 },
+  { stage: "進入 DB", taipei: 312, newTaipei: 268 },
+  { stage: "雙北 + 裝修", taipei: 118, newTaipei: 96 },
+  { stage: "高潛力", taipei: 42, newTaipei: 35 },
+  { stage: "需資格確認", taipei: 18, newTaipei: 16 },
+  { stage: "可進投標會議", taipei: 9, newTaipei: 7 },
 ];
 const cityConfig = {
-  count: { label: "標案數", color: "var(--chart-1)" },
+  taipei: { label: "臺北市", color: "var(--chart-1)" },
+  newTaipei: { label: "新北市", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
 function CityHorizontalBar() {
@@ -317,22 +314,31 @@ function CityHorizontalBar() {
         accessibilityLayer
         data={cityIntake}
         layout="vertical"
-        margin={{ left: 8, right: 12 }}
+        margin={{ left: 28, right: 18 }}
       >
         <CartesianGrid horizontal={false} />
         <YAxis
-          dataKey="city"
+          dataKey="stage"
           type="category"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          width={56}
+          width={92}
         />
         <XAxis type="number" hide />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="count" fill="var(--color-count)" radius={4}>
+        <ChartLegend content={<ChartLegendContent />} />
+        <Bar dataKey="taipei" fill="var(--color-taipei)" radius={4}>
           <LabelList
-            dataKey="count"
+            dataKey="taipei"
+            position="right"
+            className="fill-foreground"
+            fontSize={11}
+          />
+        </Bar>
+        <Bar dataKey="newTaipei" fill="var(--color-newTaipei)" radius={4}>
+          <LabelList
+            dataKey="newTaipei"
             position="right"
             className="fill-foreground"
             fontSize={11}

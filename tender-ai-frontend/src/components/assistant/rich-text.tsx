@@ -2,12 +2,32 @@
 // 連結／粗斜體）。元件對映全部套用本專案 house style（Noto Sans TC、13px 內文、16px 圓角、
 // 單色面 + 單一 signal 強調），不引官方 MarkdownText 樣式。表格放進可橫向捲動的容器，
 // 避免撐破浮窗寬度。串流期間 text 會逐步增長，react-markdown 會就地重渲染、語意安全。
-import { memo, useMemo } from "react";
+import { Children, memo, useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { requestAssistant } from "@/lib/assistant-bus";
 import { cn } from "@/lib/utils";
 import { makeTenderLinkPlugin, type TenderRef } from "./rich-text-links";
+
+const TOOL_CTA: Record<string, { label: string; prompt: string }> = {
+  get_tender: {
+    label: "查標案完整資料",
+    prompt: "請幫我查指定標案的完整資料，包含機關、預算、截止日、資格條件與來源連結。",
+  },
+  explain_tender: {
+    label: "看標案詳情與理由",
+    prompt: "請幫我說明指定標案的可行度理由、資格條件、預算分類與相似決策。",
+  },
+  "/tender-daily": {
+    label: "更新每日標案",
+    prompt: "請協助檢查每日標案更新狀態，並整理今天可用的新標案與抓取限制。",
+  },
+};
+
+function inlineText(children: ReactNode): string {
+  return Children.toArray(children).join("").trim();
+}
 
 const COMPONENTS: Components = {
   p: ({ children }) => (
@@ -46,7 +66,21 @@ const COMPONENTS: Components = {
       <span className="min-w-0">{children}</span>
     </li>
   ),
-  a: ({ href, children }) => {
+  a: ({ href, className, children }) => {
+    const isSourceButton =
+      typeof className === "string" && className.includes("assistant-source-link");
+    if (isSourceButton) {
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold text-sky-700 transition-colors hover:border-sky-300 hover:bg-sky-100"
+        >
+          {children}
+        </a>
+      );
+    }
     // 內部標案連結（rehype 注入的 /tenders/<id>）走 SPA 同分頁導航；
     // 外部連結維持新分頁開啟。
     if (href && href.startsWith("/")) {
@@ -85,6 +119,20 @@ const COMPONENTS: Components = {
     if (isBlock) {
       return <code className="font-mono text-[12px]">{children}</code>;
     }
+    const raw = inlineText(children);
+    const cta = TOOL_CTA[raw];
+    if (cta) {
+      return (
+        <button
+          type="button"
+          onClick={() => requestAssistant(cta.prompt)}
+          className="inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-2 py-0.5 text-[12px] font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-100"
+          title={raw}
+        >
+          {cta.label}
+        </button>
+      );
+    }
     return (
       <code className="rounded bg-accent px-1 py-0.5 font-mono text-[12px] text-foreground">
         {children}
@@ -106,12 +154,19 @@ const COMPONENTS: Components = {
     <thead className="bg-accent/60 text-foreground">{children}</thead>
   ),
   th: ({ children }) => (
-    <th className="border-b border-border px-2.5 py-1.5 text-left font-semibold">
+    <th className="whitespace-nowrap border-b border-border px-2.5 py-1.5 text-left font-semibold">
       {children}
     </th>
   ),
-  td: ({ children }) => (
-    <td className="border-b border-border/60 px-2.5 py-1.5 align-top text-foreground/90">
+  td: ({ className, children }) => (
+    <td
+      className={cn(
+        "border-b border-border/60 px-2.5 py-1.5 align-top text-foreground/90",
+        typeof className === "string" &&
+          className.includes("assistant-source-cell") &&
+          "whitespace-nowrap text-right",
+      )}
+    >
       {children}
     </td>
   ),

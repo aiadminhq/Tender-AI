@@ -42,6 +42,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AssistantArtifacts } from "./assistant-artifacts";
 import { RichText } from "./rich-text";
+import type { TenderRef } from "./rich-text-links";
 import {
   type AssistantCustomMeta,
 } from "./assistant-runtime-provider";
@@ -381,12 +382,19 @@ function AssistantMessage() {
   // 本則回答已引用的標案（id→標題），供 RichText 把答案內文的「#<id> 標題」連到詳情頁。
   // 只認已引用的 id，確保不會連到不存在／未檢索的案子（死連結）。
   const tenderRefs = useMemo(() => {
-    const seen = new Set<number>();
-    const refs: { id: number; title: string }[] = [];
+    const seen = new Set<string>();
+    const refs: TenderRef[] = [];
     for (const s of sources ?? []) {
-      if (s.tenderId != null && !seen.has(s.tenderId)) {
-        seen.add(s.tenderId);
-        refs.push({ id: s.tenderId, title: s.title });
+      if (!s.title || (s.tenderId == null && !s.url)) continue;
+      const key = s.tenderId != null ? `id:${s.tenderId}` : `url:${s.url}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        refs.push({
+          id: s.tenderId,
+          title: s.title,
+          url: s.url,
+          source: s.source,
+        });
       }
     }
     return refs;

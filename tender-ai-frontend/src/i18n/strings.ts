@@ -705,6 +705,8 @@ export const STRINGS = {
     brainCliClaude: "Claude Code",
     brainCliCodex: "Codex",
     brainCliHermes: "Hermes",
+    brainCliOpencode: "OpenCode",
+    brainCliAntigravity: "Antigravity",
     brainProviderHint:
       "ollama 在本機換模型；cli 啟動本機代理自主查詢知識庫；byok 直連雲端。",
     brainOllamaModel: "Ollama 模型名稱",
@@ -1003,10 +1005,13 @@ export const STRINGS = {
     assistantSuggest3: "Which ones are closing soon?",
     assistantSuggest4:
       "What are the tiering criteria? How is high-potential decided?",
-    assistantSuggest5: "Group today's new tenders into must-read, track, and skip",
-    assistantSuggest6: "Find historical cases related to hospital interior renovation",
+    assistantSuggest5:
+      "Group today's new tenders into must-read, track, and skip",
+    assistantSuggest6:
+      "Find historical cases related to hospital interior renovation",
     assistantSuggest7: "What qualification risks should we watch for?",
-    assistantSuggest8: "If I can review only 3 tenders, which should come first?",
+    assistantSuggest8:
+      "If I can review only 3 tenders, which should come first?",
     // preference confirm chip (confirm-to-remember). {region} interpolated in-component.
     assistantPrefAskOnly:
       "Want me to focus on “{region}” from now on and surface fewer tenders elsewhere?",

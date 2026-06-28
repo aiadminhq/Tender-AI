@@ -21,6 +21,7 @@ _MUTABLE_FIELDS = (
     "provider",
     "ollama_model",
     "cli_agent",
+    "cli_model",
     "byok_protocol",
     "byok_base_url",
     "byok_model",
