@@ -9,6 +9,7 @@ import { KanbanPage } from "@/pages/kanban-page";
 import { RulesPage } from "@/pages/rules-page";
 import { DecisionReviewPage } from "@/pages/decision-review-page";
 import { SettingsPage } from "@/pages/settings-page";
+import { BrainStudioPage } from "@/pages/brain-studio-page";
 import { SwipePage } from "@/pages/swipe-page";
 import { InsightsPage } from "@/pages/insights-page";
 import { PushPage } from "@/pages/push-page";
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="rules" element={<RulesPage />} />
           <Route path="decisions" element={<DecisionReviewPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings/brain" element={<BrainStudioPage />} />
           {/* 設計系統展示頁（dev-only，正式 build 不含） */}
           {import.meta.env.DEV && (
             <Route path="design-system" element={<DesignSystemPage />} />

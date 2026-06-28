@@ -744,6 +744,20 @@ export const STRINGS = {
     // 對話內快速 picker（composer 左下）
     brainQuickLabel: "大腦",
     brainQuickHint: "切換此對話背後的生成引擎",
+    brainQuickDetail: "詳細設定",
+    // AI 大腦工作室（/settings/brain 專屬頁）
+    navBrainStudio: "AI 大腦",
+    brainStudioTitle: "AI 大腦工作室",
+    brainStudioSub: "挑選並調校 AI 助手背後的生成引擎、CLI 代理與模型",
+    brainStudioConfigTitle: "引擎設定",
+    brainStudioEnginesTitle: "可用引擎",
+    brainStudioEnginesSub:
+      "本機可選的 CLI 代理一覽；切換引擎與調模型在左側設定。",
+    brainStudioSupportsModel: "可指定模型",
+    brainStudioModelsLabel: "可選模型",
+    brainStudioModelsNone: "用代理預設",
+    brainStudioOpenLink: "開啟 AI 大腦工作室",
+    brainStudioOpenHint: "在專屬頁面挑選引擎、CLI 代理與模型，並即時測試。",
     // 決策回顧（標案評分管理）：執行評分後回顧存留／淘汰、可重新分流
     decisionReviewSub: "回顧你存留與淘汰的標案，可重新分流或補上淘汰理由",
     decisionToRules: "前往規則設定",
@@ -1573,6 +1587,22 @@ export const STRINGS = {
     // In-chat quick picker (bottom-left of composer)
     brainQuickLabel: "Brain",
     brainQuickHint: "Switch the engine behind this conversation",
+    brainQuickDetail: "Advanced settings",
+    // AI Brain Studio (/settings/brain dedicated page)
+    navBrainStudio: "AI Brain",
+    brainStudioTitle: "AI Brain Studio",
+    brainStudioSub:
+      "Pick and tune the engine, CLI agent and model behind the AI assistant",
+    brainStudioConfigTitle: "Engine settings",
+    brainStudioEnginesTitle: "Available engines",
+    brainStudioEnginesSub:
+      "The CLI agents available locally; switch engine and tune the model on the left.",
+    brainStudioSupportsModel: "Model selectable",
+    brainStudioModelsLabel: "Models",
+    brainStudioModelsNone: "Agent default",
+    brainStudioOpenLink: "Open AI Brain Studio",
+    brainStudioOpenHint:
+      "Pick the engine, CLI agent and model on a dedicated page, and test live.",
     // Decision review (rating management): revisit kept/discarded, re-sort
     decisionReviewSub:
       "Review kept and discarded tenders; re-sort or add a discard reason",

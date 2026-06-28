@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useApp } from "@/store/app-context";
 import { useAuth } from "@/store/auth-context";
 import { PageHeader } from "@/components/layout/page-header";
@@ -7,7 +8,6 @@ import { AccountSecurity } from "@/components/settings/account-security";
 import { PersonalData } from "@/components/settings/personal-data";
 import { AdminUserPasswords } from "@/components/settings/admin-user-passwords";
 import { MemberManagement } from "@/components/settings/member-management";
-import { BrainPicker } from "@/components/settings/brain-picker";
 import { DetailFieldSettings } from "@/components/settings/detail-field-settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -58,8 +58,16 @@ export function SettingsPage() {
           <CardTitle>{t("brainTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-[12px] text-ink-muted">{t("brainSub")}</p>
-          <BrainPicker />
+          <p className="mb-4 text-[12px] text-ink-muted">
+            {t("brainStudioOpenHint")}
+          </p>
+          <Link
+            to="/settings/brain"
+            className="inline-flex items-center gap-1 rounded-lg bg-ink px-3 py-1.5 text-[12px] font-semibold text-surface transition-opacity hover:opacity-90"
+          >
+            {t("brainStudioOpenLink")}
+            <span aria-hidden>→</span>
+          </Link>
         </CardContent>
       </Card>
 

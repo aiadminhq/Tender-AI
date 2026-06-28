@@ -3,6 +3,7 @@
 // 切換只改「引擎／CLI 代理」（provider 或 cli_agent），不動模型等細項——細項仍在設定頁調。
 // 切換後立即 PUT 落地並 applyBrainUpdate 全域同步；失敗則回滾 UI（不阻斷對話）。
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useApp } from "@/store/app-context";
 import {
   updateBrainConfig,
@@ -67,27 +68,37 @@ export function BrainQuickPicker({ className }: { className?: string }) {
   }
 
   return (
-    <label
-      title={t("brainQuickHint")}
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-lg border border-border bg-white/70 px-2 py-1 text-[11px] font-medium text-ink-muted transition-colors hover:border-orange-200",
-        busy && "opacity-60",
-        className,
-      )}
+    <span
+      className={cn("inline-flex shrink-0 items-center gap-1.5", className)}
     >
-      <span className="text-ink-dim">{t("brainQuickLabel")}</span>
-      <select
-        value={value}
-        disabled={busy}
-        onChange={(e) => void onChange(e.target.value)}
-        className="cursor-pointer bg-transparent pr-0.5 text-[11px] font-semibold text-ink outline-none"
+      <label
+        title={t("brainQuickHint")}
+        className={cn(
+          "inline-flex items-center gap-1 rounded-lg border border-border bg-white/70 px-2 py-1 text-[11px] font-medium text-ink-muted transition-colors hover:border-orange-200",
+          busy && "opacity-60",
+        )}
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        <span className="text-ink-dim">{t("brainQuickLabel")}</span>
+        <select
+          value={value}
+          disabled={busy}
+          onChange={(e) => void onChange(e.target.value)}
+          className="cursor-pointer bg-transparent pr-0.5 text-[11px] font-semibold text-ink outline-none"
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Link
+        to="/settings/brain"
+        title={t("brainStudioOpenHint")}
+        className="text-[11px] font-medium text-ink-dim underline-offset-2 transition-colors hover:text-ink hover:underline"
+      >
+        {t("brainQuickDetail")}
+      </Link>
+    </span>
   );
 }

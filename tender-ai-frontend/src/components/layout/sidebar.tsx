@@ -47,7 +47,7 @@ function SidebarLink({
   return (
     <NavLink
       to={item.to}
-      end={item.to === "/"}
+      end={item.to === "/" || item.to === "/settings"}
       className={({ isActive }) =>
         cn(
           "group flex items-center justify-between rounded-md px-2.5 py-[7px] text-[13px] font-medium transition-all duration-200",

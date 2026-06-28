@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   Brain,
+  Cpu,
   ClipboardCheck,
   KanbanSquare,
   Layers,
@@ -36,5 +37,6 @@ export const NAV: NavItem[] = [
   { to: "/evolution", key: "navEvolution", icon: Brain },
   { to: "/rules", key: "navRules", icon: SlidersHorizontal },
   { to: "/decisions", key: "navDecisionReview", icon: ClipboardCheck },
+  { to: "/settings/brain", key: "navBrainStudio", icon: Cpu },
   { to: "/settings", key: "settings", icon: Settings },
 ];
