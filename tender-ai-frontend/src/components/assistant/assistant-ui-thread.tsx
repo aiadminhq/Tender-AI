@@ -41,11 +41,10 @@ import { cn } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AssistantArtifacts } from "./assistant-artifacts";
+import { BrainQuickPicker } from "./brain-quick-picker";
 import { RichText } from "./rich-text";
 import type { TenderRef } from "./rich-text-links";
-import {
-  type AssistantCustomMeta,
-} from "./assistant-runtime-provider";
+import { type AssistantCustomMeta } from "./assistant-runtime-provider";
 import { useAssistantBridge } from "./assistant-bridge";
 
 // 來源類別 → i18n 字串鍵 + 代表 icon。類別差異只靠 icon 形狀承載（單色系不疊第二個彩色）。
@@ -130,19 +129,22 @@ const COMPOSER_SHORTCUTS: {
 
 const CTA_TONES = {
   amber: {
-    shell: "border-amber-200 bg-white hover:border-amber-300 hover:shadow-[0_14px_28px_-22px_rgba(180,83,9,.7)]",
+    shell:
+      "border-amber-200 bg-white hover:border-amber-300 hover:shadow-[0_14px_28px_-22px_rgba(180,83,9,.7)]",
     icon: "bg-amber-50 text-amber-700",
     row: "hover:border-amber-200 hover:bg-amber-50",
     arrow: "text-amber-600",
   },
   sky: {
-    shell: "border-sky-200 bg-white hover:border-sky-300 hover:shadow-[0_14px_28px_-22px_rgba(2,132,199,.7)]",
+    shell:
+      "border-sky-200 bg-white hover:border-sky-300 hover:shadow-[0_14px_28px_-22px_rgba(2,132,199,.7)]",
     icon: "bg-sky-50 text-sky-700",
     row: "hover:border-sky-200 hover:bg-sky-50",
     arrow: "text-sky-600",
   },
   emerald: {
-    shell: "border-emerald-200 bg-white hover:border-emerald-300 hover:shadow-[0_14px_28px_-22px_rgba(4,120,87,.7)]",
+    shell:
+      "border-emerald-200 bg-white hover:border-emerald-300 hover:shadow-[0_14px_28px_-22px_rgba(4,120,87,.7)]",
     icon: "bg-emerald-50 text-emerald-700",
     row: "hover:border-emerald-200 hover:bg-emerald-50",
     arrow: "text-emerald-600",
@@ -274,10 +276,7 @@ function ThreadEmpty() {
                     >
                       <Icon
                         size={13}
-                        className={cn(
-                          "shrink-0 transition-colors",
-                          tone.arrow,
-                        )}
+                        className={cn("shrink-0 transition-colors", tone.arrow)}
                       />
                       <span className="min-w-0 flex-1">{s}</span>
                       <ArrowUp
@@ -677,12 +676,19 @@ function Composer({ placeholder }: { placeholder: string }) {
         </AuiIf>
         <AuiIf condition={(s: AssistantState) => s.thread.isRunning}>
           <ComposerPrimitive.Cancel asChild>
-            <Button size="icon" variant="outline" title={t("assistantThinking")}>
+            <Button
+              size="icon"
+              variant="outline"
+              title={t("assistantThinking")}
+            >
               <Square size={15} />
             </Button>
           </ComposerPrimitive.Cancel>
         </AuiIf>
       </ComposerPrimitive.Root>
+      <div className="flex items-center">
+        <BrainQuickPicker />
+      </div>
     </div>
   );
 }

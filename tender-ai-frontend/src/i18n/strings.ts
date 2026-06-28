@@ -726,6 +726,24 @@ export const STRINGS = {
     brainSaved: "已儲存",
     brainLoadError: "讀取大腦設定失敗（需後端連線）",
     brainSaveError: "儲存失敗，請稍後再試",
+    // CLI 模型選擇（per-agent）
+    brainCliModel: "模型",
+    brainCliModelDefault: "代理預設",
+    brainCliModelPh: "自訂模型名稱（留空用代理預設）",
+    brainCliModelHint: "指定要傳給該 CLI 代理的模型；留空則用代理預設。",
+    brainCliModelUnsupported: "此代理不支援指定模型，將用其預設。",
+    brainNeedsLocalVerify: "需本機驗證",
+    brainNeedsLocalVerifyHint:
+      "此代理為實驗性模板，尚未在本機驗證；live 須在能執行該 CLI 的本機測試。",
+    // 測試鈕（候選設定煙測，HTTP 恆 200）
+    brainTest: "測試",
+    brainTesting: "測試中…",
+    brainTestOk: "可用",
+    brainTestFail: "失敗",
+    brainTestHint: "以一個極短訊息實測目前選擇的大腦是否能回話。",
+    // 對話內快速 picker（composer 左下）
+    brainQuickLabel: "大腦",
+    brainQuickHint: "切換此對話背後的生成引擎",
     // 決策回顧（標案評分管理）：執行評分後回顧存留／淘汰、可重新分流
     decisionReviewSub: "回顧你存留與淘汰的標案，可重新分流或補上淘汰理由",
     decisionToRules: "前往規則設定",
@@ -1512,6 +1530,8 @@ export const STRINGS = {
     brainCliClaude: "Claude Code",
     brainCliCodex: "Codex",
     brainCliHermes: "Hermes",
+    brainCliOpencode: "OpenCode",
+    brainCliAntigravity: "Antigravity",
     brainProviderHint:
       "ollama swaps the local model; cli spawns a local agent that queries the knowledge base on its own; byok talks to the cloud directly.",
     brainOllamaModel: "Ollama model name",
@@ -1532,6 +1552,27 @@ export const STRINGS = {
     brainSaved: "Saved",
     brainLoadError: "Failed to load brain config (needs backend connection)",
     brainSaveError: "Save failed, please try again",
+    // CLI model selection (per-agent)
+    brainCliModel: "Model",
+    brainCliModelDefault: "Agent default",
+    brainCliModelPh: "Custom model name (empty = agent default)",
+    brainCliModelHint:
+      "Model passed to this CLI agent; leave empty to use the agent default.",
+    brainCliModelUnsupported:
+      "This agent doesn't support choosing a model; its default is used.",
+    brainNeedsLocalVerify: "Needs local check",
+    brainNeedsLocalVerifyHint:
+      "Experimental template, not yet verified locally; test live on a machine that can run this CLI.",
+    // Test button (candidate smoke test, always HTTP 200)
+    brainTest: "Test",
+    brainTesting: "Testing…",
+    brainTestOk: "Works",
+    brainTestFail: "Failed",
+    brainTestHint:
+      "Sends one tiny message to check the selected brain can reply.",
+    // In-chat quick picker (bottom-left of composer)
+    brainQuickLabel: "Brain",
+    brainQuickHint: "Switch the engine behind this conversation",
     // Decision review (rating management): revisit kept/discarded, re-sort
     decisionReviewSub:
       "Review kept and discarded tenders; re-sort or add a discard reason",
