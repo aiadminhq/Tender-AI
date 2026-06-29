@@ -11,8 +11,16 @@
   ],
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|ico|png|svg|webp|woff2?))",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "tender-ai-frontend/dist/index.html"
+      "dest": "/index.html"
     }
   ]
 }
