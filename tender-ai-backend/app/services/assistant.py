@@ -36,6 +36,7 @@ from app.schemas.assistant import (
     AssistantToolContractOut,
 )
 from app.schemas.tender import TenderQuery
+from app.services import claude_llm
 from app.services import llm
 from app.services import query as query_svc
 from app.services import search as search_svc
@@ -384,11 +385,25 @@ async def stream_chat_events(
     used_llm = False
     if settings.assistant_use_llm:
         messages = _build_chat_messages(payload, prompt, evidence, knowledge)
+
+        # 依 assistant_provider 選擇 LLM 後端：
+        #   "claude" + ANTHROPIC_API_KEY 已設定 → Claude API（雲端）
+        #   其他 → Ollama（本機）
+        use_claude = (
+            settings.assistant_provider == "claude"
+            and bool(settings.anthropic_api_key)
+        )
+        stream = (
+            claude_llm.stream_chat(messages)
+            if use_claude
+            else llm.stream_chat(messages)
+        )
+
         acc: list[str] = []
         since_flush = 0
         start = time.monotonic()
         try:
-            async for chunk in llm.stream_chat(messages):
+            async for chunk in stream:
                 acc.append(chunk)
                 since_flush += len(chunk)
                 # 累積全文（前端 delta 為 replace 語意）；以字數／換行門檻聚合，
@@ -407,7 +422,7 @@ async def stream_chat_events(
                     AssistantChatDeltaOut(text="".join(acc)).model_dump()
                 )
                 used_llm = True
-        except llm.LlmError:
+        except (llm.LlmError, claude_llm.ClaudeLlmError):
             used_llm = False
         except Exception:  # noqa: BLE001 — 生成端任何異常都退回模板，維持 HTTP 200
             used_llm = False

@@ -28,8 +28,15 @@ class Settings(BaseSettings):
     chat_temperature: float = 0.3  # 偏低溫度：貼證據、少發散
     assistant_max_concurrency: int = 2  # 本機 Ollama 同時生成上限（Semaphore）
 
-    # 高品質推理/摘要（P5）；勿入版控
+    # 高品質推理/摘要（P5）；也用於 assistant_provider="claude" 時的聊天生成；勿入版控
     anthropic_api_key: str = ""
+
+    # 聊天助手 LLM provider："ollama"（本機）| "claude"（Anthropic Messages API）
+    # Railway 等無 Ollama 環境：設 ASSISTANT_PROVIDER=claude + ANTHROPIC_API_KEY=...
+    assistant_provider: str = "ollama"
+
+    # Claude 模型（assistant_provider="claude" 時使用）
+    claude_model: str = "claude-haiku-4-5-20251001"
 
     # 既有爬蟲核心位置（包裝呼叫，不重寫）
     pcc_scraper_path: str = "../tender-bot/tender_daily.py"
