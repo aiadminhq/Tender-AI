@@ -1,0 +1,114 @@
+---
+title: "Tender AI 後續任務與進度總覽｜活文件"
+brief: "以繁體中文為預設，單一入口收斂 Tender AI 的已完成／進行中／擱置中／規劃中，含工具盤點與責任邊界。每批工作後更新。"
+kind: "plan"
+version: 1
+localOnly: true
+---
+
+# Tender AI 後續任務與進度總覽
+
+<Callout id="status-2026-07-02" tone="decision">
+
+**快照（2026-07-02）：小助手人格化與技能打包已 commit（`7e7f277`，未 push）；部署 handoff 8 項全數擱置、僅記錄不執行。** 本檔是「越更新越準」的**活文件**，規則與章節骨架定義在 `docs/superpowers/specs/2026-07-02-project-roadmap-design.md`（寫一次、少改）。要改本檔結構，先改那份 spec §4。
+
+</Callout>
+
+## 一句話現況
+
+小助手（assistant）的人格化設定與 Notion 補充查詢邊界已寫成 spec 草稿並 commit，但 Notion 程式碼尚未實作、待使用者同意；雲端部署（Vercel／Railway／Supabase）整批因使用者指示「先跳過」而擱置，只在此鏡射狀態，不主動執行。
+
+## 四狀態總覽
+
+<Table
+  id="status-overview"
+  columns={["狀態", "項目數", "代表項", "備註"]}
+  rows={[
+    ["✅ 已完成", "3", "小助手人格 spec、3 個技能修復、.env.example 佔位", "commit 7e7f277，未 push"],
+    ["🚧 進行中", "1", "本 roadmap 活文件建立（雙軌制方案 A）", "spec 已定案，plan.mdx 落地中"],
+    ["⏸ 擱置中", "8", "HANDOFF.md 部署 8 項", "使用者明示先跳過；僅記錄不執行"],
+    ["🗓 規劃中", "3", "Notion 整合程式碼、2 個小問題處理", "Notion 待同意；小問題待排程"],
+  ]}
+/>
+
+## 已完成 ✅
+
+- **小助手人格化設定 spec**：`tender-ai-backend/app/services/ASSISTANT_PERSONA.md` — 定義惠強業務脈絡、三種證據來源紀律（標案清單／知識庫／未來 Notion）、Layer A/B/C 治理邊界。明確標註 Notion API 尚未接入 runtime，屬設計草稿。（commit `7e7f277`）
+- **3 個假 symlink 技能修復**：`shadcn`／`supabase`／`supabase-postgres-best-practices` 從指向 `.gitignore` 的 `.agents/` 改為真實內容並納入版控（見 `skills-lock.json`）。
+- **`.env.example` 補佔位變數**：新增 `NOTION_TOKEN`／`NOTION_DATABASE_ID` 佔位（空值，無祕密）＋取得方式說明，供未來 Notion 整合使用。
+
+## 進行中 🚧
+
+- **本 roadmap 系統（雙軌制方案 A）**：`docs/superpowers/specs/2026-07-02-project-roadmap-design.md`（規則與骨架，已定案）＋ 本活文件 `plans/tender-ai-roadmap/plan.mdx`（進度總覽，落地中）。後續由 `visual-plan` 技能維護視覺化，各子專案細項 Todo 由 `writing-plans` 產出並索引於此。
+
+## 擱置中 ⏸（HANDOFF.md 部署 8 項）
+
+<Callout id="paused-deploy" tone="risk">
+
+**以下 8 項僅記錄狀態、不主動執行。** 使用者已明確指示部署議題「先跳過」；依 spec §3 紅線，⏸ → 任何其他狀態只能由**人明確重啟**觸發，agent 不得自行恢復。單一事實來源為 `HANDOFF.md`（2026-07-01），本區只做狀態鏡射與索引。
+
+</Callout>
+
+<Table
+  id="handoff-items"
+  columns={["#", "項目", "現況", "前置／卡點"]}
+  rows={[
+    ["1", "Vercel Production Branch 指向修正", "指向已關閉分支，需改回 main", "需 Vercel Dashboard 手動改（或 Vercel MCP 待 OAuth）"],
+    ["2", "合併 PR #10", "待合併", "待使用者重啟部署流程"],
+    ["3", "Railway 後端部署", "待部署", "需設環境變數；Railway MCP 可用但未動工"],
+    ["4", "Vercel 前端環境變數", "待設定", "需 Vercel Dashboard／MCP（待 OAuth）"],
+    ["5", "Supabase 白名單 9 帳號種子", "seed_members.sql 已就緒、待執行", "需連線 Supabase（MCP 待 OAuth）"],
+    ["6", "大腦 provider 切 byok", "待切換", "待使用者重啟"],
+    ["7", "backfill／embed／ingest jobs", "待跑", "需能連 PCC／DB 的環境"],
+    ["8", "8 點端到端驗證清單", "全未勾選", "前 7 項完成後才驗收"],
+  ]}
+/>
+
+## 規劃中 🗓
+
+- **Notion 補充查詢程式碼**（待使用者同意才動手）：依 `ASSISTANT_PERSONA.md` §5，需 ①`_collect_notion_evidence()`（比照 `_collect_knowledge()` best-effort）②`_build_chat_messages()` 加 `[Notion 補充資料]` block ③把 §2/§3 規則併入 `_GROUNDING_SYSTEM` ④補測試（查不到／未在白名單或未同意 → 來源留空、不頂替）。Notion 內容屬 Layer B，consent-aware＋具名、對外不揭露。
+- **`NOTION_TOKEN` 輪替建議**：先前一次意外把 token 明文印出於對話，建議日後於 https://www.notion.so/my-integrations 重新產生並輪替。（僅建議，非本 session 執行）
+- **`block-secrets.py` hook bug 揭露**：使用者全域 `~/.claude/hooks/block-secrets.py` 在 exit code 2（軟警告）路徑用 `print()` 印到 stdout 而非 stderr，導致 harness 誤判為硬阻擋。屬使用者自己的 hook，**僅揭露不修**。
+
+## 工具盤點
+
+<Table
+  id="tool-inventory"
+  columns={["工具／平台", "類型", "用途", "授權狀態"]}
+  rows={[
+    ["tender-ai-brain", "MCP", "專案 DB 大腦：標案檢索／語意搜尋／推薦／行為回寫（僅公開＋去識別化）", "可用"],
+    ["notion", "MCP", "Notion 內部筆記查詢（Layer B，consent-aware）", "已連線可用"],
+    ["railway", "MCP", "後端部署與環境變數管理", "可用（未動工）"],
+    ["github-integration", "MCP", "repo／PR／issue 操作（aiadminhq/Tender-AI）", "可用"],
+    ["shadcn", "MCP／技能", "UI 元件註冊表", "已修復為真實內容"],
+    ["supabase", "MCP", "Supabase DB／種子／migration", "待 OAuth（non-interactive 無法授權）"],
+    ["vercel", "MCP", "前端部署／環境變數／domain", "待 OAuth（non-interactive 無法授權）"],
+    ["ui-ux-pro-max／impeccable／minimalist-ui／design-taste-frontend／redesign-existing-projects", "設計技能", "前端設計選型、品味、反 slop 稽核", "本機可用"],
+    ["visual-plan", "技能", "把本活文件視覺化呈現", "本機可用（下一步）"],
+  ]}
+/>
+
+## 待處理小問題
+
+- **`NOTION_TOKEN` 輪替**：見上「規劃中」；建議輪替，非緊急。
+- **`block-secrets.py` stdout/stderr bug**：使用者 hook 的行為問題，僅揭露、不代改（超出本專案範疇）。
+
+## 責任邊界
+
+<Diagram
+  id="data-layer-boundary"
+  data={{
+    html: `<div class="diagram-panel layer-grid">
+      <div class="diagram-card"><strong>Layer A｜公開標案資料</strong><span class="diagram-muted">案號、機關、金額、截止日</span><span class="diagram-pill">可公開／可重建</span></div>
+      <div class="diagram-card"><strong>Layer B｜同事行為與想法</strong><span class="diagram-muted">收藏、評分、想法、Notion 內部筆記</span><span class="diagram-pill">白名單內共享＋具名／對外不揭露</span></div>
+      <div class="diagram-card"><strong>Layer C｜學出來的知識</strong><span class="diagram-muted">向量、權重、推薦理由</span><span class="diagram-pill">衍生可重算／對外去識別化</span></div>
+      <div class="diagram-card"><strong>Layer D｜公司投標素材</strong><span class="diagram-muted">內部標案文件、報價、檢討</span><span class="diagram-pill">公司機密／永不進公開 repo</span></div>
+    </div>`,
+    css: `.layer-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; } .layer-grid .diagram-card { display:flex; flex-direction:column; gap:8px; min-height:110px; } @media (max-width: 760px) { .layer-grid { grid-template-columns:1fr; } }`,
+    caption: "本 roadmap 與活文件不含 Layer B／D 機密內容；工具盤點只寫能力與授權狀態，絕不寫祕密值。",
+  }}
+/>
+
+## 更新紀錄
+
+- **2026-07-02** — 建立本活文件（雙軌制方案 A 落地）；把 `HANDOFF.md` 8 項攤平為擱置中 ⏸；小助手 spec／技能修復／.env.example 記為已完成 ✅（commit `7e7f277`）；Notion 整合與 2 個小問題列為規劃中 🗓。
