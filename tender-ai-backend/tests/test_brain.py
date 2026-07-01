@@ -346,6 +346,39 @@ def test_cli_argv_unsupported_agent_raises():
         brain._cli_argv("gemini", "x")
 
 
+def test_cli_argv_appends_model_flag_when_supported():
+    # claude / codex 支援 --model：設了模型就 append 到尾端。
+    claude = brain._cli_argv("claude", "問題", "claude-sonnet-4-6")
+    assert claude[-2:] == ["--model", "claude-sonnet-4-6"]
+    assert "問題" in claude
+    codex = brain._cli_argv("codex", "問題", "gpt-5")
+    assert codex[-2:] == ["--model", "gpt-5"]
+
+
+def test_cli_argv_no_model_flag_when_unsupported():
+    # hermes 無 model_flag：即使傳了 model 也不該 append（非破壞）。
+    hermes = brain._cli_argv("hermes", "問題", "whatever")
+    assert "--model" not in hermes
+    assert "whatever" not in hermes
+    assert hermes[0] == "hermes"
+
+
+def test_cli_argv_omits_model_flag_when_model_none():
+    # 沒設模型 → 沿用代理預設 argv，不 append flag。
+    claude = brain._cli_argv("claude", "問題", None)
+    assert "--model" not in claude
+
+
+def test_parse_cli_line_text_agent_streams_plaintext():
+    # opencode / antigravity 走 text parser：每行純文字當作 delta 累積。
+    for agent in ("opencode", "antigravity"):
+        acc: list[str] = []
+        chunk = brain._parse_cli_line(agent, "你好", acc)
+        assert chunk is not None and chunk.kind == "delta"
+        # text parser 逐行串流純文字（含換行），內容須包含原文。
+        assert "你好" in chunk.text
+
+
 def test_build_cli_prompt_with_focus_note():
     out = brain._build_cli_prompt("有沒有台北的案子", "正在看：資訊系統建置")
     assert "正在看：資訊系統建置" in out

@@ -13,7 +13,9 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import settings
+from app.services import brain as brain_svc
 from app.services import brain_config as brain_config_svc
+from app.services.brain import BrainChunk, BrainError
 
 BRAIN = "/api/v1/settings/brain"
 
@@ -116,3 +118,80 @@ async def test_service_update_none_clears_field(db_session):
     await brain_config_svc.update(db_session, {"provider": "ollama", "ollama_model": "qwen2.5"})
     cfg = await brain_config_svc.update(db_session, {"ollama_model": None})
     assert cfg.ollama_model is None
+
+
+# ── cli_model 欄位 round-trip ─────────────────────────────────────────────────
+
+
+async def test_put_brain_cli_model_round_trip(client):
+    """PUT 帶 cli_model → 落地並 GET 取回（支援 per-agent 指定模型）。"""
+    r = await client.put(
+        BRAIN, json={"provider": "cli", "cli_agent": "claude", "cli_model": "claude-sonnet-4-6"}
+    )
+    assert r.status_code == 200
+    assert r.json()["cli_model"] == "claude-sonnet-4-6"
+    again = (await client.get(BRAIN)).json()
+    assert again["cli_model"] == "claude-sonnet-4-6"
+
+
+# ── GET /brain/agents：CLI 代理註冊表 ─────────────────────────────────────────
+
+
+async def test_get_brain_agents_shape(client):
+    """回傳註冊表：含 claude/codex/hermes；supports_model 依 model_flag 推導。"""
+    r = await client.get(f"{BRAIN}/agents")
+    assert r.status_code == 200
+    agents = {a["key"]: a for a in r.json()["agents"]}
+    assert {"claude", "codex", "hermes"} <= set(agents)
+    # claude/codex 支援指定模型；hermes 不支援。
+    assert agents["claude"]["supports_model"] is True
+    assert agents["hermes"]["supports_model"] is False
+    # 每筆都帶 i18n label key 與 models 清單。
+    for spec in agents.values():
+        assert spec["label_i18n"] and isinstance(spec["models"], list)
+
+
+# ── POST /brain/test：候選設定煙測（HTTP 恆 200）───────────────────────────────
+
+
+def _fake_stream_factory(chunks=None, exc=None):
+    """造一個假 brain.stream：吐指定 chunks 或拋指定例外。"""
+
+    async def _fake_stream(**_kwargs):
+        if exc is not None:
+            raise exc
+        for c in chunks or []:
+            yield c
+
+    return _fake_stream
+
+
+async def test_post_brain_test_ok(client, monkeypatch):
+    """stream 正常吐 delta → ok=True、帶 sample，HTTP 200。"""
+    monkeypatch.setattr(
+        brain_svc, "stream", _fake_stream_factory(chunks=[BrainChunk("delta", "OK")])
+    )
+    r = await client.post(
+        f"{BRAIN}/test", json={"provider": "cli", "cli_agent": "claude"}
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert body["sample"] == "OK"
+    assert body["provider"] == "cli"
+
+
+async def test_post_brain_test_failure_is_200(client, monkeypatch):
+    """stream 拋 BrainError → ok=False、帶淨化錯誤字串，HTTP 仍 200、無祕密。"""
+    monkeypatch.setattr(
+        brain_svc, "stream", _fake_stream_factory(exc=BrainError("找不到 CLI 可執行檔：claude"))
+    )
+    r = await client.post(
+        f"{BRAIN}/test", json={"provider": "cli", "cli_agent": "claude"}
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False
+    assert body["error"]
+    # 永不外洩金鑰本體欄位。
+    assert "anthropic_api_key" not in body and "api_key" not in body
