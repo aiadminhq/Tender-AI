@@ -9,7 +9,6 @@ import {
   Link,
   Mail,
   Star,
-  UserPlus,
   X,
 } from "lucide-react";
 import type { Tender, TenderRevisionDetail } from "@/types/domain";
@@ -80,10 +79,6 @@ export function TenderDrawer({
   const [text, setText] = useState("");
   const [rating, setRating] = useState(0);
   const [isPublic, setIsPublic] = useState(false);
-  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
-  const [acceptReason, setAcceptReason] = useState("");
-  const [acceptReasonTags, setAcceptReasonTags] = useState<string[]>([]);
-  const [acceptAssignees, setAcceptAssignees] = useState<number[]>([]);
   const [pendingAccept, setPendingAccept] = useState<{
     tenderId: string;
     reason: string;
@@ -104,10 +99,6 @@ export function TenderDrawer({
     setText("");
     setRating(0);
     setIsPublic(false);
-    setAcceptDialogOpen(false);
-    setAcceptReason("");
-    setAcceptReasonTags([]);
-    setAcceptAssignees([]);
     // 從 localStorage 還原評價與可見性
     setRating(
       load<{ star: number }>(`rating:${tender?.id ?? ""}`, { star: 0 }).star,
