@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     # Claude 模型（assistant_provider="claude" 時使用）
     claude_model: str = "claude-haiku-4-5-20251001"
 
+    # OpenRouter（OpenAI 相容端點；assistant_provider="openrouter" 時使用）
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "anthropic/claude-3.5-haiku"
+    openrouter_site_url: str = ""
+    openrouter_site_name: str = "Tender-AI"
+
     # 既有爬蟲核心位置（包裝呼叫，不重寫）
     pcc_scraper_path: str = "../tender-bot/tender_daily.py"
 

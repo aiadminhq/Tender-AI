@@ -38,6 +38,7 @@ from app.schemas.assistant import (
 from app.schemas.tender import TenderQuery
 from app.services import claude_llm
 from app.services import llm
+from app.services import openrouter_llm
 from app.services import query as query_svc
 from app.services import search as search_svc
 from app.services.knowledge import search_knowledge
@@ -387,17 +388,23 @@ async def stream_chat_events(
         messages = _build_chat_messages(payload, prompt, evidence, knowledge)
 
         # 依 assistant_provider 選擇 LLM 後端：
-        #   "claude" + ANTHROPIC_API_KEY 已設定 → Claude API（雲端）
-        #   其他 → Ollama（本機）
+        #   "claude"      + ANTHROPIC_API_KEY     → Anthropic Claude API
+        #   "openrouter"  + OPENROUTER_API_KEY    → OpenRouter（OpenAI 相容）
+        #   其他                                  → 本機 Ollama
         use_claude = (
             settings.assistant_provider == "claude"
             and bool(settings.anthropic_api_key)
         )
-        stream = (
-            claude_llm.stream_chat(messages)
-            if use_claude
-            else llm.stream_chat(messages)
+        use_openrouter = (
+            settings.assistant_provider == "openrouter"
+            and bool(settings.openrouter_api_key)
         )
+        if use_claude:
+            stream = claude_llm.stream_chat(messages)
+        elif use_openrouter:
+            stream = openrouter_llm.stream_chat(messages)
+        else:
+            stream = llm.stream_chat(messages)
 
         acc: list[str] = []
         since_flush = 0
@@ -422,7 +429,7 @@ async def stream_chat_events(
                     AssistantChatDeltaOut(text="".join(acc)).model_dump()
                 )
                 used_llm = True
-        except (llm.LlmError, claude_llm.ClaudeLlmError):
+        except (llm.LlmError, claude_llm.ClaudeLlmError, openrouter_llm.OpenRouterLlmError):
             used_llm = False
         except Exception:  # noqa: BLE001 — 生成端任何異常都退回模板，維持 HTTP 200
             used_llm = False
