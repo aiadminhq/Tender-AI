@@ -10,13 +10,13 @@ localOnly: true
 
 <Callout id="status-2026-07-02" tone="decision">
 
-**快照（2026-07-02）：小助手人格化與技能打包已 commit（`7e7f277`，未 push）；部署 handoff 8 項全數擱置、僅記錄不執行。** 本檔是「越更新越準」的**活文件**，規則與章節骨架定義在 `docs/superpowers/specs/2026-07-02-project-roadmap-design.md`（寫一次、少改）。要改本檔結構，先改那份 spec §4。
+**快照（2026-07-02 部署批次後）：使用者明確重啟部署，HANDOFF.md 8 項中 6 項完成——前後端皆已上線（Vercel＋Railway＋Supabase），1186 筆標案已回填並全數向量化；剩 §6 大腦切 byok（等使用者親自在 Railway 填 `ANTHROPIC_API_KEY`）與 §8 最後兩格驗收。** 本檔是「越更新越準」的**活文件**，規則與章節骨架定義在 `docs/superpowers/specs/2026-07-02-project-roadmap-design.md`（寫一次、少改）。要改本檔結構，先改那份 spec §4。
 
 </Callout>
 
 ## 一句話現況
 
-小助手（assistant）的人格化設定與 Notion 補充查詢邊界已寫成 spec 草稿並 commit，但 Notion 程式碼尚未實作、待使用者同意；雲端部署（Vercel／Railway／Supabase）整批因使用者指示「先跳過」而擱置，只在此鏡射狀態，不主動執行。
+Tender AI 已正式上雲：前端 https://tender-ai-vert-six.vercel.app ＋ 後端 https://tender-ai-production-05e8.up.railway.app ＋ Supabase 資料庫（9 個白名單帳號、1186 筆標案、向量與知識庫齊備），登入／CORS／標案 API／相似案檢索皆驗證通過；小助手要真正生成回答，只差使用者在 Railway 填入 `ANTHROPIC_API_KEY` 後切換 byok。
 
 ## 四狀態總覽
 
@@ -24,43 +24,53 @@ localOnly: true
   id="status-overview"
   columns={["狀態", "項目數", "代表項", "備註"]}
   rows={[
-    ["✅ 已完成", "3", "小助手人格 spec、3 個技能修復、.env.example 佔位", "commit 7e7f277，未 push"],
-    ["🚧 進行中", "1", "本 roadmap 活文件建立（雙軌制方案 A）", "spec 已定案，plan.mdx 落地中"],
-    ["⏸ 擱置中", "8", "HANDOFF.md 部署 8 項", "使用者明示先跳過；僅記錄不執行"],
+    ["✅ 已完成", "10", "部署 §1–§5＋§7（前後端上線、種子、回填、向量化）、小助手人格 spec、技能修復、roadmap 雙軌制", "部署批次 2026-07-02 完成並逐項驗證"],
+    ["🚧 進行中", "2", "§6 大腦切 byok、§8 驗收收尾", "等使用者在 Railway 填 ANTHROPIC_API_KEY"],
+    ["⏸ 擱置中", "0", "—", "部署 8 項已由使用者 2026-07-02 明確重啟"],
     ["🗓 規劃中", "3", "Notion 整合程式碼、2 個小問題處理", "Notion 待同意；小問題待排程"],
   ]}
 />
 
 ## 已完成 ✅
 
+- **部署批次（HANDOFF.md §1–§5＋§7，2026-07-02 使用者明確重啟後執行）**：
+  - §1 Vercel Production Branch 已改回 `main`（經 Vercel REST API PATCH）。
+  - §2 PR #10 已合併，main 恢復可部署（merge commit `00e3934`）。
+  - §3 Railway 後端上線：`https://tender-ai-production-05e8.up.railway.app`，source 接 `main`、`AUTH_SECRET` 已設、`DATABASE_URL` 改用 session pooler（5432）；`/health` ok、登入 API 200。
+  - §4 Vercel 前端上線：`https://tender-ai-vert-six.vercel.app`，4 個 `VITE_` 環境變數設於 Dashboard（不進 vercel.json），新 production build READY 且 bundle 已烘入 API base。
+  - §5 Supabase 白名單 9 帳號種子完成（`SELECT count(*) FROM users` = 9）。
+  - §7 資料 jobs 全跑完：backfill 40 份報表 → 1186 筆去重標案（PCC 1173＋TMU 13）；embed_tenders 1186/1186 全向量化（bge-m3）；ingest_knowledge 5 份文件 28 切塊。正式站相似案 API 已驗證可用存好的向量檢索。
+  - §8 驗收已過 8/10：CORS（Vercel origin preflight 200）、tenders API 回真實資料等；剩 byok 與小助手真生成兩格（見進行中）。
+- **本 roadmap 系統（雙軌制方案 A）**：spec ＋ 本活文件皆已建立並 commit（`911f82e`）。
 - **小助手人格化設定 spec**：`tender-ai-backend/app/services/ASSISTANT_PERSONA.md` — 定義惠強業務脈絡、三種證據來源紀律（標案清單／知識庫／未來 Notion）、Layer A/B/C 治理邊界。明確標註 Notion API 尚未接入 runtime，屬設計草稿。（commit `7e7f277`）
 - **3 個假 symlink 技能修復**：`shadcn`／`supabase`／`supabase-postgres-best-practices` 從指向 `.gitignore` 的 `.agents/` 改為真實內容並納入版控（見 `skills-lock.json`）。
 - **`.env.example` 補佔位變數**：新增 `NOTION_TOKEN`／`NOTION_DATABASE_ID` 佔位（空值，無祕密）＋取得方式說明，供未來 Notion 整合使用。
 
 ## 進行中 🚧
 
-- **本 roadmap 系統（雙軌制方案 A）**：`docs/superpowers/specs/2026-07-02-project-roadmap-design.md`（規則與骨架，已定案）＋ 本活文件 `plans/tender-ai-roadmap/plan.mdx`（進度總覽，落地中）。後續由 `visual-plan` 技能維護視覺化，各子專案細項 Todo 由 `writing-plans` 產出並索引於此。
+- **§6 大腦 provider 切 byok**：等使用者親自在 Railway Dashboard（attractive-curiosity → Tender-AI → Variables）填入 `ANTHROPIC_API_KEY`；填好後由 agent 以 admin 登入 `PUT /api/v1/settings/brain` 切 `{"provider":"byok","byok_model":"claude-opus-4-8"}` 並驗證。目前預設 `cli` provider 在 Railway 容器內會優雅退回罐頭模板（不當機）。
+- **§8 驗收收尾**：10 格清單剩「admin 切 byok」與「小助手真實生成一題」兩格，依賴上一項。
 
 ## 擱置中 ⏸（HANDOFF.md 部署 8 項）
 
-<Callout id="paused-deploy" tone="risk">
+<Callout id="paused-deploy" tone="decision">
 
-**以下 8 項僅記錄狀態、不主動執行。** 使用者已明確指示部署議題「先跳過」；依 spec §3 紅線，⏸ → 任何其他狀態只能由**人明確重啟**觸發，agent 不得自行恢復。單一事實來源為 `HANDOFF.md`（2026-07-01），本區只做狀態鏡射與索引。
+**本章已清空：使用者於 2026-07-02 明確說「繼續完成」重啟部署，符合 spec §3 紅線的「人明確重啟」條件。** 8 項現況鏡射如下表（✅×6、🚧×2），細節見「已完成」「進行中」章節。單一事實來源仍為 `HANDOFF.md`。
 
 </Callout>
 
 <Table
   id="handoff-items"
-  columns={["#", "項目", "現況", "前置／卡點"]}
+  columns={["#", "項目", "現況", "備註"]}
   rows={[
-    ["1", "Vercel Production Branch 指向修正", "指向已關閉分支，需改回 main", "需 Vercel Dashboard 手動改（或 Vercel MCP 待 OAuth）"],
-    ["2", "合併 PR #10", "待合併", "待使用者重啟部署流程"],
-    ["3", "Railway 後端部署", "待部署", "需設環境變數；Railway MCP 可用但未動工"],
-    ["4", "Vercel 前端環境變數", "待設定", "需 Vercel Dashboard／MCP（待 OAuth）"],
-    ["5", "Supabase 白名單 9 帳號種子", "seed_members.sql 已就緒、待執行", "需連線 Supabase（MCP 待 OAuth）"],
-    ["6", "大腦 provider 切 byok", "待切換", "待使用者重啟"],
-    ["7", "backfill／embed／ingest jobs", "待跑", "需能連 PCC／DB 的環境"],
-    ["8", "8 點端到端驗證清單", "全未勾選", "前 7 項完成後才驗收"],
+    ["1", "Vercel Production Branch 指向修正", "✅ 已改回 main", "經 Vercel REST API 完成"],
+    ["2", "合併 PR #10", "✅ 已合併", "merge commit 00e3934"],
+    ["3", "Railway 後端部署", "✅ 上線", "tender-ai-production-05e8.up.railway.app；AUTH_SECRET 已設"],
+    ["4", "Vercel 前端環境變數", "✅ 已設＋重新 build", "4 個 VITE_ 變數在 Dashboard，不進 vercel.json"],
+    ["5", "Supabase 白名單 9 帳號種子", "✅ users=9", "冪等 SQL，密碼雜湊落地"],
+    ["6", "大腦 provider 切 byok", "🚧 等 key", "使用者自填 ANTHROPIC_API_KEY 後由 agent 切換"],
+    ["7", "backfill／embed／ingest jobs", "✅ 全跑完", "1186 筆標案＋全向量化＋知識庫 28 塊"],
+    ["8", "10 點端到端驗證清單", "🚧 8/10", "剩 byok 切換與小助手真生成"],
   ]}
 />
 
@@ -78,11 +88,11 @@ localOnly: true
   rows={[
     ["tender-ai-brain", "MCP", "專案 DB 大腦：標案檢索／語意搜尋／推薦／行為回寫（僅公開＋去識別化）", "可用"],
     ["notion", "MCP", "Notion 內部筆記查詢（Layer B，consent-aware）", "已連線可用"],
-    ["railway", "MCP", "後端部署與環境變數管理", "可用（未動工）"],
+    ["railway", "MCP＋CLI", "後端部署與環境變數管理", "可用（後端已部署於 attractive-curiosity 專案）"],
     ["github-integration", "MCP", "repo／PR／issue 操作（aiadminhq/Tender-AI）", "可用"],
     ["shadcn", "MCP／技能", "UI 元件註冊表", "已修復為真實內容"],
-    ["supabase", "MCP", "Supabase DB／種子／migration", "待 OAuth（non-interactive 無法授權）"],
-    ["vercel", "MCP", "前端部署／環境變數／domain", "待 OAuth（non-interactive 無法授權）"],
+    ["supabase", "MCP", "Supabase DB／種子／migration", "可用（connector 已授權；種子與 SQL 驗證都走它）"],
+    ["vercel", "MCP＋REST API", "前端部署／環境變數／domain", "可用（connector 已授權；Production Branch／env 用 CLI token 走 REST）"],
     ["ui-ux-pro-max／impeccable／minimalist-ui／design-taste-frontend／redesign-existing-projects", "設計技能", "前端設計選型、品味、反 slop 稽核", "本機可用"],
     ["visual-plan", "技能", "把本活文件視覺化呈現", "本機可用（下一步）"],
   ]}
@@ -111,4 +121,5 @@ localOnly: true
 
 ## 更新紀錄
 
+- **2026-07-02（部署批次）** — 使用者明確重啟部署（「繼續完成，我已經重新 auth Supabase／Vercel MCP」），`HANDOFF.md` §1–§5＋§7 由 ⏸ → ✅（前後端上線、種子 9 帳號、1186 筆標案回填＋全向量化＋知識庫 28 塊），§6／§8 → 🚧（等使用者親自在 Railway 填 `ANTHROPIC_API_KEY`）；roadmap 雙軌制由 🚧 → ✅（commit `911f82e`）；工具盤點 supabase／vercel／railway 更新為可用。
 - **2026-07-02** — 建立本活文件（雙軌制方案 A 落地）；把 `HANDOFF.md` 8 項攤平為擱置中 ⏸；小助手 spec／技能修復／.env.example 記為已完成 ✅（commit `7e7f277`）；Notion 整合與 2 個小問題列為規劃中 🗓。
