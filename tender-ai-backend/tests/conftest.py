@@ -55,6 +55,7 @@ _ALL_TABLES = [
     "assistant_messages",
     "assistant_threads",
     "assistant_brain_config",
+    "design_feedback_items",
     "events",
     "annotations",
     "evaluations",

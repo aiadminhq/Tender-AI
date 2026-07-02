@@ -42,19 +42,19 @@ https://github.com/aiadminhq/Tender-AI/pull/10
 - Root Directory: `tender-ai-backend`
 - 會自動偵測 `tender-ai-backend/Dockerfile` + `railway.toml`（已在 PR #10 裡）
 
-### 3.2 環境變數（依 `docs/governance/07-發佈與部署.md` 團隊已定案的決策 ③a BYOK Anthropic）
+### 3.2 環境變數（依 `docs/governance/07-發佈與部署.md` 團隊已定案的決策 ③a BYOK Anthropic 協定）
 
 ```
 DATABASE_URL=postgresql+psycopg://postgres.ajltwjkegmbzethwgbje:<密碼>@aws-0-<region>.pooler.supabase.com:5432/postgres
 AUTH_SECRET=<openssl rand -base64 48 或 python -c "import secrets;print(secrets.token_urlsafe(48))">
-ANTHROPIC_API_KEY=<正式 Anthropic key>
+ANTHROPIC_API_KEY=<OpenRouter key——確定的正式架構，非暫代方案，見下方說明>
 APP_API_KEY=<可選，粗閘；若設，前端 VITE_API_KEY 要同值>
 CORS_ORIGINS=https://<Vercel production 網址，改好 Production Branch 後的正式網域>
 OLLAMA_URL=（Railway 上沒有 Ollama，留預設即可，不會被用到——見下方大腦 provider 說明）
 ASSISTANT_USE_LLM=true
 ```
 
-**重要**：`ANTHROPIC_API_KEY` 只是讓 BYOK provider _可用_，實際切換大腦 provider 是**執行期 API 呼叫，不是環境變數**（見 §6）。
+**重要（確定架構，非暫代）**：本專案的大腦 provider 走 **OpenRouter**（非官方 Anthropic key）去選用 `claude-opus-4-8` 等模型——這是使用者確認過的正式決策。`ANTHROPIC_API_KEY` 這個變數名稱是沿用 BYOK Anthropic 協定的慣例，實際填入的是 OpenRouter key；byok 設定改指向 OpenRouter 的 Anthropic 相容端點即可運作，不需要、也不打算換成官方 `sk-ant-` key。實際切換大腦 provider 是**執行期 API 呼叫，不是環境變數**（見 §6）。
 
 `AUTH_SECRET` 是**必填、無安全預設值**——沒設的話整個登入系統會直接拒絕簽發/驗證 token（`AuthNotConfigured` 例外）。這個是我之前完全沒設過的欄位，务必補上。
 
@@ -124,10 +124,16 @@ DATABASE_URL=postgresql+psycopg://postgres.ajltwjkegmbzethwgbje:<密碼>@... \
 種子帳號建好、後端 Railway 有 `ANTHROPIC_API_KEY` 後：
 
 1. 用 `christian.wu@hqdesign.tw` / `admin` 登入 `POST /api/v1/auth/login`，拿到 Bearer token
-2. `PUT /api/v1/settings/brain`（帶 `Authorization: Bearer <token>`）：
+2. `PUT /api/v1/settings/brain`（帶 `Authorization: Bearer <token>`），指向 **OpenRouter**（確定架構，見 §3.2）：
    ```json
-   { "provider": "byok", "byok_model": "claude-opus-4-8" }
+   {
+     "provider": "byok",
+     "byok_protocol": "anthropic",
+     "byok_base_url": "https://openrouter.ai/api",
+     "byok_model": "anthropic/claude-opus-4-8"
+   }
    ```
+   注意 `byok_base_url` **不可**寫成 `.../api/v1`（會變成 `/v1/v1/messages` 404），模型名要帶 `anthropic/` 前綴（OpenRouter 命名慣例）。
 3. 不做這步的後果：預設 `provider="cli"`，Railway 容器裡沒有 `claude` 執行檔，會 `FileNotFoundError` → **優雅退回罐頭模板**（HTTP 200，不會當機，但小助手不會真的生成回答）。
 
 ---
@@ -154,7 +160,7 @@ uv run python -m app.jobs.ingest_knowledge  # 知識庫
 - [x] PR #10 已合併（含 build 修復）
 - [x] Vercel 最新 production 部署狀態 = Ready（不是 Error）
 - [x] Railway `/health` → `{"status":"ok"}`
-- [x] Railway 環境變數：`DATABASE_URL`、`AUTH_SECRET`、`ANTHROPIC_API_KEY`、`CORS_ORIGINS` 都設了（注意：`ANTHROPIC_API_KEY` 內容實為 OpenRouter key，byok 已改指 OpenRouter Anthropic 相容端點）
+- [x] Railway 環境變數：`DATABASE_URL`、`AUTH_SECRET`、`ANTHROPIC_API_KEY`、`CORS_ORIGINS` 都設了（`ANTHROPIC_API_KEY` 內容為 OpenRouter key——確定架構，非等官方 key 的暫代方案；byok 指向 OpenRouter Anthropic 相容端點）
 - [x] Supabase 白名單帳號已種子（2026-07-02 全量同步後 `count(*) FROM users` = 10：9 白名單＋1 個 `legacy.hqadmin` 佔位帳號承接舊本機資料，白名單外、不參與共享）
 - [x] 前端登入頁能用 `christian.wu@hqdesign.tw` / `admin` 登入成功
 - [x] admin 設定頁把大腦 provider 切成 `byok`（`byok_base_url=https://openrouter.ai/api`、`byok_model=anthropic/claude-opus-4-8`，PUT 後 GET 驗證 `byok_key_set=true`）

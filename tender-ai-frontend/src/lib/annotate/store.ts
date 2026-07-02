@@ -3,11 +3,20 @@
 // - annotations：持久化到 localStorage，重整不掉。
 
 import { useSyncExternalStore } from "react";
+import { getToken } from "@/lib/auth-token";
 import { serializeAnnotations } from "./serialize";
-import type { Annotation, AnnotationSeverity, AnnotationType } from "./types";
+import type {
+  Annotation,
+  AnnotationSeverity,
+  AnnotationType,
+  DesignFeedbackTarget,
+} from "./types";
 
 const STORAGE_KEY = "tender-ai:design-feedback";
 const FEEDBACK_ENDPOINT = "/__design-feedback";
+const API_BASE =
+  (import.meta.env.VITE_API_BASE as string | undefined) ??
+  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
 
 interface State {
   enabled: boolean;
@@ -117,6 +126,7 @@ export function useAnnotateState(): State {
 
 export type ExportOutcome =
   | { ok: true; via: "file"; path?: string }
+  | { ok: true; via: "backend"; batchId?: string }
   | { ok: true; via: "clipboard" }
   | { ok: true; via: "download" }
   | { ok: false; error: string };
@@ -128,7 +138,9 @@ export type ExportOutcome =
  *  3) 再失敗則觸發 .md 下載。
  * 不論結果為何，markdown 內容都會回傳給呼叫端顯示。
  */
-export async function exportAnnotations(): Promise<{
+export async function exportAnnotations(
+  target: DesignFeedbackTarget = "local",
+): Promise<{
   outcome: ExportOutcome;
   markdown: string;
 }> {
@@ -136,16 +148,27 @@ export async function exportAnnotations(): Promise<{
     state.annotations,
     new Date().toISOString(),
   );
+  const targetCli = targetToCli(target);
+
+  if (target === "backend") {
+    const backend = await postBackend(targetCli);
+    if (backend.ok) return { outcome: backend, markdown };
+  }
 
   // 1) 寫檔（dev only；正式 build 無此端點會 fetch 失敗 → 落到後援）
   try {
     const res = await fetch(FEEDBACK_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown }),
+      body: JSON.stringify({
+        markdown,
+        annotations: state.annotations,
+        targetCli,
+      }),
     });
     if (res.ok) {
       const data = (await res.json().catch(() => ({}))) as { path?: string };
+      if (targetCli) void postBackend(targetCli);
       return { outcome: { ok: true, via: "file", path: data.path }, markdown };
     }
   } catch {
@@ -177,5 +200,49 @@ export async function exportAnnotations(): Promise<{
       outcome: { ok: false, error: e instanceof Error ? e.message : String(e) },
       markdown,
     };
+  }
+}
+
+function targetToCli(target: DesignFeedbackTarget): string | null {
+  return target === "local" || target === "backend" ? null : target;
+}
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const key = import.meta.env.VITE_API_KEY as string | undefined;
+  if (key) headers["X-API-Key"] = key;
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+async function postBackend(
+  targetCli: string | null,
+): Promise<Extract<ExportOutcome, { via: "backend" }> | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/design-feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({
+        source: "annotation",
+        target_cli: targetCli,
+        items: state.annotations.map((a) => ({
+          route: a.route,
+          selector: a.selector,
+          component_guess: a.componentGuess,
+          text_snapshot: a.textSnapshot,
+          rect: a.rect,
+          type: a.type,
+          severity: a.severity,
+          comment: a.comment,
+          created_at: a.createdAt,
+        })),
+      }),
+    });
+    if (!res.ok) return { ok: false, error: `design feedback API ${res.status}` };
+    const data = (await res.json().catch(() => ({}))) as { batch_id?: string };
+    return { ok: true, via: "backend", batchId: data.batch_id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }

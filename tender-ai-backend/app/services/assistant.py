@@ -38,11 +38,16 @@ from app.schemas.assistant import (
     AssistantToolContractOut,
     PreferenceSuggestionOut,
 )
+from app.schemas.design_feedback import (
+    DesignFeedbackCreateItem,
+    DesignFeedbackCreateRequest,
+)
 from app.schemas.tender import TenderQuery
 from app.services.preference_capture import detect_standing_preference
 from app.services import assistant_store
 from app.services import brain as brain_svc
 from app.services import brain_config as brain_config_svc
+from app.services import design_feedback as design_feedback_svc
 from app.services import llm
 from app.services import query as query_svc
 from app.services import search as search_svc
@@ -51,6 +56,22 @@ from app.services.knowledge import search_knowledge
 _TEXT_PART_RE = re.compile(r"^(?:#|id[:\s#]|標案[:\s#])?(\d{1,8})$", re.IGNORECASE)
 _QUERY_ID_RE = re.compile(r"(?:#|id[:\s#]|標案[:\s#])(\d{1,8})", re.IGNORECASE)
 _SPLIT_RE = re.compile(r"[\s,，、]+")
+_DESIGN_FEEDBACK_RE = re.compile(
+    r"(?:設計|介面|ui|ux|使用者體驗)\s*回饋\s*[：:]\s*(.+)",
+    re.IGNORECASE | re.DOTALL,
+)
+_DESIGN_FEEDBACK_CLI_TARGETS = {
+    "claude",
+    "codex",
+    "hermes",
+    "opencode",
+    "antigravity",
+    "gemini",
+}
+_CLI_TARGET_RE = re.compile(
+    r"\b(claude|codex|hermes|opencode|antigravity|gemini)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(slots=True)
@@ -149,6 +170,35 @@ def _store_scope(payload: AssistantChatRequest) -> str:
         if isinstance(raw, str) and raw.strip():
             return raw.strip()[:32]
     return "assistant"
+
+
+def _design_feedback_capture(payload: AssistantChatRequest, prompt: str) -> dict[str, Any] | None:
+    """Explicit assistant command: "設計回饋：..." / "UI 回饋：..."."""
+    match = _DESIGN_FEEDBACK_RE.search(prompt)
+    if not match:
+        return None
+    comment = match.group(1).strip()
+    if not comment:
+        return None
+    ctx = payload.context if isinstance(payload.context, dict) else {}
+    target_cli = ctx.get("target_cli")
+    if not isinstance(target_cli, str) or not target_cli.strip():
+        cli_match = _CLI_TARGET_RE.search(prompt)
+        target_cli = cli_match.group(1).lower() if cli_match else None
+    elif target_cli.lower() in _DESIGN_FEEDBACK_CLI_TARGETS:
+        target_cli = target_cli.lower()
+    else:
+        target_cli = None
+    route = ctx.get("route") if isinstance(ctx.get("route"), str) else None
+    selector = ctx.get("selector") if isinstance(ctx.get("selector"), str) else None
+    component = ctx.get("component") if isinstance(ctx.get("component"), str) else None
+    return {
+        "comment": comment,
+        "target_cli": target_cli,
+        "route": route or "assistant",
+        "selector": selector or "assistant:capture",
+        "component": component or "AssistantCapture",
+    }
 
 
 def _split_query(prompt: str) -> list[str]:
@@ -417,6 +467,60 @@ async def stream_chat_events(
     # thread id：前端帶上來就沿用，缺值由後端產生（uuid hex）並於 meta 回傳。
     thread_id = (payload.thread_id or "").strip() or uuid4().hex
     store_scope = _store_scope(payload)
+    capture = _design_feedback_capture(payload, prompt)
+    if capture is not None:
+        target_cli = capture["target_cli"]
+        request = DesignFeedbackCreateRequest(
+            source="assistant",
+            target_cli=target_cli,
+            items=[
+                DesignFeedbackCreateItem(
+                    route=capture["route"],
+                    selector=capture["selector"],
+                    component_guess=capture["component"],
+                    text_snapshot=None,
+                    rect=None,
+                    type="interaction",
+                    severity="important" if "問題" in capture["comment"] else "suggest",
+                    comment=capture["comment"],
+                    metadata={"thread_id": thread_id, "scope": store_scope},
+                )
+            ],
+        )
+        answer_text = (
+            "已記下這則設計回饋，並寫入後端彙整。"
+            + (f"目標 CLI：{target_cli}。" if target_cli else "")
+        )
+        try:
+            await assistant_store.ensure_thread(
+                session, thread_id, scope=store_scope, owner_user_id=owner_user_id
+            )
+            if prompt:
+                await assistant_store.append_message(
+                    session, thread_id, role="user", content=prompt
+                )
+            await design_feedback_svc.create_batch(session, request, owner_user_id)
+            await assistant_store.append_message(
+                session, thread_id, role="assistant", content=answer_text, sources=[]
+            )
+            await session.commit()
+        except Exception:  # noqa: BLE001
+            await session.rollback()
+            answer_text = "設計回饋暫時無法寫入後端，請稍後再試。"
+
+        meta = AssistantChatMetaOut(
+            scope="design_feedback_capture",
+            thread_id=thread_id,
+            prompt=prompt,
+            sources=[],
+            tool_contract=AssistantToolContractOut(),
+            preference_suggestion=None,
+        )
+        yield _json_line(meta.model_dump())
+        yield _json_line(AssistantChatDeltaOut(text=answer_text).model_dump())
+        yield _json_line(AssistantChatDoneOut().model_dump())
+        return
+
     evidence = await _collect_candidates(session, prompt, focus_tender_id=focus_id)
     knowledge = await _collect_knowledge(session, prompt)
 

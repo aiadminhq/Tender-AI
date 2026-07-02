@@ -35,3 +35,15 @@ export interface Annotation {
   comment: string;
   createdAt: string; // ISO 8601
 }
+
+export const DESIGN_FEEDBACK_TARGETS = [
+  "local",
+  "backend",
+  "claude",
+  "codex",
+  "hermes",
+  "opencode",
+  "antigravity",
+  "gemini",
+] as const;
+export type DesignFeedbackTarget = (typeof DESIGN_FEEDBACK_TARGETS)[number];

@@ -40,13 +40,14 @@ Tender AI 已正式上雲且端到端可用：前端 https://tender-ai-vert-six.
   - §4 Vercel 前端上線：`https://tender-ai-vert-six.vercel.app`，4 個 `VITE_` 環境變數設於 Dashboard（不進 vercel.json），新 production build READY 且 bundle 已烘入 API base。
   - §5 Supabase 白名單 9 帳號種子完成（`SELECT count(*) FROM users` = 9）。
   - §7 資料 jobs 全跑完：backfill 40 份報表 → 1186 筆去重標案（PCC 1173＋TMU 13）；embed_tenders 1186/1186 全向量化（bge-m3）；ingest_knowledge 5 份文件 28 切塊。正式站相似案 API 已驗證可用存好的向量檢索。
-  - §6 大腦切 byok：使用者已在 Railway 填 `ANTHROPIC_API_KEY`（實測發現內容為 **OpenRouter key**，打官方 api.anthropic.com 會 401）；已將 byok 指向 OpenRouter Anthropic 相容端點（`byok_base_url=https://openrouter.ai/api`、`byok_model=anthropic/claude-opus-4-8`），smoke test 通過後 PUT 持久化、GET 驗證 `byok_key_set=true`。
+  - §6 大腦切 byok：確定架構＝走 **OpenRouter** 服務選用 `claude-opus-4-8` 等模型，非直接用 Anthropic 官方 API key（使用者 2026-07-02 確認，非暫代方案）。Railway `ANTHROPIC_API_KEY` 填入的即為 OpenRouter key；byok 指向 OpenRouter Anthropic 相容端點（`byok_base_url=https://openrouter.ai/api`、`byok_model=anthropic/claude-opus-4-8`），smoke test 通過後 PUT 持久化、GET 驗證 `byok_key_set=true`。
   - §8 驗收 10/10 全過：CORS、tenders API 真實資料、登入、byok 切換，以及小助手真實生成——以「道路」實測回傳 5 個真實標案來源＋7397 字含預算/可行度/截止急迫性的生成（非罐頭模板）。
 - **本機 Layer A/B/C 資料全量同步上雲（2026-07-02）**：本機 PostgreSQL → Supabase，一次跑完零 FK 遺漏。雲端驗證計數：tenders 2036、tender_vectors 2036、knowledge_chunks 1836、users 10（9 白名單＋1 `legacy.hqadmin` 佔位承接舊資料，白名單外不參與共享）、events 1576、evaluations 27、keyword_weights 73、weight_revisions 490、assistant_threads 12／messages 48。Vercel 前端呈現的是真實資料、非訓練/mock 資料。
 - **本 roadmap 系統（雙軌制方案 A）**：spec ＋ 本活文件皆已建立並 commit（`911f82e`）。
 - **小助手人格化設定 spec**：`tender-ai-backend/app/services/ASSISTANT_PERSONA.md` — 定義惠強業務脈絡、三種證據來源紀律（標案清單／知識庫／未來 Notion）、Layer A/B/C 治理邊界。明確標註 Notion API 尚未接入 runtime，屬設計草稿。（commit `7e7f277`）
 - **3 個假 symlink 技能修復**：`shadcn`／`supabase`／`supabase-postgres-best-practices` 從指向 `.gitignore` 的 `.agents/` 改為真實內容並納入版控（見 `skills-lock.json`）。
 - **`.env.example` 補佔位變數**：新增 `NOTION_TOKEN`／`NOTION_DATABASE_ID` 佔位（空值，無祕密）＋取得方式說明，供未來 Notion 整合使用。
+- **設計回饋工作流（Design Feedback Workflow，Codex 落地）**：前端標註工具（`annotate/`）＋小助手指令（「設計回饋：...」自動寫入）＋後端 `POST/GET /api/v1/design-feedback` ＋彙整 summary endpoint ＋本地 CLI outbox 同步腳本（`design-feedback:sync`），讓多人帳號的介面/操作意見彙整後可直接餵給 Claude/Codex/Hermes 等 CLI 執行優化。規格見 `docs/design-feedback-workflow.md`。
 
 ## 進行中 🚧
 
@@ -69,7 +70,7 @@ Tender AI 已正式上雲且端到端可用：前端 https://tender-ai-vert-six.
     ["3", "Railway 後端部署", "✅ 上線", "tender-ai-production-05e8.up.railway.app；AUTH_SECRET 已設"],
     ["4", "Vercel 前端環境變數", "✅ 已設＋重新 build", "4 個 VITE_ 變數在 Dashboard，不進 vercel.json"],
     ["5", "Supabase 白名單 9 帳號種子", "✅ users=10", "9 白名單＋1 legacy 佔位（同步批次新增）"],
-    ["6", "大腦 provider 切 byok", "✅ 已切換", "key 實為 OpenRouter key，byok 指向 OpenRouter Anthropic 相容端點"],
+    ["6", "大腦 provider 切 byok", "✅ 已切換", "確定架構＝OpenRouter（非官方 Anthropic key、非暫代），byok 指向 OpenRouter Anthropic 相容端點"],
     ["7", "backfill／embed／ingest jobs", "✅ 全跑完＋全量同步", "雲端 tenders 2036、向量 2036、知識庫 1836 塊"],
     ["8", "10 點端到端驗證清單", "✅ 10/10", "小助手真實生成已實測（5 來源＋7397 字）"],
   ]}
@@ -123,5 +124,6 @@ Tender AI 已正式上雲且端到端可用：前端 https://tender-ai-vert-six.
 ## 更新紀錄
 
 - **2026-07-02（部署收尾）** — §6／§8 由 🚧 → ✅：使用者填入 Railway `ANTHROPIC_API_KEY`（實為 OpenRouter key），byok 改指 OpenRouter Anthropic 相容端點並驗證；小助手真實生成實測通過（10/10 驗收全過）。另完成本機 Layer A/B/C 全量同步上雲（tenders 2036 等，見已完成章）；確認 UI 預設淺色主題無須改碼（深色為個別瀏覽器 localStorage 所致）。已知限制記錄：Railway 無 Ollama，小助手的語意檢索與知識庫向量路在雲端吞例外回空，候選檢索只剩整句 ILIKE 關鍵字路（短關鍵字可中、自然語句常空）。
+- **2026-07-02（文件用語校正＋Codex 批次）** — 使用者明確確認：大腦 provider 走 **OpenRouter** 選用 `claude-opus-4-8` 等模型是**確定的正式架構**，不是等官方 Anthropic key 的暫代方案；已同步修正 `HANDOFF.md`／本檔／記憶檔中偏向「暫代」語氣的措辭。另納入 Codex 落地的「設計回饋工作流」批次（前端標註＋小助手指令＋後端 API＋CLI outbox 同步），移入已完成章。
 - **2026-07-02（部署批次）** — 使用者明確重啟部署（「繼續完成，我已經重新 auth Supabase／Vercel MCP」），`HANDOFF.md` §1–§5＋§7 由 ⏸ → ✅（前後端上線、種子 9 帳號、1186 筆標案回填＋全向量化＋知識庫 28 塊），§6／§8 → 🚧（等使用者親自在 Railway 填 `ANTHROPIC_API_KEY`）；roadmap 雙軌制由 🚧 → ✅（commit `911f82e`）；工具盤點 supabase／vercel／railway 更新為可用。
 - **2026-07-02** — 建立本活文件（雙軌制方案 A 落地）；把 `HANDOFF.md` 8 項攤平為擱置中 ⏸；小助手 spec／技能修復／.env.example 記為已完成 ✅（commit `7e7f277`）；Notion 整合與 2 個小問題列為規劃中 🗓。

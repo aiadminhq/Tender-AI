@@ -22,6 +22,10 @@ import {
   type ExportOutcome,
 } from "@/lib/annotate/store";
 import type { Annotation } from "@/lib/annotate/types";
+import {
+  DESIGN_FEEDBACK_TARGETS,
+  type DesignFeedbackTarget,
+} from "@/lib/annotate/types";
 import { severityMark, typeLabel } from "@/lib/annotate/serialize";
 import { AnnotationPanel, type PanelTarget } from "./annotation-panel";
 import { AnnotationPins } from "./annotation-pin";
@@ -36,16 +40,17 @@ export function AnnotationLayer() {
   const route = useLocation().pathname;
 
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
-  const [target, setTarget] = useState<PanelTarget | null>(null);
+  const [panelTarget, setPanelTarget] = useState<PanelTarget | null>(null);
   const [pending, setPending] = useState<Omit<
     Annotation,
     "id" | "createdAt" | "type" | "severity" | "comment"
   > | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [target, setTarget] = useState<DesignFeedbackTarget>("local");
 
   const close = useCallback(() => {
-    setTarget(null);
+    setPanelTarget(null);
     setPending(null);
     setHoverRect(null);
   }, []);
@@ -58,7 +63,7 @@ export function AnnotationLayer() {
     }
 
     const onMove = (e: MouseEvent) => {
-      if (target) return; // 彈窗開啟時凍結選取
+      if (panelTarget) return; // 彈窗開啟時凍結選取
       if (isOwnUI(e.target)) {
         setHoverRect(null);
         return;
@@ -87,7 +92,7 @@ export function AnnotationLayer() {
           height: rect.height,
         },
       });
-      setTarget({
+      setPanelTarget({
         selector: buildSelector(el),
         componentGuess: guessComponent(el),
         textSnapshot: textSnapshot(el),
@@ -98,7 +103,7 @@ export function AnnotationLayer() {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (target) close();
+      if (panelTarget) close();
       else setEnabled(false);
     };
 
@@ -110,7 +115,7 @@ export function AnnotationLayer() {
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("keydown", onKey, true);
     };
-  }, [enabled, target, route, close]);
+  }, [enabled, panelTarget, route, close]);
 
   // 換頁時收掉開啟中的彈窗。
   useEffect(() => {
@@ -125,7 +130,7 @@ export function AnnotationLayer() {
 
   async function onExport() {
     setStatus(t("annExporting"));
-    const { outcome } = await exportAnnotations();
+    const { outcome } = await exportAnnotations(target);
     setStatus(t(outcomeKey(outcome)));
     window.setTimeout(() => setStatus(null), 4000);
   }
@@ -133,7 +138,7 @@ export function AnnotationLayer() {
   return (
     <>
       {/* hover 高亮框 */}
-      {enabled && hoverRect && !target && (
+      {enabled && hoverRect && !panelTarget && (
         <div
           data-annotate-ui
           className="pointer-events-none fixed z-[52] rounded-[4px] border-2 border-signal bg-signal/10"
@@ -155,9 +160,9 @@ export function AnnotationLayer() {
       />
 
       {/* 輸入彈窗 */}
-      {target && pending && (
+      {panelTarget && pending && (
         <AnnotationPanel
-          target={target}
+          target={panelTarget}
           onClose={close}
           onSubmit={({ type, severity, comment }) => {
             addAnnotation({ ...pending, type, severity, comment });
@@ -242,10 +247,26 @@ export function AnnotationLayer() {
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+          <div className="flex flex-col gap-2 border-t border-border px-3 py-2">
             <span className="truncate text-[11px] text-ink-muted">
               {status ?? t("annHintBar")}
             </span>
+            <div className="flex items-center justify-between gap-2">
+              <label className="sr-only" htmlFor="annotation-export-target">
+                {t("annTarget")}
+              </label>
+              <select
+                id="annotation-export-target"
+                value={target}
+                onChange={(e) => setTarget(e.target.value as DesignFeedbackTarget)}
+                className="min-w-0 flex-1 rounded-md border border-border bg-surface-1 px-2 py-1.5 text-[12px] text-ink outline-none focus:border-signal"
+              >
+                {DESIGN_FEEDBACK_TARGETS.map((value) => (
+                  <option key={value} value={value}>
+                    {t(targetLabelKey(value))}
+                  </option>
+                ))}
+              </select>
             <button
               type="button"
               disabled={annotations.length === 0}
@@ -255,6 +276,7 @@ export function AnnotationLayer() {
               <Download size={13} />
               {t("annExport")}
             </button>
+            </div>
           </div>
         </div>
       )}
@@ -264,7 +286,22 @@ export function AnnotationLayer() {
 
 function outcomeKey(outcome: ExportOutcome) {
   if (!outcome.ok) return "annExportFailed" as const;
+  if (outcome.via === "backend") return "annExportedBackend" as const;
   if (outcome.via === "file") return "annExportedFile" as const;
   if (outcome.via === "clipboard") return "annExportedClipboard" as const;
   return "annExportedDownload" as const;
+}
+
+function targetLabelKey(target: DesignFeedbackTarget) {
+  const map = {
+    local: "annTargetLocal",
+    backend: "annTargetBackend",
+    claude: "annTargetClaude",
+    codex: "annTargetCodex",
+    hermes: "annTargetHermes",
+    opencode: "annTargetOpencode",
+    antigravity: "annTargetAntigravity",
+    gemini: "annTargetGemini",
+  } as const;
+  return map[target];
 }
