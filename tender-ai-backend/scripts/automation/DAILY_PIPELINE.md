@@ -16,6 +16,7 @@
             │     （可切 TENDER_PIPELINE_MODE=claude）      │
             │                                               │
             │  Layer A  ingest_daily_reports  建索引(去重)  │  需 DB
+            │           backfill              每日視圖upsert │  需 DB（offline）
             │           enrich_details        抓 PCC 建檔   │  需 DB + PCC
             │           backfill_category     回填分類      │  需 DB
             │  Layer C  embed_tenders         灌 pgvector   │  需 DB + Ollama

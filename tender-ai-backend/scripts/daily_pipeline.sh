@@ -8,10 +8,11 @@
 #   1. 連線預檢（PostgreSQL / Ollama / PCC）
 #   2. Layer A — 標案 Corpus
 #        a. ingest_daily_reports  : 解析報表、case_pk 去重、建立尚未入庫的標案索引
-#        b. enrich_details        : 對缺詳情者抓 PCC 標案資料建檔（需連 PCC）
-#        c. backfill_category     : 回填標的分類（offline）
+#        b. backfill              : 每日視圖 daily_runs/daily_tender upsert（offline）
+#        c. enrich_details        : 對缺詳情者抓 PCC 標案資料建檔（需連 PCC）
+#        d. backfill_category     : 回填標的分類（offline）
 #   3. Layer C — 知識/RAG 向量
-#        d. embed_tenders         : 把新標案灌 pgvector（only-missing；需 Ollama）
+#        e. embed_tenders         : 把新標案灌 pgvector（only-missing；需 Ollama）
 #
 #   ※ Layer B（行為/回饋）由前端使用者互動累積，不在本抓取管線產生；
 #     資料流順序為 A（先建 corpus）→ B（行為）→ C（向量），本腳本負責 A 與 C。
@@ -50,6 +51,7 @@ step() { log "──────── $* ────────"; }
 #     確保 launchd 無論落到哪個 bash 都能跑。步驟名僅含 [a-z_]，皆為合法變數名。
 RESULT_sync=na
 RESULT_ingest_daily_reports=na
+RESULT_backfill_daily=na
 RESULT_enrich_details=na
 RESULT_backfill_category=na
 RESULT_embed_tenders=na
@@ -143,6 +145,9 @@ run_job() {  # run_job <step-name> <gate:1|0> <gate-desc> -- <cmd...>
 step "2. Layer A：建立／擴充標案 Corpus"
 run_job ingest_daily_reports "${DB_OK}" "需 PostgreSQL" -- \
   python -m app.jobs.ingest_daily_reports
+# 每日視圖（daily_runs / daily_tender）只有 backfill 會寫；冪等 upsert、純離線解析
+run_job backfill_daily "${DB_OK}" "需 PostgreSQL" -- \
+  python -m app.jobs.backfill "${REPORTS_DIR}" --json "${LOG_DIR}/backfill_report.json"
 run_job enrich_details "$(( DB_OK & PCC_OK ))" "需 PostgreSQL + PCC" -- \
   python -m app.jobs.enrich_details --trigger daily --source PCC \
          --rate-limit "${ENRICH_RATE_LIMIT}" ${ENRICH_LIMIT_ARG}
@@ -162,7 +167,7 @@ step "完成摘要"
   printf '  "preflight": {"db": %s, "ollama": %s, "pcc": %s},\n' "${DB_OK}" "${OLLAMA_OK}" "${PCC_OK}"
   printf '  "steps": {'
   first=1
-  for k in sync ingest_daily_reports enrich_details backfill_category embed_tenders; do
+  for k in sync ingest_daily_reports backfill_daily enrich_details backfill_category embed_tenders; do
     v="$(get_result "$k")"
     [ ${first} -eq 0 ] && printf ', '
     printf '"%s": "%s"' "$k" "$v"; first=0
