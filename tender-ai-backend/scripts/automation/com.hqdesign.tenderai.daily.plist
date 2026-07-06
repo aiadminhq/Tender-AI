@@ -13,19 +13,29 @@
     <key>Minute</key><integer>15</integer>
   </dict>
 
+  <!-- 重要：執行副本必須放在 TCC 不保護的路徑（如 ~/.local/share），不可指向
+       ~/Desktop、~/Documents、~/Downloads。macOS TCC 會擋 launchd 背景程序讀取
+       這些受保護目錄，指過去會以 exit 126（Operation not permitted）失敗。
+       安裝方式見 DAILY_PIPELINE.md「runner 執行副本」一節。 -->
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/scripts/automation/run_claude_daily.sh</string>
+    <string>/Users/christianwu/.local/share/tender-ai/runner/tender-ai-backend/scripts/automation/run_claude_daily.sh</string>
   </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>TENDER_AI_ROOT</key>
+    <string>/Users/christianwu/.local/share/tender-ai/runner</string>
+  </dict>
 
   <!-- 開機/喚醒時若已過排程時間，補跑一次 -->
   <key>RunAtLoad</key>
   <false/>
 
   <key>StandardOutPath</key>
-  <string>/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/data/pipeline-logs/launchd.out.log</string>
+  <string>/Users/christianwu/.local/share/tender-ai/runner/tender-ai-backend/data/pipeline-logs/launchd.out.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI/tender-ai-backend/data/pipeline-logs/launchd.err.log</string>
+  <string>/Users/christianwu/.local/share/tender-ai/runner/tender-ai-backend/data/pipeline-logs/launchd.err.log</string>
 </dict>
 </plist>
