@@ -243,13 +243,13 @@ David 從標案列表點一列後，在同一個工作脈絡中看到完整詳�
   id="strategy-backlog"
   columns={["優先", "項目", "spec/計畫", "後端落點", "前端落點", "狀態"]}
   rows={[
-    ["P0-1", "清單 cursor 真分頁", "本節 + 下方", "app/services/cursor.py（新）、query.py（_OrderSpec）、schemas/tender.py、api/v1/tenders.py、main.py（CursorError→400）", "lib/api.ts（fetchTenderPage）、store/app-data.tsx（loadMore/hasMore）、components/tenders/tender-table.tsx", "✅ 後端/API 完成（commit 3e7e9a0）；前端增量載入待重構（見 P1-6）"],
+    ["P0-1", "清單 cursor 真分頁", "本節 + 下方", "app/services/cursor.py（新）、query.py（_OrderSpec）、schemas/tender.py、api/v1/tenders.py、main.py（CursorError→400）", "lib/api.ts（fetchTenderPage）、store/app-data.tsx（loadMore/hasMore）、components/tenders/tender-table.tsx", "✅ 後端/API（3e7e9a0）＋前端增量載入（P1-6, 732a7da）皆完成"],
     ["P0-2", "助手 Phase 3 情境感知接線", "plans/assistant-ui-integration/plan.mdx §③", "app/api/v1/assistant.py、app/services/assistant.py（tender_id→檢索）", "components/assistant/assistant-context-panel.tsx、use-assistant-chat（?tender=<id>）", "進行中"],
     ["P1-3", "category 回填（79% NULL）", "CLAUDE.md §category 缺口", "app/jobs/backfill_category.py（冪等 offline；線上回填需連 PCC）", "—", "job 就緒；live 回填待可連 PCC 環境"],
     ["P1-4", "助手 Phase 4 對話留存", "plans/assistant-ui-integration/plan.mdx §資料模型", "新表 assistant_threads/assistant_messages + migration + api/v1/assistant.py", "use-assistant-chat（useState→API 持久化）", "待做；Supabase migration 上雲需 MCP 授權"],
     ["P1-5", "Windows 排程 / 舊 repo 退役（W2）", "tender-bot/MIGRATION_STATUS.md", "ops（非本 repo，雙軌驗證後停用）", "—", "人工閘控，不自動執行"],
-    ["P1-6", "前端真分頁貫穿（篩選/排序下推後端）", "本節（P0-1 後續）", "query.py（接收前端篩選條件、keyset 續頁）", "app-data.tsx（移除 client 全抓）、tender-table.tsx（無限捲動）", "待評估（較大重構）"],
-    ["P2-6", "語意搜尋驗收（留標記）", "CLAUDE.md §批次抓取先不向量化", "app/api/v1/search.py、app/services/search.py（離線降級）", "保留 semantic/mock 狀態標記", "雲端無 Ollama，離線 mock 驗證"],
+    ["P1-6", "前端分頁下推 server-filter（src/tier/cat）", "本節（P0-1 後續）", "已支援：api/v1/tenders.py 收 tier/cat/src、cursor.py 綁篩選指紋", "lib/api.ts（TenderPageFilter/toServerFilter/serverFilterKey、fetchTenderPage filter 參數）、app-data.tsx（serverFilter memo＋sfKey 重取第一頁、loadMore 帶 serverFilterRef）", "✅ 完成（commit 732a7da）；三欄下推、篩選集內連貫捲動，餘欄維持 client-only"],
+    ["P2-6", "語意搜尋離線降級標記（留標記）", "CLAUDE.md §批次抓取先不向量化", "app/api/v1/search.py、main.py（EmbeddingError→503 code=semantic_degraded）", "lib/api.ts（SemanticDegradedError）、search-page.tsx（degraded 狀態）、index.css（--warning）、i18n", "✅ 完成（commit 60b46fa）；live Ollama 真驗收待可連線環境"],
     ["P2-7", "CLI/Railway claude 內部工具", "本節決策 2", "Dockerfile + app/services/brain_cli_registry.py（內部路徑）", "—", "Dockerfile/docs 就緒；Railway 部署需授權"],
   ]}
 />
