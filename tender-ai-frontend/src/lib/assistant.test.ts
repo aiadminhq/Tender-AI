@@ -63,6 +63,47 @@ describe("streamAssistantChat 對話留存接線", () => {
     expect(metaThreadId).toBe("t-server-99");
   });
 
+  it("在標案頁提問時把當前 focus_tender_id 帶進 context（情境感知接線）", async () => {
+    let sentBody: Record<string, unknown> = {};
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      sentBody = JSON.parse(String(init?.body));
+      return ndjsonResponse([JSON.stringify({ type: "done" })]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamAssistantChat(
+      [{ role: "user", text: "這案適合投嗎" }],
+      {},
+      undefined,
+      "4821", // route /tenders/:id 的 id 多為字串
+      { threadId: null, scope: "assistant" },
+    );
+
+    const ctx = sentBody.context as Record<string, unknown>;
+    expect(ctx.focus_tender_id).toBe("4821");
+    expect(ctx.scope).toBe("assistant");
+  });
+
+  it("不在標案頁（focusTenderId 為 null）時 context 不含 focus_tender_id", async () => {
+    let sentBody: Record<string, unknown> = {};
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      sentBody = JSON.parse(String(init?.body));
+      return ndjsonResponse([JSON.stringify({ type: "done" })]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await streamAssistantChat(
+      [{ role: "user", text: "今天有什麼案" }],
+      {},
+      undefined,
+      null,
+      { threadId: null, scope: "assistant" },
+    );
+
+    const ctx = (sentBody.context ?? {}) as Record<string, unknown>;
+    expect(ctx.focus_tender_id).toBeUndefined();
+  });
+
   it("progress 事件走 onProgress、不混入 onText（CLI 大腦暫態狀態）", async () => {
     const fetchMock = vi.fn(async () =>
       ndjsonResponse([
