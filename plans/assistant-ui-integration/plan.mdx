@@ -16,7 +16,7 @@ localOnly: true
 
 - **Phase 1 首次引導**：✅ 完成（`assistant-onboarding.tsx`，聚光 coach-mark + `tender-assistant-onboarded`）。
 - **Phase 2 全屏指揮中心**：✅ 完成，但形態收斂為 **FAB 非阻擋浮窗（`assistant-modal.tsx`，modal=false 無遮罩）＋ 整頁工作台 `/assistant`（`assistant-page.tsx`，左對話＋右情境）**；放棄 sidebar/float/fullscreen 三段切換與 `MODE_STORAGE_KEY`，改為「浮窗 ↔ 指揮中心連結」二態。
-- **Phase 3 情境感知**：🟡 右欄 `assistant-context-panel.tsx` 已依 `?tender=<id>` 顯示概況/可行性/相似案，但 **`tender_id` 尚未接進對話檢索**（仍待本文 §③ 的接線）。
+- **Phase 3 情境感知**：✅ 完成（2026-07-08 驗證）。右欄 `assistant-context-panel.tsx` 依 `?tender=<id>` 顯示概況/可行性/相似案；且 **`tender_id` 已接進對話檢索**——前端 `assistant-launcher.tsx` 以 `useMatch("/tenders/:id")` 取當前標案 → `use-assistant-chat` 的 `focusRef` → `streamAssistantChat` 放進 `body.context.focus_tender_id` → 後端 `assistant.py` 的 `_focus_tender_id`／`_collect_candidates` 把該標案（公開 A 層）釘為證據並拉相似案、`focus_note` 注入 grounding system prompt。回歸測試已鎖住此資料流（`test_assistant.py` +4、`assistant.test.ts` +2；commit `5618e5a`）。僅帶公開 A 層欄位與去識別化學習結果，無 Layer B 疑慮。
 - **Phase 4 對話留存**：🔴 未做（`use-assistant-chat` 純 useState）。
 - **登入身分**：✅ 已落地白名單登入（@hqdesign.tw）＋ `user_id` 具名，本文後段「demo 尚無登入、寫入落到 `name=default`」之前提**已不成立**；Phase 4 的具名/共享前提現已具備。
 
