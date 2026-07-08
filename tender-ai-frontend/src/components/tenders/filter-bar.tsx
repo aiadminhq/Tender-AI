@@ -592,8 +592,8 @@ export function FilterBar() {
         </FilterGroup>
       )}
 
-      {/* 右側：排序 + 收藏搜尋 + 分享／清除 */}
-      <div className="ml-auto flex items-end gap-3">
+      {/* 右側：排序 + 收藏搜尋 + 分享／清除（手機窄寬時內部換行，避免橫向溢出） */}
+      <div className="ml-auto flex flex-wrap items-end justify-end gap-3">
         <FilterGroup label={t("sortBy")}>
           <select
             value={filter.sort}

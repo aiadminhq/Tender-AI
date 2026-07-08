@@ -2087,7 +2087,7 @@ export function OpsPanelsPage() {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         width: "100%",
         background: "var(--canvas)",
         color: "var(--ink)",

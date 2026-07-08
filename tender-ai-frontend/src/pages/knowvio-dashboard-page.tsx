@@ -164,7 +164,7 @@ export function KnowvioDashboardPage() {
   }, [filteredTenders]);
 
   return (
-    <div className="kv min-h-screen w-full bg-[#e8eaed] p-3 text-[#111827] antialiased sm:p-5 lg:p-6">
+    <div className="kv min-h-dvh w-full bg-[#e8eaed] p-3 text-[#111827] antialiased sm:p-5 lg:p-6">
       <div className="mx-auto flex max-w-[1240px] overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_-20px_rgba(16,24,40,.25)] sm:rounded-[28px]">
         <KvSidebar />
 

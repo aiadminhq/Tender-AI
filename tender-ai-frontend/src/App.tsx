@@ -29,7 +29,7 @@ export default function App() {
   // 登入閘門：未驗證 → 登入頁；驗證中 → 簡單載入態；已登入／示範模式 → 進入應用。
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas">
+      <div className="flex min-h-dvh items-center justify-center bg-canvas">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-signal" />
       </div>
     );
