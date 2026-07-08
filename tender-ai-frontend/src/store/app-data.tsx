@@ -42,7 +42,7 @@ import {
   setWhitelist,
 } from "@/lib/auth-api";
 import {
-  fetchTenders,
+  fetchTenderPage,
   postAccept,
   postEvaluate,
   postNote,
@@ -207,6 +207,12 @@ interface AppDataValue {
   usingLiveData: boolean;
   // 初次抓取中：用於列表 skeleton（純 mock 模式恆為 false）
   tendersLoading: boolean;
+  // cursor 真分頁：是否還有下一頁可載入（後端 next_cursor 非 null）
+  hasMore: boolean;
+  // 續載入中：loadMore 進行中時為 true（供「載入更多」按鈕禁用/顯示 loading）
+  loadingMore: boolean;
+  // 載入下一頁並附加到 tenders（cursor keyset）；無下一頁或載入中則為 no-op
+  loadMore: () => void;
   // 星號
   isStarred: (tenderId: string) => boolean;
   toggleStar: (tenderId: string) => void;
@@ -363,17 +369,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tendersLoading, setTendersLoading] = useState(
     import.meta.env.VITE_USE_API !== "false",
   );
+  // cursor 真分頁狀態：下一頁游標（null=無下一頁）＋續載入旗標。
+  const nextCursorRef = useRef<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   useEffect(() => {
     if (import.meta.env.VITE_USE_API === "false") return;
     const ac = new AbortController();
-    fetchTenders(ac.signal)
-      .then((list) => {
-        if (list.length) {
-          setTenders(list);
+    // 初次載入抓「第一頁」（cursor keyset）；後續由 loadMore 沿游標續抓。
+    fetchTenderPage(null, ac.signal)
+      .then((page) => {
+        if (page.tenders.length) {
+          setTenders(page.tenders);
           setUsingLiveData(true);
         }
+        nextCursorRef.current = page.nextCursor;
+        setHasMore(Boolean(page.nextCursor));
         // 列表載入完成送一次 view（不帶 tender_id）。
-        trackEvent("view", { payload: { count: list.length } });
+        trackEvent("view", { payload: { count: page.tenders.length } });
       })
       .catch(() => {
         /* 後端未啟動／錯誤：保留 mock 資料 */
@@ -381,6 +394,32 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       .finally(() => setTendersLoading(false));
     return () => ac.abort();
   }, []);
+
+  // 載入下一頁並附加（cursor keyset）。以 id 去重防重疊；游標失效（後端 400）則停止。
+  const loadMore = useCallback(() => {
+    if (loadingMore || !nextCursorRef.current) return;
+    const cursor = nextCursorRef.current;
+    setLoadingMore(true);
+    fetchTenderPage(cursor)
+      .then((page) => {
+        if (page.tenders.length) {
+          setTenders((prev) => {
+            const seen = new Set(prev.map((t) => t.id));
+            const fresh = page.tenders.filter((t) => !seen.has(t.id));
+            return fresh.length ? [...prev, ...fresh] : prev;
+          });
+          setUsingLiveData(true);
+        }
+        nextCursorRef.current = page.nextCursor;
+        setHasMore(Boolean(page.nextCursor));
+      })
+      .catch(() => {
+        // 游標失效或網路錯誤：停止續載入，維持已載入資料。
+        nextCursorRef.current = null;
+        setHasMore(false);
+      })
+      .finally(() => setLoadingMore(false));
+  }, [loadingMore]);
 
   const [filter, setFilterState] = useState<FilterState>(() => {
     const stored = { ...DEFAULT_FILTER, ...load("filter", DEFAULT_FILTER) };
@@ -1734,6 +1773,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       hasFocus,
       usingLiveData,
       tendersLoading,
+      hasMore,
+      loadingMore,
+      loadMore,
       isStarred,
       toggleStar,
       accept,
@@ -1809,6 +1851,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       hasFocus,
       usingLiveData,
       tendersLoading,
+      hasMore,
+      loadingMore,
+      loadMore,
       isStarred,
       toggleStar,
       accept,

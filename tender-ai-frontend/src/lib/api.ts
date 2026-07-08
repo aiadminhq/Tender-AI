@@ -74,6 +74,15 @@ interface TenderListResponse {
   count: number;
   page: number;
   page_size: number;
+  // cursor（keyset）真分頁：下一頁的不透明游標；無下一頁為 null。舊後端無此欄 → undefined。
+  next_cursor?: string | null;
+}
+
+/** 單頁抓取結果：已映射的 Tender[]、總數、下一頁游標（無則 null）。 */
+export interface TenderPage {
+  tenders: Tender[];
+  count: number;
+  nextCursor: string | null;
 }
 
 // 後端 SnapshotItem / UserStateOut / TenderDetail（= 列表項 + 快照 + 使用者狀態）。
@@ -258,21 +267,43 @@ function adaptDetail(item: TenderDetailResponse): TenderDetail {
 
 const PAGE_SIZE = 200; // 後端 page_size 上限
 
-/** 抓取標案列表並映射為前端 Tender[]；逐頁抓到 count 為止。失敗時 throw。 */
+/** 抓取標案清單的「一頁」（cursor keyset 真分頁）。
+ *
+ * 傳入 cursor=null 取第一頁；後續把上一頁回傳的 nextCursor 再帶回即可續抓。
+ * 排序固定 feas；換排序/篩選時 cursor 會失效（後端回 400），呼叫端應以 null 重取第一頁。
+ * 失敗時 throw。 */
+export async function fetchTenderPage(
+  cursor: string | null = null,
+  signal?: AbortSignal,
+): Promise<TenderPage> {
+  const params = new URLSearchParams({
+    sort: "feas",
+    page_size: String(PAGE_SIZE),
+  });
+  if (cursor) params.set("cursor", cursor);
+  const url = `${API_BASE}/tenders?${params.toString()}`;
+  const res = await fetch(url, { headers: authHeaders(), signal });
+  if (!res.ok) throw new Error(`tenders API ${res.status}`);
+  const data = (await res.json()) as TenderListResponse;
+  return {
+    tenders: data.items.map(adapt),
+    count: data.count,
+    nextCursor: data.next_cursor ?? null,
+  };
+}
+
+/** 抓取標案列表並映射為前端 Tender[]；沿 cursor 逐頁抓到底為止。失敗時 throw。 */
 export async function fetchTenders(signal?: AbortSignal): Promise<Tender[]> {
-  const items: TenderListItem[] = [];
-  let page = 1;
+  const all: Tender[] = [];
+  let cursor: string | null = null;
   for (;;) {
-    const url = `${API_BASE}/tenders?sort=feas&page=${page}&page_size=${PAGE_SIZE}`;
-    const res = await fetch(url, { headers: authHeaders(), signal });
-    if (!res.ok) throw new Error(`tenders API ${res.status}`);
-    const data = (await res.json()) as TenderListResponse;
-    items.push(...data.items);
-    // 取滿總數或遇到空頁即停（後者防呆，避免 count 與實際不一致時無限迴圈）。
-    if (items.length >= data.count || data.items.length === 0) break;
-    page += 1;
+    const page = await fetchTenderPage(cursor, signal);
+    all.push(...page.tenders);
+    // 無下一頁游標，或本頁為空（防呆）即停。
+    if (!page.nextCursor || page.tenders.length === 0) break;
+    cursor = page.nextCursor;
   }
-  return items.map(adapt);
+  return all;
 }
 
 /** 抓取單一標案完整詳情（含歷史快照）；找不到回 null，其餘錯誤 throw。 */

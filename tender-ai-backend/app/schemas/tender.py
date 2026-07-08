@@ -36,8 +36,10 @@ class TenderQuery(BaseModel):
     avoid: list[str] = Field(default_factory=list)
     q: str | None = None
     sort: SortKey = "feas"
+    # 分頁：cursor（keyset）優先，帶了就走 keyset；未帶則沿用舊 page（offset）相容路徑。
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=1, le=200)
+    cursor: str | None = None
 
 
 class TenderListItem(BaseModel):
@@ -71,6 +73,8 @@ class TenderListResponse(BaseModel):
     count: int  # 符合條件總數（未分頁）
     page: int
     page_size: int
+    # keyset 分頁的下一頁游標（opaque）；無下一頁時為 None。前端據此做「載入更多／無限捲動」。
+    next_cursor: str | None = None
 
 
 class SnapshotItem(BaseModel):

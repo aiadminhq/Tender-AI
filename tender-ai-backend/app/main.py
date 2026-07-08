@@ -18,6 +18,7 @@ from app.core.errors import (
     PermissionDenied,
 )
 from app.core.security import require_api_key
+from app.services.cursor import CursorError
 
 logger = logging.getLogger("tender_ai")
 
@@ -59,6 +60,13 @@ async def _permission_denied_handler(
     request: Request, exc: PermissionDenied
 ) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": exc.detail})
+
+
+@app.exception_handler(CursorError)
+async def _cursor_error_handler(
+    request: Request, exc: CursorError
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.detail})
 
 
 @app.exception_handler(DomainValidationError)

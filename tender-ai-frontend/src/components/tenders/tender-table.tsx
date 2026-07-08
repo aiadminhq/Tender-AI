@@ -72,6 +72,7 @@ export function TenderTable({
   bare?: boolean;
 }) {
   const { t, lang } = useApp();
+  const { hasMore, loadingMore, loadMore } = useAppData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // 從目前清單查找（live 資料為數字字串 id）；勿用 mock 的 tenderById 否則查無。
   const selected = selectedId
@@ -138,6 +139,21 @@ export function TenderTable({
           </div>
         )}
       </div>
+
+      {/* cursor 真分頁「載入更多」：後端還有下一頁（next_cursor 非 null）時顯示。
+          清單為前端篩選/排序後的視圖，續載入會把更多基礎標案沿 feas 游標附加進來。 */}
+      {hasMore && tenders.length > 0 && (
+        <div className="mt-3 flex justify-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="rounded-2xl border border-border bg-card px-4 py-2 text-[12px] font-medium text-ink transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loadingMore ? t("loadingMore") : t("loadMore")}
+          </button>
+        </div>
+      )}
 
       <TenderDrawer tender={selected} onClose={() => setSelectedId(null)} />
     </div>

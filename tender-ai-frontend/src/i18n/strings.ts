@@ -352,6 +352,8 @@ export const STRINGS = {
     remainingDays: (n: number) => `剩 ${n} 天`,
     emptyTitle: "沒有符合條件的標案",
     emptyHint: "試著放寬篩選條件",
+    loadMore: "載入更多",
+    loadingMore: "載入中…",
     relax: "放寬條件",
     // kanban
     kanbanTodo: "待辦",
@@ -1205,6 +1207,8 @@ export const STRINGS = {
     remainingDays: (n: number) => `${n} d left`,
     emptyTitle: "No matching tenders",
     emptyHint: "Try loosening the filters",
+    loadMore: "Load more",
+    loadingMore: "Loading…",
     relax: "Loosen filters",
     kanbanTodo: "To do",
     kanbanDoing: "In progress",

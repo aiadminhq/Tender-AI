@@ -285,7 +285,7 @@ async def _collect_candidates(
         q=prompt or None,
         page_size=5,
     )
-    tender_items, _ = await query_svc.list_tenders(session, query)
+    tender_items, _, _ = await query_svc.list_tenders(session, query)
     for item in tender_items:
         add(_source_payload(item, kind="tender"))
 
