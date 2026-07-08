@@ -32,6 +32,7 @@
   --priority: oklch(0.5488 0.2944 299.0954);
   --success: oklch(0.8 0.16 171.269);
   --danger: oklch(0.6535 0.2348 34.037);
+  --warning: oklch(0.78 0.15 75);
   /* chart 分類色盤（tweakcn 暗色：洋紅／紫／青／薄荷／黃） */
   --chart-1: oklch(0.6726 0.2904 341.4084);
   --chart-2: oklch(0.5488 0.2944 299.0954);
@@ -109,6 +110,7 @@
   --priority: oklch(0.625 0.2583 305.8714);
   --success: oklch(0.72 0.15 171.269);
   --danger: oklch(0.6535 0.2348 34.037);
+  --warning: oklch(0.72 0.15 70);
   /* chart 分類色盤（tweakcn 淺色：紅／紫／青／薄荷／黃綠） */
   --chart-1: oklch(0.6539 0.2322 24.3251);
   --chart-2: oklch(0.625 0.2583 305.8714);
@@ -161,6 +163,7 @@
   --color-priority: var(--priority);
   --color-success: var(--success);
   --color-danger: var(--danger);
+  --color-warning: var(--warning);
 
   /* chart 分類色盤暴露成 Tailwind 工具類（bg-chart-1 等），亦供 recharts var() 取用 */
   --color-chart-1: var(--chart-1);

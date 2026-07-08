@@ -48,6 +48,9 @@ export const STRINGS = {
     searchEmptyHint: "以語意相似度比對，非關鍵字字面比對；需後端與向量庫",
     searchNoResult: "找不到語意相近的標案，換個說法再試試",
     searchError: "搜尋失敗，請稍後再試（需後端 API 與向量庫）",
+    searchDegradedTitle: "語意搜尋暫時離線降級",
+    searchDegradedHint:
+      "向量後端（Ollama）目前無法連線，語意搜尋暫停；可改用清單的關鍵字篩選，稍後再試",
     searchResultCaption: "依語意相似度排序",
     searchScore: (n: number) => `最高相似度 ${n}%`,
     evoRun: "跑一輪進化",
@@ -890,6 +893,9 @@ export const STRINGS = {
     searchNoResult: "No semantically similar tenders — try rephrasing",
     searchError:
       "Search failed, try again later (requires backend API and vector store)",
+    searchDegradedTitle: "Semantic search is temporarily offline",
+    searchDegradedHint:
+      "The vector backend (Ollama) is unreachable, so semantic search is paused; use the list keyword filter for now and try again later",
     searchResultCaption: "Ranked by semantic similarity",
     searchScore: (n: number) => `top similarity ${n}%`,
     evoRun: "Run evolution",

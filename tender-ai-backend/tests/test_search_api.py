@@ -110,6 +110,25 @@ async def test_semantic_limit_range(client, seeded_vec, mock_embed_e0):
     assert (await client.get(SEMANTIC, params={"q": "x", "limit": 999})).status_code == 422
 
 
+async def test_semantic_degraded_when_embedding_unavailable(
+    client, seeded_vec, monkeypatch
+):
+    """embedding 後端（Ollama）不可用 → 可辨識的離線降級 503（P2-6 保留標記）。
+
+    不是不透明 500、也不假裝正常回空結果：回 503 + code=semantic_degraded，
+    讓前端顯示「語意搜尋離線降級」而非通用錯誤（見 roadmap P2-6）。
+    """
+    from app.services.embedding import EmbeddingError
+
+    async def boom(text, **kw):
+        raise EmbeddingError("Ollama 呼叫失敗：connection refused")
+
+    monkeypatch.setattr("app.services.embedding.embed_query", boom)
+    r = await client.get(SEMANTIC, params={"q": "資訊系統"})
+    assert r.status_code == 503
+    assert r.json()["code"] == "semantic_degraded"
+
+
 # --------------------------------------------------------------------------- #
 # 相似標案
 # --------------------------------------------------------------------------- #

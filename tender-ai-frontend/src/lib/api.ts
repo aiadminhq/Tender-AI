@@ -431,9 +431,21 @@ export interface SemanticSearchResult {
 }
 
 /**
+ * 語意檢索離線降級：向量後端（Ollama）不可用時後端回 503 + code=semantic_degraded。
+ * 呼叫端據此顯示「語意搜尋離線降級」狀態，而非與真實錯誤混淆（見 roadmap P2-6）。
+ */
+export class SemanticDegradedError extends Error {
+  constructor(detail?: string) {
+    super(detail ?? "semantic_degraded");
+    this.name = "SemanticDegradedError";
+  }
+}
+
+/**
  * 自然語言語意搜尋（Layer C 向量檢索）。後端 GET /search/semantic?q=&limit=。
  * 以查詢字串向量化後比對 tender_snapshots.embedding，回傳語意最相近的標案。
- * 失敗時 throw（需後端與 Ollama 向量庫），由呼叫端顯示錯誤。
+ * 向量後端不可用時 throw SemanticDegradedError（離線降級）；其餘錯誤 throw Error，
+ * 由呼叫端分別呈現。
  */
 export async function searchSemantic(
   q: string,
@@ -442,7 +454,15 @@ export async function searchSemantic(
 ): Promise<SemanticSearchResult> {
   const url = `${API_BASE}/search/semantic?q=${encodeURIComponent(q)}&limit=${limit}`;
   const res = await fetch(url, { headers: authHeaders(), signal });
-  if (!res.ok) throw new Error(`semantic search API ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 503) {
+      const body = await res.json().catch(() => null);
+      if (body?.code === "semantic_degraded") {
+        throw new SemanticDegradedError(body?.detail);
+      }
+    }
+    throw new Error(`semantic search API ${res.status}`);
+  }
   const data = (await res.json()) as {
     items: SemanticHit[];
     count: number;

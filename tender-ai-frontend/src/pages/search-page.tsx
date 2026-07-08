@@ -13,10 +13,14 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TenderTable } from "@/components/tenders/tender-table";
-import { searchSemantic, type SimilarTender } from "@/lib/api";
+import {
+  searchSemantic,
+  SemanticDegradedError,
+  type SimilarTender,
+} from "@/lib/api";
 import { trackEvent } from "@/lib/events";
 
-type Status = "idle" | "loading" | "done" | "error";
+type Status = "idle" | "loading" | "done" | "error" | "degraded";
 
 export function SearchPage() {
   const { t, lang } = useApp();
@@ -42,9 +46,10 @@ export function SearchPage() {
       trackEvent("search", {
         payload: { q, source: "semantic", count: res.items.length },
       });
-    } catch {
+    } catch (err) {
       if (id !== reqId.current) return;
-      setStatus("error");
+      // 向量後端（Ollama）不可用 → 離線降級狀態，與真實錯誤區分（roadmap P2-6）。
+      setStatus(err instanceof SemanticDegradedError ? "degraded" : "error");
     }
   }, []);
 
@@ -102,6 +107,14 @@ export function SearchPage() {
         />
       )}
 
+      {status === "degraded" && (
+        <EmptyState
+          title={t("searchDegradedTitle")}
+          hint={t("searchDegradedHint")}
+          tone="warn"
+        />
+      )}
+
       {status === "done" && hits.length === 0 && (
         <EmptyState title={t("searchNoResult")} hint={t("searchEmptyHint")} />
       )}
@@ -123,19 +136,17 @@ function EmptyState({
 }: {
   title: string;
   hint?: string;
-  tone?: "default" | "error";
+  tone?: "default" | "error" | "warn";
 }) {
+  const titleClass =
+    tone === "error"
+      ? "text-[13px] font-medium text-danger"
+      : tone === "warn"
+        ? "text-[13px] font-medium text-warning"
+        : "text-[13px] font-medium text-ink";
   return (
     <div className="rounded-xl border border-border bg-card px-6 py-16 text-center">
-      <p
-        className={
-          tone === "error"
-            ? "text-[13px] font-medium text-danger"
-            : "text-[13px] font-medium text-ink"
-        }
-      >
-        {title}
-      </p>
+      <p className={titleClass}>{title}</p>
       {hint && <p className="mt-1 text-[12px] text-ink-dim">{hint}</p>}
     </div>
   );
