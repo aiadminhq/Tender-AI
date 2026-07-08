@@ -43,6 +43,8 @@ import {
 } from "@/lib/auth-api";
 import {
   fetchTenderPage,
+  serverFilterKey,
+  toServerFilter,
   postAccept,
   postEvaluate,
   postNote,
@@ -369,6 +371,30 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tendersLoading, setTendersLoading] = useState(
     import.meta.env.VITE_USE_API !== "false",
   );
+  // filter 需在分頁邏輯之前宣告：下推到後端 cursor 分頁的 server-filter 由它投影而來。
+  const [filter, setFilterState] = useState<FilterState>(() => {
+    const stored = { ...DEFAULT_FILTER, ...load("filter", DEFAULT_FILTER) };
+    if (typeof window !== "undefined" && window.location.search) {
+      return parseFilter(window.location.search, stored);
+    }
+    return stored;
+  });
+  // 可安全下推的 server-filter（src/tier/cat 精確集合比對，與前端 memo 等價）。
+  // 只有這三欄下推；budget/deadline/q/sort/feasibility 語意不同或前端衍生，維持 client-only。
+  const serverFilter = useMemo(
+    () =>
+      toServerFilter({
+        sources: filter.sources,
+        tiers: filter.tiers,
+        categories: filter.categories,
+      }),
+    [filter.sources, filter.tiers, filter.categories],
+  );
+  const sfKey = serverFilterKey(serverFilter);
+  // loadMore 續抓時須帶「與當前游標一致」的 server-filter；用 ref 讀最新值避免閉包過期。
+  const serverFilterRef = useRef(serverFilter);
+  serverFilterRef.current = serverFilter;
+
   // cursor 真分頁狀態：下一頁游標（null=無下一頁）＋續載入旗標。
   const nextCursorRef = useRef<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -376,10 +402,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (import.meta.env.VITE_USE_API === "false") return;
     const ac = new AbortController();
-    // 初次載入抓「第一頁」（cursor keyset）；後續由 loadMore 沿游標續抓。
-    fetchTenderPage(null, ac.signal)
+    setTendersLoading(true);
+    // 初次載入＋server-filter 變動皆走此路徑：cursor 依篩選指紋失效，故重抓「第一頁」。
+    fetchTenderPage(null, ac.signal, serverFilter)
       .then((page) => {
-        if (page.tenders.length) {
+        // 有下推篩選時整批替換為新篩選集第一頁（含空集＝真實 0 筆）；
+        // 無篩選且回空則保留 mock（後端未起／空庫時 UI 不空白）。
+        const hasFilter = Boolean(serverFilter);
+        if (page.tenders.length || hasFilter) {
           setTenders(page.tenders);
           setUsingLiveData(true);
         }
@@ -389,18 +419,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         trackEvent("view", { payload: { count: page.tenders.length } });
       })
       .catch(() => {
-        /* 後端未啟動／錯誤：保留 mock 資料 */
+        /* 後端未啟動／錯誤：保留現有資料 */
       })
       .finally(() => setTendersLoading(false));
     return () => ac.abort();
-  }, []);
+    // sfKey 為 server-filter 穩定指紋；變動即重取第一頁。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sfKey]);
 
   // 載入下一頁並附加（cursor keyset）。以 id 去重防重疊；游標失效（後端 400）則停止。
+  // 續抓務必帶「與游標一致」的 server-filter（serverFilterRef），否則後端指紋不符回 400。
   const loadMore = useCallback(() => {
     if (loadingMore || !nextCursorRef.current) return;
     const cursor = nextCursorRef.current;
     setLoadingMore(true);
-    fetchTenderPage(cursor)
+    fetchTenderPage(cursor, undefined, serverFilterRef.current)
       .then((page) => {
         if (page.tenders.length) {
           setTenders((prev) => {
@@ -420,14 +453,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setLoadingMore(false));
   }, [loadingMore]);
-
-  const [filter, setFilterState] = useState<FilterState>(() => {
-    const stored = { ...DEFAULT_FILTER, ...load("filter", DEFAULT_FILTER) };
-    if (typeof window !== "undefined" && window.location.search) {
-      return parseFilter(window.location.search, stored);
-    }
-    return stored;
-  });
   const [comments, setComments] = useState<Comment[]>(() =>
     load<Comment[]>("comments", []),
   );
