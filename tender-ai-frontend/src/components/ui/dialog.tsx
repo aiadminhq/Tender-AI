@@ -46,12 +46,13 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative flex max-h-[90vh] w-full max-w-[95vw] flex-col rounded-xl border border-border shadow-[var(--elev-overlay)] animate-in fade-in zoom-in-95 duration-200 ease-out",
+          // 手機用 dvh（可視高度，避開 iOS Safari 網址列造成的 vh 溢出）；手機留白略收。
+          "relative flex max-h-[92dvh] w-full max-w-[95vw] flex-col rounded-xl border border-border shadow-[var(--elev-overlay)] animate-in fade-in zoom-in-95 duration-200 ease-out",
           surfaceClassName,
           width,
         )}
       >
-        <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3.5 sm:px-5 sm:py-4">
           <div className="min-w-0 text-[15px] font-semibold tracking-tight text-foreground">
             {title}
           </div>
@@ -63,11 +64,13 @@ export function Dialog({
             <X size={16} />
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
           {children}
         </div>
         {footer && (
-          <footer className="border-t border-border px-5 py-3">{footer}</footer>
+          <footer className="border-t border-border px-4 py-3 sm:px-5">
+            {footer}
+          </footer>
         )}
       </div>
     </div>

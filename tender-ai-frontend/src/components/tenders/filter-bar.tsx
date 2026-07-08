@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { Eye, EyeOff, Target, X, Link2, Save } from "lucide-react";
-import type { Category, SortKey, SourceKey, Tier } from "@/types/domain";
+import type { Category, SortKey, SourceKey } from "@/types/domain";
 import type { TextKey } from "@/i18n/strings";
 import { useApp } from "@/store/app-context";
 import { useAppData, SORT_DEFAULT_DIR } from "@/store/app-data";
@@ -25,35 +25,14 @@ const BUDGET_MAX = 50_000_000;
 const BUDGET_STEP = 1_000_000;
 const BUDGET_BUCKETS = 42;
 
+// 可行性：連續刻度 0–99（與 Tender.feasibility 一致）。上限刻意取 99 而非 100，
+// 讓「拉滿」＝「不設上限」（feasibility=100 的標案仍通過，避免誤殺滿分案）。
+const FEAS_MIN = 0;
+const FEAS_MAX = 99;
+const FEAS_STEP = 1;
+
 // 一次顯示的標籤 chips 上限（超過則隱藏於可捲動區，避免 filter-bar 爆量）
 const TAG_VISIBLE_MAX = 12;
-
-// 潛力為有序刻度：低 < 中 < 高，slider 由左（低）到右（高）排列
-const TIER_ORDER: Tier[] = ["low", "mid", "high"];
-const TIER_LAST = TIER_ORDER.length - 1;
-
-const TIER_META: Record<Tier, { label: TextKey; fill: string; text: string }> =
-  {
-    low: { label: "tierLow", fill: "bg-tier-low", text: "text-tier-low" },
-    mid: { label: "tierMid", fill: "bg-tier-mid", text: "text-tier-mid" },
-    high: { label: "tierHigh", fill: "bg-tier-high", text: "text-tier-high" },
-  };
-
-// filter.tiers（集合語意，空＝不限）→ 顯示用的 [下限 index, 上限 index]
-function tiersToRange(tiers: Tier[]): [number, number] {
-  if (tiers.length === 0) return [0, TIER_LAST];
-  const idxs = tiers
-    .map((tier) => TIER_ORDER.indexOf(tier))
-    .filter((i) => i >= 0);
-  if (idxs.length === 0) return [0, TIER_LAST];
-  return [Math.min(...idxs), Math.max(...idxs)];
-}
-
-// 區間 [下限, 上限] → filter.tiers 連續子集合；全範圍回傳空陣列（＝不限，避免誤判 active）
-function rangeToTiers([lo, hi]: [number, number]): Tier[] {
-  if (lo <= 0 && hi >= TIER_LAST) return [];
-  return TIER_ORDER.slice(lo, hi + 1);
-}
 
 const CATEGORIES: { key: Category; label: TextKey }[] = [
   { key: "works", label: "catWorks" },
@@ -97,70 +76,110 @@ function Chip({
   );
 }
 
-function Divider() {
-  return <span className="hidden h-5 w-px shrink-0 bg-hairline lg:block" />;
+// 依屬性分組的容器：小標籤在上、控制項在下，靠父層 gap 製造群組間隔。
+function FilterGroup({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col gap-1", className)}>
+      <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-ink-dim">
+        {label}
+      </span>
+      <div className="flex flex-wrap items-center gap-1.5">{children}</div>
+    </div>
+  );
 }
 
 function clampBudget(value: number): number {
   return Math.min(BUDGET_MAX, Math.max(BUDGET_MIN, value));
 }
 
-function valueToPercent(value: number): number {
-  return ((value - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
-}
-
-function pointerToBudget(clientX: number, rect: DOMRect): number {
-  const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-  const raw = BUDGET_MIN + pct * (BUDGET_MAX - BUDGET_MIN);
-  return clampBudget(Math.round(raw / BUDGET_STEP) * BUDGET_STEP);
-}
-
-function BudgetRangeSlider({
-  minValue,
-  maxValue,
-  buckets,
+// 通用雙握把區間 slider：軌道視覺由 renderTrack 決定（預算＝直方圖、可行性＝細軌），
+// 標題／範圍不進 slider；值僅呈現於左右下角落（見任務需求）。
+function RangeSlider({
+  min,
+  max,
+  step,
+  lowValue,
+  highValue,
   onChange,
   minLabel,
   maxLabel,
   minTitle,
   maxTitle,
-  rangeLabel,
+  ariaValueText,
+  renderTrack,
+  trackClassName,
+  className,
+  minGap = 0,
 }: {
-  minValue: number;
-  maxValue: number;
-  buckets: number[];
+  min: number;
+  max: number;
+  step: number;
+  lowValue: number;
+  highValue: number;
   onChange: (next: [number, number]) => void;
   minLabel: string;
   maxLabel: string;
   minTitle: string;
   maxTitle: string;
-  rangeLabel: string;
+  ariaValueText?: (value: number) => string;
+  renderTrack: (pct: { lowPercent: number; highPercent: number }) => ReactNode;
+  trackClassName?: string;
+  className?: string;
+  minGap?: number;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<"min" | "max" | null>(null);
 
-  const minPercent = valueToPercent(minValue);
-  const maxPercent = valueToPercent(maxValue);
+  const span = max - min || 1;
+  const toPercent = (value: number) => ((value - min) / span) * 100;
+  const lowPercent = toPercent(lowValue);
+  const highPercent = toPercent(highValue);
 
+  const snap = useCallback(
+    (value: number) => {
+      const snapped = Math.round((value - min) / step) * step + min;
+      return Math.min(max, Math.max(min, snapped));
+    },
+    [max, min, step],
+  );
+
+  // 允許 low === high（minGap=0 時可鎖單一值）；夾住 low ≤ high - minGap
   const commit = useCallback(
-    (thumb: "min" | "max", nextValue: number) => {
-      const clamped = clampBudget(nextValue);
+    (thumb: "min" | "max", raw: number) => {
+      const value = snap(raw);
       if (thumb === "min") {
-        onChange([Math.min(clamped, maxValue - BUDGET_STEP), maxValue]);
+        onChange([Math.min(value, highValue - minGap), highValue]);
       } else {
-        onChange([minValue, Math.max(clamped, minValue + BUDGET_STEP)]);
+        onChange([lowValue, Math.max(value, lowValue + minGap)]);
       }
     },
-    [maxValue, minValue, onChange],
+    [highValue, lowValue, minGap, onChange, snap],
+  );
+
+  const pointerToValue = useCallback(
+    (clientX: number): number | null => {
+      const rect = trackRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0) return null;
+      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      return snap(min + pct * span);
+    },
+    [min, snap, span],
   );
 
   const moveThumb = useCallback(
     (thumb: "min" | "max", clientX: number) => {
-      const rect = trackRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      commit(thumb, pointerToBudget(clientX, rect));
+      const value = pointerToValue(clientX);
+      if (value != null) commit(thumb, value);
     },
-    [commit],
+    [commit, pointerToValue],
   );
 
   useEffect(() => {
@@ -179,12 +198,18 @@ function BudgetRangeSlider({
   }, [dragging, moveThumb]);
 
   const handleTrackPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const rect = trackRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const next = pointerToBudget(event.clientX, rect);
+    const value = pointerToValue(event.clientX);
+    if (value == null) return;
+    // 區間外 → 動該側握把以擴張；區間內 → 動較近者。握把重疊時亦能正確分開。
     const thumb =
-      Math.abs(next - minValue) <= Math.abs(next - maxValue) ? "min" : "max";
-    commit(thumb, next);
+      value < lowValue
+        ? "min"
+        : value > highValue
+          ? "max"
+          : Math.abs(value - lowValue) <= Math.abs(value - highValue)
+            ? "min"
+            : "max";
+    commit(thumb, value);
     setDragging(thumb);
   };
 
@@ -194,87 +219,61 @@ function BudgetRangeSlider({
   ) => {
     let delta: number;
     if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
-      delta = -BUDGET_STEP;
+      delta = -step;
     } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
-      delta = BUDGET_STEP;
+      delta = step;
     } else if (event.key === "PageDown") {
-      delta = -BUDGET_STEP * 5;
+      delta = -step * 5;
     } else if (event.key === "PageUp") {
-      delta = BUDGET_STEP * 5;
+      delta = step * 5;
     } else if (event.key === "Home") {
       event.preventDefault();
-      commit(thumb, thumb === "min" ? BUDGET_MIN : minValue + BUDGET_STEP);
+      commit(thumb, thumb === "min" ? min : lowValue + minGap);
       return;
     } else if (event.key === "End") {
       event.preventDefault();
-      commit(thumb, thumb === "min" ? maxValue - BUDGET_STEP : BUDGET_MAX);
+      commit(thumb, thumb === "min" ? highValue - minGap : max);
       return;
     } else {
       return;
     }
     event.preventDefault();
-    commit(thumb, (thumb === "min" ? minValue : maxValue) + delta);
+    commit(thumb, (thumb === "min" ? lowValue : highValue) + delta);
   };
 
   return (
-    <div className="w-[19rem] max-w-full space-y-2 rounded-md bg-surface-2/60 px-3 py-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="whitespace-nowrap text-[12px] text-ink-muted">
-          {rangeLabel}
-        </span>
-        <span className="tnum truncate text-[12px] font-medium text-ink">
-          {minLabel} – {maxLabel}
-        </span>
-      </div>
-
+    <div className={cn("select-none", className)}>
       <div
         ref={trackRef}
-        className="relative h-10 touch-none select-none"
+        className={cn("relative touch-none", trackClassName)}
         onPointerDown={handleTrackPointerDown}
       >
-        <div className="absolute inset-x-0 bottom-1 top-0 flex items-end gap-px">
-          {buckets.map((height, index) => {
-            const pct =
-              buckets.length <= 1 ? 0 : (index / (buckets.length - 1)) * 100;
-            const selected = pct >= minPercent && pct <= maxPercent;
-            return (
-              <span
-                key={index}
-                className={cn(
-                  "min-w-0 flex-1 rounded-t-sm transition-colors",
-                  selected ? "bg-ink" : "bg-hairline",
-                )}
-                style={{ height: `${Math.max(12, height * 100)}%` }}
-              />
-            );
-          })}
-        </div>
-        <div
-          className="absolute bottom-0 top-0 border-l border-r border-signal/40"
-          style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
-        />
+        {renderTrack({ lowPercent, highPercent })}
         {(["min", "max"] as const).map((thumb) => {
           const isMin = thumb === "min";
-          const value = isMin ? minValue : maxValue;
-          const percent = isMin ? minPercent : maxPercent;
+          const value = isMin ? lowValue : highValue;
+          const percent = isMin ? lowPercent : highPercent;
           return (
             <button
               key={thumb}
               type="button"
               role="slider"
               aria-label={isMin ? minTitle : maxTitle}
-              aria-valuemin={isMin ? BUDGET_MIN : minValue + BUDGET_STEP}
-              aria-valuemax={isMin ? maxValue - BUDGET_STEP : BUDGET_MAX}
+              aria-valuemin={isMin ? min : lowValue + minGap}
+              aria-valuemax={isMin ? highValue - minGap : max}
               aria-valuenow={value}
+              aria-valuetext={ariaValueText?.(value)}
               onPointerDown={(event) => {
                 event.stopPropagation();
                 setDragging(thumb);
               }}
               onKeyDown={(event) => handleKeyDown(event, thumb)}
               className={cn(
-                "absolute top-1/2 z-10 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-card shadow-[var(--elev-rest)] transition-transform",
+                "absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-card shadow-[var(--elev-rest)] transition-transform",
                 "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card",
-                dragging === thumb && "scale-110",
+                // 握把重疊時上層者優先被指標命中；拖曳中者置頂
+                isMin ? "z-10" : "z-20",
+                dragging === thumb && "z-30 scale-110",
               )}
               style={{ left: `${percent}%` }}
             />
@@ -282,213 +281,14 @@ function BudgetRangeSlider({
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-md border border-border bg-card px-2 py-1.5">
-          <p className="text-[10px] text-ink-dim">{minTitle}</p>
-          <p className="tnum text-[12px] font-semibold text-ink">{minLabel}</p>
-        </div>
-        <div className="rounded-md border border-border bg-card px-2 py-1.5">
-          <p className="text-[10px] text-ink-dim">{maxTitle}</p>
-          <p className="tnum text-[12px] font-semibold text-ink">{maxLabel}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TierRangeSlider({
-  lowIndex,
-  highIndex,
-  onChange,
-  rangeLabel,
-  summary,
-  minTitle,
-  maxTitle,
-  tierLabel,
-}: {
-  lowIndex: number;
-  highIndex: number;
-  onChange: (next: [number, number]) => void;
-  rangeLabel: string;
-  summary: string;
-  minTitle: string;
-  maxTitle: string;
-  tierLabel: (tier: Tier) => string;
-}) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState<"min" | "max" | null>(null);
-
-  const toPercent = (index: number) => (index / TIER_LAST) * 100;
-
-  const pointerToIndex = useCallback((clientX: number): number | null => {
-    const rect = trackRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-    return Math.round(pct * TIER_LAST);
-  }, []);
-
-  // 允許 min === max（鎖定單一潛力等級）；夾住 lo ≤ hi
-  const commit = useCallback(
-    (thumb: "min" | "max", index: number) => {
-      const clamped = Math.min(TIER_LAST, Math.max(0, index));
-      if (thumb === "min") onChange([Math.min(clamped, highIndex), highIndex]);
-      else onChange([lowIndex, Math.max(clamped, lowIndex)]);
-    },
-    [highIndex, lowIndex, onChange],
-  );
-
-  const moveThumb = useCallback(
-    (thumb: "min" | "max", clientX: number) => {
-      const index = pointerToIndex(clientX);
-      if (index != null) commit(thumb, index);
-    },
-    [commit, pointerToIndex],
-  );
-
-  useEffect(() => {
-    if (!dragging) return;
-    const onPointerMove = (event: PointerEvent) =>
-      moveThumb(dragging, event.clientX);
-    const onPointerUp = () => setDragging(null);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerUp);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerUp);
-    };
-  }, [dragging, moveThumb]);
-
-  const handleTrackPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const index = pointerToIndex(event.clientX);
-    if (index == null) return;
-    // 區間外 → 動該側握把以擴張；區間內 → 動較近者（縮小）。握把重疊時亦能正確分開。
-    const thumb =
-      index < lowIndex
-        ? "min"
-        : index > highIndex
-          ? "max"
-          : Math.abs(index - lowIndex) <= Math.abs(index - highIndex)
-            ? "min"
-            : "max";
-    commit(thumb, index);
-    setDragging(thumb);
-  };
-
-  const handleKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    thumb: "min" | "max",
-  ) => {
-    let delta: number;
-    if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
-      delta = -1;
-    } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
-      delta = 1;
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      commit(thumb, thumb === "min" ? 0 : lowIndex);
-      return;
-    } else if (event.key === "End") {
-      event.preventDefault();
-      commit(thumb, thumb === "min" ? highIndex : TIER_LAST);
-      return;
-    } else {
-      return;
-    }
-    event.preventDefault();
-    commit(thumb, (thumb === "min" ? lowIndex : highIndex) + delta);
-  };
-
-  return (
-    <div className="w-[14rem] max-w-full space-y-2 rounded-md bg-surface-2/60 px-3 py-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="whitespace-nowrap text-[12px] text-ink-muted">
-          {rangeLabel}
+      {/* 值僅呈現於左右下角落（無上緣標題／範圍） */}
+      <div className="mt-1 flex items-center justify-between">
+        <span className="tnum text-[11px] font-medium text-ink-muted">
+          {minLabel}
         </span>
-        <span className="truncate text-[12px] font-medium text-ink">
-          {summary}
+        <span className="tnum text-[11px] font-medium text-ink-muted">
+          {maxLabel}
         </span>
-      </div>
-
-      <div
-        ref={trackRef}
-        className="relative h-8 touch-none select-none"
-        onPointerDown={handleTrackPointerDown}
-      >
-        {/* 底軌 */}
-        <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-hairline" />
-        {/* 選取段 */}
-        <div
-          className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-ink"
-          style={{
-            left: `${toPercent(lowIndex)}%`,
-            right: `${100 - toPercent(highIndex)}%`,
-          }}
-        />
-        {/* 三段刻度點：區間內以該等級顏色標示 */}
-        {TIER_ORDER.map((tier, index) => {
-          const within = index >= lowIndex && index <= highIndex;
-          return (
-            <span
-              key={tier}
-              className={cn(
-                "absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors",
-                within ? TIER_META[tier].fill : "bg-hairline",
-              )}
-              style={{ left: `${toPercent(index)}%` }}
-            />
-          );
-        })}
-        {/* 雙握把 */}
-        {(["min", "max"] as const).map((thumb) => {
-          const isMin = thumb === "min";
-          const index = isMin ? lowIndex : highIndex;
-          return (
-            <button
-              key={thumb}
-              type="button"
-              role="slider"
-              aria-label={isMin ? minTitle : maxTitle}
-              aria-valuemin={0}
-              aria-valuemax={TIER_LAST}
-              aria-valuenow={index}
-              aria-valuetext={tierLabel(TIER_ORDER[index])}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-                setDragging(thumb);
-              }}
-              onKeyDown={(event) => handleKeyDown(event, thumb)}
-              className={cn(
-                "absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-card shadow-[var(--elev-rest)] transition-transform",
-                "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card",
-                dragging === thumb && "scale-110",
-                // 握把重疊時上層者優先被指標命中；拖曳中者置頂
-                isMin ? "z-10" : "z-20",
-                dragging === thumb && "z-30",
-              )}
-              style={{ left: `${toPercent(index)}%` }}
-            />
-          );
-        })}
-      </div>
-
-      {/* 三段標籤：區間內以該等級顏色點亮 */}
-      <div className="flex items-center justify-between">
-        {TIER_ORDER.map((tier, index) => {
-          const within = index >= lowIndex && index <= highIndex;
-          return (
-            <span
-              key={tier}
-              className={cn(
-                "text-[11px] font-medium transition-colors",
-                within ? TIER_META[tier].text : "text-ink-dim",
-              )}
-            >
-              {tierLabel(tier)}
-            </span>
-          );
-        })}
       </div>
     </div>
   );
@@ -565,13 +365,14 @@ export function FilterBar() {
     Math.max(selectedMaxBudget, sliderMinBudget + BUDGET_STEP),
   );
 
-  const [tierLow, tierHigh] = tiersToRange(filter.tiers);
-  const tierSummary =
-    tierLow <= 0 && tierHigh >= TIER_LAST
-      ? t("tierAll")
-      : tierLow === tierHigh
-        ? t(TIER_META[TIER_ORDER[tierLow]].label)
-        : `${t(TIER_META[TIER_ORDER[tierLow]].label)} – ${t(TIER_META[TIER_ORDER[tierHigh]].label)}`;
+  const selectedMinFeas = Math.min(
+    FEAS_MAX,
+    Math.max(FEAS_MIN, filter.minFeasibility ?? FEAS_MIN),
+  );
+  const selectedMaxFeas = Math.min(
+    FEAS_MAX,
+    Math.max(selectedMinFeas, filter.maxFeasibility ?? FEAS_MAX),
+  );
 
   const active =
     !!filter.query ||
@@ -579,6 +380,8 @@ export function FilterBar() {
     filter.tiers.length > 0 ||
     filter.minBudget != null ||
     filter.maxBudget != null ||
+    filter.minFeasibility != null ||
+    filter.maxFeasibility != null ||
     filter.focusOnly ||
     !filter.hideExcluded ||
     filter.categories.length > 0 ||
@@ -591,9 +394,9 @@ export function FilterBar() {
     filter.newToday;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-border bg-card px-3 py-2.5">
+    <div className="flex flex-wrap items-start gap-x-5 gap-y-3 rounded-lg border border-border bg-card px-3 py-3">
       {/* 資料源 */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <FilterGroup label={t("fgSources")}>
         {SOURCES.map((s) => (
           <Chip
             key={s.key}
@@ -604,26 +407,10 @@ export function FilterBar() {
             {s.shortName}
           </Chip>
         ))}
-      </div>
-
-      <Divider />
-
-      {/* 分級（潛力區間：雙握把，可由前後兩端縮小範圍） */}
-      <TierRangeSlider
-        lowIndex={tierLow}
-        highIndex={tierHigh}
-        onChange={(next) => setFilter({ tiers: rangeToTiers(next) })}
-        rangeLabel={t("tierRange")}
-        summary={tierSummary}
-        minTitle={t("tierMinimum")}
-        maxTitle={t("tierMaximum")}
-        tierLabel={(tier) => t(TIER_META[tier].label)}
-      />
-
-      <Divider />
+      </FilterGroup>
 
       {/* 採購類別 */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <FilterGroup label={t("fgCategory")}>
         {CATEGORIES.map((cat) => (
           <Chip
             key={cat.key}
@@ -633,80 +420,99 @@ export function FilterBar() {
             {t(cat.label)}
           </Chip>
         ))}
-      </div>
+      </FilterGroup>
 
-      <Divider />
-
-      {/* 偏好開關 */}
-      <Chip
-        active={filter.focusOnly}
-        onClick={() => setFilter({ focusOnly: !filter.focusOnly })}
-      >
-        <Target size={13} />
-        {t("focusOnly")}
-      </Chip>
-      <Chip
-        active={!filter.hideExcluded}
-        onClick={() => setFilter({ hideExcluded: !filter.hideExcluded })}
-        title={t("hideExcluded")}
-      >
-        {filter.hideExcluded ? <EyeOff size={13} /> : <Eye size={13} />}
-        {t("hideExcluded")}
-      </Chip>
-      <Chip
-        active={filter.northOnly}
-        onClick={() => setFilter({ northOnly: !filter.northOnly })}
-      >
-        {t("northOnly")}
-      </Chip>
-      <Chip
-        active={filter.newToday}
-        onClick={() => setFilter({ newToday: !filter.newToday })}
-      >
-        {t("newToday")}
-      </Chip>
-
-      <Divider />
-
-      {/* 預算區間 */}
-      <BudgetRangeSlider
-        minValue={sliderMinBudget}
-        maxValue={sliderMaxBudget}
-        buckets={budgetBuckets}
-        minLabel={formatBudget(sliderMinBudget, lang)}
-        maxLabel={formatBudget(sliderMaxBudget, lang)}
-        minTitle={t("budgetMinimum")}
-        maxTitle={t("budgetMaximum")}
-        rangeLabel={t("budgetRange")}
-        onChange={([min, max]) =>
-          setFilter({
-            minBudget: min <= BUDGET_MIN ? null : min,
-            maxBudget: max >= BUDGET_MAX ? null : max,
-          })
-        }
-      />
-
-      <Divider />
-
-      {/* 機關關鍵字 */}
-      <div className="flex items-center gap-2">
-        <span className="whitespace-nowrap text-[12px] text-ink-muted">
-          {t("orgKeyword")}
-        </span>
-        <Input
-          type="text"
-          value={filter.orgKeyword}
-          onChange={(e) => setFilter({ orgKeyword: e.target.value })}
-          placeholder={t("orgKeyword")}
-          aria-label={t("orgKeyword")}
-          className="h-9 w-32"
+      {/* 可行性（0–99，雙握把；細軌、低高度） */}
+      <FilterGroup label={t("feasibilityRange")}>
+        <RangeSlider
+          className="w-44 max-w-full"
+          trackClassName="h-5"
+          min={FEAS_MIN}
+          max={FEAS_MAX}
+          step={FEAS_STEP}
+          lowValue={selectedMinFeas}
+          highValue={selectedMaxFeas}
+          minLabel={String(selectedMinFeas)}
+          maxLabel={String(selectedMaxFeas)}
+          minTitle={t("feasibilityMinimum")}
+          maxTitle={t("feasibilityMaximum")}
+          onChange={([lo, hi]) =>
+            setFilter({
+              minFeasibility: lo <= FEAS_MIN ? null : lo,
+              maxFeasibility: hi >= FEAS_MAX ? null : hi,
+            })
+          }
+          renderTrack={({ lowPercent, highPercent }) => (
+            <>
+              <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-hairline" />
+              <div
+                className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-signal"
+                style={{
+                  left: `${lowPercent}%`,
+                  right: `${100 - highPercent}%`,
+                }}
+              />
+            </>
+          )}
         />
-      </div>
+      </FilterGroup>
 
-      <Divider />
+      {/* 預算區間（直方圖，雙握把；壓低高度） */}
+      <FilterGroup label={t("budgetRange")}>
+        <RangeSlider
+          className="w-60 max-w-full"
+          trackClassName="h-8"
+          min={BUDGET_MIN}
+          max={BUDGET_MAX}
+          step={BUDGET_STEP}
+          minGap={BUDGET_STEP}
+          lowValue={sliderMinBudget}
+          highValue={sliderMaxBudget}
+          minLabel={formatBudget(sliderMinBudget, lang)}
+          maxLabel={formatBudget(sliderMaxBudget, lang)}
+          minTitle={t("budgetMinimum")}
+          maxTitle={t("budgetMaximum")}
+          onChange={([min, max]) =>
+            setFilter({
+              minBudget: min <= BUDGET_MIN ? null : min,
+              maxBudget: max >= BUDGET_MAX ? null : max,
+            })
+          }
+          renderTrack={({ lowPercent, highPercent }) => (
+            <>
+              <div className="absolute inset-x-0 bottom-1 top-0 flex items-end gap-px">
+                {budgetBuckets.map((height, index) => {
+                  const pct =
+                    budgetBuckets.length <= 1
+                      ? 0
+                      : (index / (budgetBuckets.length - 1)) * 100;
+                  const selected = pct >= lowPercent && pct <= highPercent;
+                  return (
+                    <span
+                      key={index}
+                      className={cn(
+                        "min-w-0 flex-1 rounded-t-sm transition-colors",
+                        selected ? "bg-ink" : "bg-hairline",
+                      )}
+                      style={{ height: `${Math.max(12, height * 100)}%` }}
+                    />
+                  );
+                })}
+              </div>
+              <div
+                className="absolute bottom-0 top-0 border-l border-r border-signal/40"
+                style={{
+                  left: `${lowPercent}%`,
+                  right: `${100 - highPercent}%`,
+                }}
+              />
+            </>
+          )}
+        />
+      </FilterGroup>
 
       {/* 截止日區間 */}
-      <div className="flex items-center gap-2">
+      <FilterGroup label={t("fgDeadline")}>
         <input
           type="date"
           value={filter.deadlineFrom ?? ""}
@@ -724,98 +530,136 @@ export function FilterBar() {
           title={t("deadlineTo")}
           className="h-9 cursor-pointer rounded-md border border-input bg-surface-1 px-2 text-[12px] text-ink outline-none transition-colors focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
         />
-      </div>
+      </FilterGroup>
+
+      {/* 機關關鍵字 */}
+      <FilterGroup label={t("fgOrg")}>
+        <Input
+          type="text"
+          value={filter.orgKeyword}
+          onChange={(e) => setFilter({ orgKeyword: e.target.value })}
+          placeholder={t("orgKeyword")}
+          aria-label={t("orgKeyword")}
+          className="h-9 w-32"
+        />
+      </FilterGroup>
+
+      {/* 偏好開關 */}
+      <FilterGroup label={t("fgPrefs")}>
+        <Chip
+          active={filter.focusOnly}
+          onClick={() => setFilter({ focusOnly: !filter.focusOnly })}
+        >
+          <Target size={13} />
+          {t("focusOnly")}
+        </Chip>
+        <Chip
+          active={!filter.hideExcluded}
+          onClick={() => setFilter({ hideExcluded: !filter.hideExcluded })}
+          title={t("hideExcluded")}
+        >
+          {filter.hideExcluded ? <EyeOff size={13} /> : <Eye size={13} />}
+          {t("hideExcluded")}
+        </Chip>
+        <Chip
+          active={filter.northOnly}
+          onClick={() => setFilter({ northOnly: !filter.northOnly })}
+        >
+          {t("northOnly")}
+        </Chip>
+        <Chip
+          active={filter.newToday}
+          onClick={() => setFilter({ newToday: !filter.newToday })}
+        >
+          {t("newToday")}
+        </Chip>
+      </FilterGroup>
 
       {/* 標籤過濾 */}
       {allTags.length > 0 && (
-        <>
-          <Divider />
-          <div className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-[12px] text-ink-muted">
-              {t("tagFilter")}
-            </span>
-            <div className="flex max-w-[18rem] flex-wrap items-center gap-1.5 overflow-y-auto lg:max-h-12">
-              {allTags.slice(0, TAG_VISIBLE_MAX).map((tag) => (
-                <Chip
-                  key={tag}
-                  active={filter.tagFilter.includes(tag)}
-                  onClick={() => toggleTag(tag)}
-                >
-                  {tag}
-                </Chip>
-              ))}
-            </div>
+        <FilterGroup label={t("fgTags")}>
+          <div className="flex max-w-[18rem] flex-wrap items-center gap-1.5 overflow-y-auto lg:max-h-12">
+            {allTags.slice(0, TAG_VISIBLE_MAX).map((tag) => (
+              <Chip
+                key={tag}
+                active={filter.tagFilter.includes(tag)}
+                onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </Chip>
+            ))}
           </div>
-        </>
+        </FilterGroup>
       )}
 
-      {/* 右側：排序 + 清除 */}
-      <div className="ml-auto flex items-center gap-2">
-        <span className="whitespace-nowrap text-[12px] text-ink-muted">
-          {t("sortBy")}
-        </span>
-        <select
-          value={filter.sort}
-          onChange={(e) => {
-            const key = e.target.value as SortKey;
-            setFilter({ sort: key, sortDir: SORT_DEFAULT_DIR[key] });
-          }}
-          aria-label={t("sortBy")}
-          className="h-9 cursor-pointer rounded-md border border-input bg-surface-1 px-2.5 text-[12px] text-ink outline-none transition-colors focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
-        >
-          {SORTS.map((s) => (
-            <option key={s.key} value={s.key}>
-              {t(s.label)}
-            </option>
-          ))}
-        </select>
-        {savedSearches.length > 0 && (
+      {/* 右側：排序 + 收藏搜尋 + 分享／清除 */}
+      <div className="ml-auto flex items-end gap-3">
+        <FilterGroup label={t("sortBy")}>
           <select
-            value=""
+            value={filter.sort}
             onChange={(e) => {
-              const id = Number(e.target.value);
-              if (id) applySavedSearch(id);
+              const key = e.target.value as SortKey;
+              setFilter({ sort: key, sortDir: SORT_DEFAULT_DIR[key] });
             }}
-            aria-label={t("savedSearches")}
+            aria-label={t("sortBy")}
             className="h-9 cursor-pointer rounded-md border border-input bg-surface-1 px-2.5 text-[12px] text-ink outline-none transition-colors focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
           >
-            <option value="">{t("savedSearches")}</option>
-            {savedSearches.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
+            {SORTS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {t(s.label)}
               </option>
             ))}
           </select>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          title={t("saveSearch")}
-          onClick={() => {
-            const name = window.prompt(t("saveSearchPrompt"));
-            if (name) saveCurrentSearch(name);
-          }}
-        >
-          <Save size={14} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          title={t("shareFilter")}
-          onClick={() => {
-            const qs = serializeFilter(filter);
-            const url = `${window.location.origin}${window.location.pathname}${qs ? "?" + qs : ""}`;
-            void navigator.clipboard?.writeText(url).catch(() => {});
-          }}
-        >
-          <Link2 size={14} />
-        </Button>
-        {active && (
-          <Button variant="ghost" size="sm" onClick={resetFilter}>
-            <X size={14} />
-            {t("clear")}
+          {savedSearches.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                if (id) applySavedSearch(id);
+              }}
+              aria-label={t("savedSearches")}
+              className="h-9 cursor-pointer rounded-md border border-input bg-surface-1 px-2.5 text-[12px] text-ink outline-none transition-colors focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
+            >
+              <option value="">{t("savedSearches")}</option>
+              {savedSearches.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </FilterGroup>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            title={t("saveSearch")}
+            onClick={() => {
+              const name = window.prompt(t("saveSearchPrompt"));
+              if (name) saveCurrentSearch(name);
+            }}
+          >
+            <Save size={14} />
           </Button>
-        )}
+          <Button
+            variant="ghost"
+            size="sm"
+            title={t("shareFilter")}
+            onClick={() => {
+              const qs = serializeFilter(filter);
+              const url = `${window.location.origin}${window.location.pathname}${qs ? "?" + qs : ""}`;
+              void navigator.clipboard?.writeText(url).catch(() => {});
+            }}
+          >
+            <Link2 size={14} />
+          </Button>
+          {active && (
+            <Button variant="ghost" size="sm" onClick={resetFilter}>
+              <X size={14} />
+              {t("clear")}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

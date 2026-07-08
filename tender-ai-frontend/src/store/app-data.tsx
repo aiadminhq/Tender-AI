@@ -84,6 +84,8 @@ const DEFAULT_FILTER: FilterState = {
   tiers: [],
   minBudget: null,
   maxBudget: null,
+  minFeasibility: null,
+  maxFeasibility: null,
   focusOnly: false,
   hideExcluded: true,
   sort: "score",
@@ -563,6 +565,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (filter.tiers.length && !filter.tiers.includes(t.tier)) return false;
       if (filter.minBudget != null && t.budget < filter.minBudget) return false;
       if (filter.maxBudget != null && t.budget > filter.maxBudget) return false;
+      // 可行性用原始欄位 t.feasibility 過濾（與畫面上的 FeasibilityMeter 一致）。
+      if (
+        filter.minFeasibility != null &&
+        t.feasibility < filter.minFeasibility
+      )
+        return false;
+      if (
+        filter.maxFeasibility != null &&
+        t.feasibility > filter.maxFeasibility
+      )
+        return false;
       if (filter.focusOnly && !hasFocus(t)) return false;
       if (filter.hideExcluded && isExcluded(t)) return false;
       if (filter.categories.length && !filter.categories.includes(t.category))
@@ -655,6 +668,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             tiers: next.tiers,
             minBudget: next.minBudget,
             maxBudget: next.maxBudget,
+            minFeasibility: next.minFeasibility,
+            maxFeasibility: next.maxFeasibility,
             focusOnly: next.focusOnly,
             hideExcluded: next.hideExcluded,
             categories: next.categories,

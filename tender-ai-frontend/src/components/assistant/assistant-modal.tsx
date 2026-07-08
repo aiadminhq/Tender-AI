@@ -190,14 +190,16 @@ function AssistantPanel({
       data-assistant-panel
       style={style}
       className={cn(
-        "fixed z-40 flex flex-col overflow-hidden bg-white text-popover-foreground",
-        "animate-in fade-in slide-in-from-right-4",
+        "fixed z-40 flex flex-col overflow-hidden bg-white text-popover-foreground animate-in fade-in",
+        // 手機：一律底部抽屜（限高 75dvh、滿寬、僅頂部圓角），露出上方頁面，避免佔滿整個螢幕。
+        "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[75dvh] max-md:w-full! max-md:rounded-t-2xl max-md:rounded-b-none max-md:border max-md:border-b-0 max-md:border-border max-md:shadow-[0_-10px_30px_-12px_rgba(15,23,42,.22)] max-md:slide-in-from-bottom-8",
+        // 桌機（≥md）：sidebar／floating 兩型態，皆滿版高度、僅寬度可調。
         isSidebar
-          ? "right-0 top-0 bottom-0 h-svh border-l border-border shadow-[-8px_0_24px_-12px_rgba(0,0,0,.18)]"
-          : "right-4 top-4 bottom-4 rounded-2xl border border-border shadow-lg md:right-6 md:top-6 md:bottom-6",
+          ? "md:right-0 md:top-0 md:bottom-0 md:h-svh md:border-l md:border-border md:shadow-[-8px_0_24px_-12px_rgba(0,0,0,.18)] md:slide-in-from-right-4"
+          : "md:right-6 md:top-6 md:bottom-6 md:rounded-2xl md:border md:border-border md:shadow-lg md:slide-in-from-right-4",
       )}
     >
-      {/* 縮放把手（兩型態共用）：左緣整條，往左拖變寬。 */}
+      {/* 縮放把手（兩型態共用）：左緣整條，往左拖變寬。手機底部抽屜滿寬，拖寬無意義故隱藏。 */}
       <div
         role="separator"
         aria-label={t("assistantResize")}
@@ -205,7 +207,7 @@ function AssistantPanel({
         onPointerDown={onResizePointerDown}
         onPointerMove={onResizePointerMove}
         onPointerUp={onResizePointerUp}
-        className="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize touch-none hover:bg-signal/30"
+        className="absolute left-0 top-0 z-10 h-full w-1.5 cursor-ew-resize touch-none hover:bg-signal/30 max-md:hidden"
       />
 
       <ModalHeader
@@ -303,7 +305,9 @@ function ModalHeader({
           </span>
         </div>
         <p className="truncate text-[10px] text-ink-dim">
-          {t(tenderId ? "assistantHeaderWithTender" : "assistantHeaderNoTender")}
+          {t(
+            tenderId ? "assistantHeaderWithTender" : "assistantHeaderNoTender",
+          )}
         </p>
       </div>
       <button
@@ -427,7 +431,10 @@ function AssistantHistoryPanel() {
           title={t("assistantHistoryRefresh")}
           aria-label={t("assistantHistoryRefresh")}
         >
-          <RefreshCw size={13} className={cn(threadsLoading && "animate-spin")} />
+          <RefreshCw
+            size={13}
+            className={cn(threadsLoading && "animate-spin")}
+          />
         </button>
       </form>
 

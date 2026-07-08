@@ -378,6 +378,10 @@ export interface FilterState {
   minBudget: number | null;
   /** 預算上限（TWD），null = 不限 */
   maxBudget: number | null;
+  /** 可行性下限（0-99），null = 不限 */
+  minFeasibility: number | null;
+  /** 可行性上限（0-99），null = 不限 */
+  maxFeasibility: number | null;
   /** 只看命中重點關鍵字 */
   focusOnly: boolean;
   /** 隱藏硬排除項 */
