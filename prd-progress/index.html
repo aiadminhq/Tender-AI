@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tender AI · PRD 最新進度</title>
+<link rel="icon" href="assets/HQ-logo-wordmark.svg" />
+<link rel="stylesheet" href="assets/colors_and_type.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="doc">
+
+  <!-- ============ Cover ============ -->
+  <header class="cover">
+    <div class="cover-bar">
+      <img src="assets/HQ-logo-wordmark.svg" alt="HQ Interior & Space Design" />
+      <div class="doc-meta">
+        Product Requirements · Internal<br />
+        Doc Version <strong>v1.0</strong> · <strong>2026.07.08</strong><br />
+        Owner <strong>Christian Wu</strong>
+      </div>
+    </div>
+    <div class="eyebrow">MONOREPO · TENDER SCREENING AI · INTERNAL</div>
+    <h1 class="cover-title">Tender AI<br />PRD 最新進度</h1>
+    <p class="cjk-gloss" style="margin-top:18px; font-size:18px;">政府標案篩選系統・開發狀態快照</p>
+    <p class="cover-sub">
+      幫人篩選政府標案、並會「越用越聰明」的系統。本文件彙整後端 API、前端畫面、大腦
+      Provider 路由、資料庫 Schema 與已知債務的最新落地現況，取代口頭交接。
+    </p>
+    <div class="cover-stats">
+      <div>
+        <div class="num">32</div>
+        <div class="lbl">TABLES<span class="cjk">資料表</span></div>
+      </div>
+      <div>
+        <div class="num">2,036</div>
+        <div class="lbl">TENDERS<span class="cjk">筆標案（含向量）</span></div>
+      </div>
+      <div>
+        <div class="num accent">40</div>
+        <div class="lbl">API ROUTES<span class="cjk">後端路由</span></div>
+      </div>
+      <div>
+        <div class="num">12</div>
+        <div class="lbl">PAGES<span class="cjk">前端頁面</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ TOC ============ -->
+  <nav class="toc">
+    <a href="#status"><span>開發狀態與里程碑</span><span class="n">01</span></a>
+    <a href="#stack"><span>技術棧與架構偏移</span><span class="n">02</span></a>
+    <a href="#api"><span>後端 API 現況</span><span class="n">03</span></a>
+    <a href="#screens"><span>前端畫面現況</span><span class="n">04</span></a>
+    <a href="#brain"><span>大腦 Provider 與學習迴圈</span><span class="n">05</span></a>
+    <a href="#debt"><span>已知債務</span><span class="n">06</span></a>
+    <a href="#schema-data"><span>資料庫 Schema</span><span class="n">07</span></a>
+    <a href="#schema-erd"><span>Schema 視覺化 ERD</span><span class="n">08</span></a>
+    <a href="#next"><span>下一步</span><span class="n">09</span></a>
+    <a href="#open"><span>未決議題</span><span class="n">10</span></a>
+  </nav>
+
+  <!-- ============ 01 開發狀態與里程碑 ============ -->
+  <section id="status">
+    <span class="eyebrow">SECTION 01 — DEVELOPMENT STATUS</span>
+    <div class="section-rule"></div>
+    <h2>開發狀態與里程碑</h2>
+    <p class="cjk-gloss">P1–P5 主線已收口；雲端部署與資料全量上雲已完成，剩餘為真分頁化、欄位回填與登入強化等收尾工作。</p>
+
+    <div class="callout">
+      <div class="k">本次重點 2026.07.02</div>
+      <div class="v">Supabase 全量同步完成：<code>tenders</code> 2036 筆、<code>tender_vectors</code> 2036 筆、<code>knowledge_chunks</code> 1836 筆、Layer B 行為資料全數上雲；小助手大腦切至 <code>byok</code>（OpenRouter）並以「道路」實測完成真實生成驗證。</div>
+    </div>
+    <div class="callout">
+      <div class="k">Current Phase 目前階段</div>
+      <div class="v">部署收尾階段——Vercel Production Branch 已修正指向 <code>main</code>，Railway 後端 <code>/health</code> 綠燈；下一階段聚焦真分頁化、<code>category</code> 回填與登入 Phase 2（session/token）。</div>
+    </div>
+
+    <div class="progress-list">
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M1 · BACKEND API</div>
+          <div class="lbl">後端 API（40 路由）</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill live">LIVE</span>
+          <span class="pct">100%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="done" style="width:100%"></span></div></div>
+        <div class="note">FastAPI `/api/v1`，CORS 放行本機任意埠；涵蓋標案／理由／行為／語意／助手／設定／學習／推播／進化／帳號九大範圍。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M2 · FRONTEND PAGES</div>
+          <div class="lbl">前端 12 頁＋全站浮窗</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill wip">IN REVIEW</span>
+          <span class="pct">90%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="wip" style="width:90%"></span></div></div>
+        <div class="note">儀表板／列表／詳情／登入為 ✅ 已驗證；admin／助手／決策回顧／推播／進化多屬 🟢 已接、待真實使用回饋收斂。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M3 · CLOUD DEPLOY</div>
+          <div class="lbl">雲端部署（Vercel＋Railway＋Supabase）</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill live">LIVE</span>
+          <span class="pct">100%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="done" style="width:100%"></span></div></div>
+        <div class="note">Vercel Production Branch 已修正為 main；Railway FastAPI Dockerfile 部署綠燈；Supabase 新加坡專案 `ajltwjkegmbzethwgbje` 為正式庫。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M4 · SEMANTIC SEARCH</div>
+          <div class="lbl">語意搜尋／相似案（向量檢索）</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill live">LIVE</span>
+          <span class="pct">100%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="done" style="width:100%"></span></div></div>
+        <div class="note">2026-06-25 曾標記 🐞（端點 live、向量 0 筆）；2026-07-02 全量同步後已灌入 2036 筆向量，正式環境可用。本機／沙盒若連不到 Ollama 仍可能退化。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M5 · ASSISTANT BRAIN</div>
+          <div class="lbl">小助手大腦路由（ollama/cli/byok）</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill live">LIVE</span>
+          <span class="pct">100%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="done" style="width:100%"></span></div></div>
+        <div class="note">正式環境指向 byok（OpenRouter Anthropic 相容端點，`claude-opus-4-8`）；2026-07-02 實測 5 個真實標案來源＋7397 字生成，非罐頭模板。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M6 · REALTIME LEARNING</div>
+          <div class="lbl">三分判斷即時學習（owner 覆寫負權重）</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill live">LIVE</span>
+          <span class="pct">100%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="done" style="width:100%"></span></div></div>
+        <div class="note">✓可行／✗不可行／⭐精選 → `POST /tenders/{id}/evaluate`；owner 本人 ✗ 判斷為負分人工專屬紅線的唯一即時例外，保留 append-only／具名／可回退。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M7 · DECISION REVIEW</div>
+          <div class="lbl">決策回顧／建議迴避字根</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill wip">IN REVIEW</span>
+          <span class="pct">90%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="wip" style="width:90%"></span></div></div>
+        <div class="note">`/decisions` 唯讀端點已接、由 Layer B 行為訊號重建；建議迴避字根只建議不寫權重，待更多真實使用回饋收斂候選品質。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M8 · SELF-EVOLVE</div>
+          <div class="lbl">自演化觸發閘</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill live">LIVE</span>
+          <span class="pct">100%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="done" style="width:100%"></span></div></div>
+        <div class="note">`app/jobs/self_evolve.py`：team 線 consent-aware 樣本 ≥ 50 且較上批有新增才重跑 `learn_keywords`；完全離線／冪等，`force=True` 可手動覆寫。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M9 · TRUE PAGINATION</div>
+          <div class="lbl">清單真分頁化</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill todo">NOT STARTED</span>
+          <span class="pct">0%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="todo" style="width:2%"></span></div></div>
+        <div class="note">清單分頁仍取前 200／共 2,036 筆，尚未做真分頁（cursor 或 offset 待定）。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M10 · CATEGORY BACKFILL</div>
+          <div class="lbl">category 欄位回填</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill wip">BLOCKED</span>
+          <span class="pct">21%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="wip" style="width:21%"></span></div></div>
+        <div class="note">約 79% `category` 為 NULL，是知識學習特徵覆蓋天花板；`backfill_category`（只補 NULL、冪等、offline）已就緒，需在能連 PCC 的環境跑。</div>
+      </div>
+
+      <div class="progress-row">
+        <div>
+          <div class="lbl-en">M11 · AUTH PHASE 2</div>
+          <div class="lbl">登入信任邊界強化（session/token）</div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <span class="status-pill todo">NOT STARTED</span>
+          <span class="pct">0%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span class="todo" style="width:2%"></span></div></div>
+        <div class="note">目前為 Phase 1 輕量版（admin 以 `X-User-Role` 標頭把關），session/token 化的 Phase 2 尚未排入。</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ 02 技術棧與架構偏移 ============ -->
+  <section id="stack">
+    <span class="eyebrow">SECTION 02 — STACK &amp; DEVIATIONS</span>
+    <div class="section-rule"></div>
+    <h2>技術棧與架構偏移</h2>
+    <p class="cjk-gloss">與原始 PRD §5 的差異，皆為刻意選型、非臨時湊合。</p>
+
+    <table class="spec">
+      <thead>
+        <tr><th style="width:14%;">範圍</th><th style="width:40%;">實際採用</th><th>偏移原因</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">前端</td>
+          <td class="cjk">Vite 8 + React 19 + TypeScript（strict）+ Tailwind v4 + react-router-dom 7</td>
+          <td class="cjk">原訂 Next.js；本期為內部工具＋demo，無 SSR 需求，Vite 啟動／建置快。日後若需 SSR/SEO 再評估遷移。路由為 BrowserRouter 真實路徑。</td>
+        </tr>
+        <tr>
+          <td class="mono">後端</td>
+          <td class="cjk">FastAPI + SQLAlchemy 2.0 async + psycopg 3 + Pydantic v2 + PostgreSQL 16 + pgvector</td>
+          <td class="cjk">符合原 §5 規劃；embeddings 用本地模型（bge-m3＝1024 維、HNSW cosine）。皆 brew 原生、無容器（本機）／Docker（Railway）。</td>
+        </tr>
+        <tr>
+          <td class="mono">預覽</td>
+          <td class="cjk">vite dev（:5173，HMR）／靜態 build（:8771）</td>
+          <td class="cjk">開發期優先用 vite dev；靜態 build 驗證需 rebuild ＋ cache-bust，容易誤判「改了沒生效」。</td>
+        </tr>
+        <tr>
+          <td class="mono">正式部署</td>
+          <td class="cjk">Vercel（前端）＋ Railway（後端 Docker）＋ Supabase 新加坡（<code>ajltwjkegmbzethwgbje</code>）</td>
+          <td class="cjk">2026-07-02 前曾誤指 Production Branch 至已關閉分支，已修正為 <code>main</code>；PR #10 建置修復合併後 main 恢復可部署。</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 03 後端 API 現況 ============ -->
+  <section id="api">
+    <span class="eyebrow">SECTION 03 — BACKEND API STATUS</span>
+    <div class="section-rule"></div>
+    <h2>後端 API 現況</h2>
+    <p class="cjk-gloss">FastAPI `/api/v1`，共 40 路由，CORS 放行本機任意埠。✅＝真資料跑過確認 OK；🟢＝已接、待更多真實使用驗收；🐛＝端點 live 但底層資料曾為空（現已回補）。</p>
+
+    <table class="spec">
+      <thead>
+        <tr><th style="width:12%;">範圍</th><th style="width:52%;">Endpoint</th><th>狀態</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">標案清單</td>
+          <td class="cjk"><code>GET /tenders</code>（filter/sort/page，page_size ≤ 200）</td>
+          <td><span class="status-pill live">LIVE</span><div class="meta">前端已接</div></td>
+        </tr>
+        <tr>
+          <td class="mono">標案詳情</td>
+          <td class="cjk"><code>GET /tenders/{id}</code> → 主檔＋歷史快照＋user_state（含履約/資格/押標金/附件）</td>
+          <td><span class="status-pill live">LIVE</span><div class="meta">前端 /tenders/:id 已取用</div></td>
+        </tr>
+        <tr>
+          <td class="mono">理由</td>
+          <td class="cjk"><code>GET /tenders/{id}/reasoning</code>、<code>/reasoning/profile</code></td>
+          <td><span class="status-pill live">LIVE</span><div class="meta">profile 視圖待確認</div></td>
+        </tr>
+        <tr>
+          <td class="mono">行為</td>
+          <td class="cjk"><code>POST /tenders/{id}/{save,accept,rate,note,share,evaluate}</code>、<code>/events</code>、saved-searches</td>
+          <td><span class="status-pill live">LIVE</span><div class="meta">具名 user_id 回寫；evaluate＝三分判斷即時學習</div></td>
+        </tr>
+        <tr>
+          <td class="mono">語意</td>
+          <td class="cjk"><code>GET /search/semantic</code>、<code>GET /search/similar/{id}</code></td>
+          <td><span class="status-pill live">LIVE</span><div class="meta">2026-07-02 全量同步後向量已達 2036 筆</div></td>
+        </tr>
+        <tr>
+          <td class="mono">助手</td>
+          <td class="cjk"><code>POST /assistant/chat</code>（NDJSON 串流，provider 路由＋progress 暫態）、threads</td>
+          <td><span class="status-pill wip">IN REVIEW</span><div class="meta">byok 已實測真實生成，工具鏈端到端待補</div></td>
+        </tr>
+        <tr>
+          <td class="mono">設定</td>
+          <td class="cjk"><code>GET/PUT /settings/brain</code>（小助手大腦：provider／模型／CLI agent）；<code>GET/PUT /settings/detail-fields</code>（團隊欄位顯示設定）</td>
+          <td><span class="status-pill live">LIVE</span><div class="meta">前端設定頁已接</div></td>
+        </tr>
+        <tr>
+          <td class="mono">個人/學習</td>
+          <td class="cjk"><code>GET /me/preference-profile</code>、<code>GET /me/tender-decisions</code>（決策回顧）、<code>GET /me/abandoned-keyword-candidates</code>（建議迴避字根）、<code>POST /me/keywords</code>（人工加入迴避）</td>
+          <td><span class="status-pill wip">IN REVIEW</span><div class="meta">前端 /decisions＋規則頁已取用</div></td>
+        </tr>
+        <tr>
+          <td class="mono">推播</td>
+          <td class="cjk"><code>GET/POST /push/{digest,run,read}</code></td>
+          <td><span class="status-pill wip">IN REVIEW</span><div class="meta">前端 /push 已接</div></td>
+        </tr>
+        <tr>
+          <td class="mono">進化</td>
+          <td class="cjk"><code>POST /evolution/run</code>、<code>GET /evolution/status</code></td>
+          <td><span class="status-pill wip">IN REVIEW</span><div class="meta">前端 /evolution 已接</div></td>
+        </tr>
+        <tr>
+          <td class="mono">帳號</td>
+          <td class="cjk"><code>POST /auth/login</code>、<code>GET /me</code>、<code>PUT /me/{consent,password}</code>、<code>/admin/*</code></td>
+          <td><span class="status-pill live">LIVE</span><div class="meta">前端登入/設定已接；白名單 @hqdesign.tw</div></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 04 前端畫面現況 ============ -->
+  <section id="screens">
+    <span class="eyebrow">SECTION 04 — FRONTEND SCREENS</span>
+    <div class="section-rule"></div>
+    <h2>前端畫面現況</h2>
+    <p class="cjk-gloss">AppShell + 12 頁 + 全站浮窗。</p>
+
+    <div class="screen-list">
+      <div class="screen-row">
+        <div class="id">6.1</div>
+        <div><div class="nm">儀表板</div><div class="desc">今日焦點／KPI 已對接 live 標案；三層下鑽（清單→就地展開→彈窗→詳情頁）已收口。</div></div>
+        <span class="status-pill live">LIVE</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">6.2</div>
+        <div><div class="nm">標案列表</div><div class="desc">live（<code>GET /tenders?sort=feas&amp;page_size=200</code>）；filter bar／排序／RWD 表格↔卡片完成。</div></div>
+        <span class="status-pill live">LIVE</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">6.3</div>
+        <div><div class="nm">標案詳情</div><div class="desc">常態性規格表（事實格／量表／歷史快照／相似案／PCC 原文／履約·資格·押標金·附件），欄位顯隱由團隊欄位顯示設定控制。</div></div>
+        <span class="status-pill wip">IN REVIEW</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">6.4</div>
+        <div><div class="nm">語意搜尋頁</div><div class="desc"><code>/search</code> 已建（searchSemantic → 表格，含 search 埋點）；2026-07-02 起有真實向量結果。</div></div>
+        <span class="status-pill live">LIVE</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">6.5</div>
+        <div><div class="nm">後台 Admin</div><div class="desc">規則頁（聚焦/避免/硬排除）、設定頁（推播/小助手大腦/詳情欄位顯示/帳號安全）；手動重跑走 /evolution 面板。</div></div>
+        <span class="status-pill wip">IN REVIEW</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">6.6</div>
+        <div><div class="nm">登入頁</div><div class="desc"><code>/login</code> 已建（白名單 @hqdesign.tw、auth-context、改密、管理者重置）。</div></div>
+        <span class="status-pill live">LIVE</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">6.7</div>
+        <div><div class="nm">標案助手</div><div class="desc">FAB 非阻擋浮窗＋整頁指揮中心 <code>/assistant</code>；Phase 1／2 完成，Phase 3 情境檢索／Phase 4 留存待補。</div></div>
+        <span class="status-pill wip">IN REVIEW</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">/swipe</div>
+        <div><div class="nm">速配</div><div class="desc">配對判斷原因＋關鍵字歸因 ABCD。</div></div>
+        <span class="status-pill wip">IN REVIEW</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">/decisions</div>
+        <div><div class="nm">決策回顧</div><div class="desc">唯讀，由 Layer B 行為重建本人存留／淘汰清單。</div></div>
+        <span class="status-pill wip">IN REVIEW</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">/kanban</div>
+        <div><div class="nm">看板</div><div class="desc">具名註記＋轉傳。</div></div>
+        <span class="status-pill wip">IN REVIEW</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">/insights</div>
+        <div><div class="nm">洞察</div><div class="desc">部分仍為 mock 資料。</div></div>
+        <span class="status-pill bug">PARTIAL MOCK</span>
+      </div>
+      <div class="screen-row">
+        <div class="id">/push /evolution /settings</div>
+        <div><div class="nm">推播／進化／設定</div><div class="desc">三頁皆已建並接上對應 API。</div></div>
+        <span class="status-pill wip">IN REVIEW</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 大腦 Provider 與學習迴圈 ============ -->
+  <section id="brain">
+    <span class="eyebrow">SECTION 05 — ASSISTANT BRAIN PROVIDERS</span>
+    <div class="section-rule"></div>
+    <h2>大腦 Provider 與學習迴圈</h2>
+    <p class="cjk-gloss">開發期單機單操作者 → 全域單列設定（<code>assistant_brain_config</code> id=1，get-or-create）。依 <code>config.provider</code> 分派，未知 → <code>BrainError</code>。</p>
+
+    <div class="role-grid">
+      <div>
+        <div class="num">PROVIDER 01</div>
+        <h4>ollama</h4>
+        <div class="cjk">本機模型直連</div>
+        <ul>
+          <li>包現行 <code>llm.stream_chat</code></li>
+          <li>逐塊 yield <code>delta</code>（增量）</li>
+          <li>本機模型可換（如 bge-m3）</li>
+          <li>Railway 容器無 Ollama，正式環境不使用</li>
+        </ul>
+      </div>
+      <div>
+        <div class="num">PROVIDER 02</div>
+        <h4>cli</h4>
+        <div class="cjk">Headless agentic CLI 為大腦</div>
+        <ul>
+          <li>目前支援 <code>claude -p … --output-format stream-json</code></li>
+          <li>已注入 tender-ai-brain MCP，全自主呼叫工具</li>
+          <li><code>tool_use</code> → progress 暫態（如「查詢中：search_tenders」）</li>
+          <li>Railway 容器無 claude 執行檔 → 優雅退回罐頭模板</li>
+        </ul>
+      </div>
+      <div>
+        <div class="num">PROVIDER 03</div>
+        <h4>byok</h4>
+        <div class="cjk">自帶金鑰走雲端（正式架構）</div>
+        <ul>
+          <li>Anthropic messages stream 協定</li>
+          <li>指向 OpenRouter Anthropic 相容端點</li>
+          <li><code>byok_base_url</code> 不可含 /v1；模型帶 anthropic/ 前綴</li>
+          <li>2026-07-02 實測真實生成，正式環境預設</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="k">祕密隔離（紅線）</div>
+      <div class="v">BYOK 金鑰本體只進 <code>.env</code>（<code>settings.anthropic_api_key</code>）；<code>/settings/brain</code> 只讀寫非密欄位，<code>byok_key_set</code> 由 <code>.env</code> 即時推導，永不回傳金鑰本體。CLI 切片完全不碰任何祕密；Layer B 邊界由 MCP 工具輸出層把關（去識別化／白名單），非靠 prompt 組裝。</div>
+    </div>
+  </section>
+
+  <!-- ============ 06 已知債務 ============ -->
+  <section id="debt">
+    <span class="eyebrow">SECTION 06 — KNOWN DEBT</span>
+    <div class="section-rule"></div>
+    <h2>已知債務</h2>
+    <p class="cjk-gloss">誠實列出，非隱藏；部分已隨 2026-07-02 全量同步解除。</p>
+
+    <table class="spec">
+      <thead>
+        <tr><th style="width:12%;">狀態</th><th style="width:24%;">項目</th><th>說明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="status-pill todo">OPEN</span></td>
+          <td class="mono">清單真分頁</td>
+          <td class="cjk">仍取前 200／共 2,036 筆，待真分頁（cursor 或 offset 待定）。</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill wip">PARTIAL</span></td>
+          <td class="mono">category 欄位覆蓋</td>
+          <td class="cjk">後端約 79% 為 null，是知識學習特徵覆蓋天花板；<code>backfill_category</code>（只補 NULL、冪等、offline）已就緒，待能連 PCC 的環境執行。</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill wip">PARTIAL</span></td>
+          <td class="mono">feasibility／supplierCoverage／score</td>
+          <td class="cjk">部分仍為 tier 衍生佔位，續隨 P4/P5 真實 lift 數據收斂。</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill gone">BY DESIGN</span></td>
+          <td class="mono">多數 live 標案顯示「已截止」</td>
+          <td class="cjk">截止日早於今日，資料屬實，非 bug。</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill todo">OPEN</span></td>
+          <td class="mono">PCC 詳情頁常駐型 CAPTCHA</td>
+          <td class="cjk">阻擋全自動補詳情，需瀏覽器互動式抓取（架構級決策，非短期可解）。</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill todo">OPEN</span></td>
+          <td class="mono">登入信任邊界</td>
+          <td class="cjk">Phase 1 輕量版（admin 以 <code>X-User-Header</code> 把關），session/token 化的 Phase 2 待補。</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill live">RESOLVED</span></td>
+          <td class="mono">語意搜尋向量 0 筆</td>
+          <td class="cjk">2026-06-25 曾為 🐛；2026-07-02 全量同步後已灌入 2036 筆向量，正式環境解除。</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill live">RESOLVED</span></td>
+          <td class="mono">Vercel Production Branch 指向已關閉分支</td>
+          <td class="cjk">已於部署收尾階段手動修正為 <code>main</code>；為「線上一直看到舊版」的根本原因。</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 07 資料庫 Schema ============ -->
+  <section id="schema-data">
+    <span class="eyebrow">SECTION 07 — DATABASE SCHEMA</span>
+    <div class="section-rule"></div>
+    <h2>資料庫 Schema</h2>
+    <p class="cjk-gloss">PostgreSQL 16 + pgvector，共 32 張表，依資料三層（Layer A/B/C）＋系統表分組。完整欄位定義見附件 <code>Schema Visualizer-260708.md</code>。</p>
+
+    <pre class="code"><span class="c">// tenders — Layer A 核心範例（節錄）</span>
+{
+  <span class="k">"id"</span>: <span class="s">4821</span>,
+  <span class="k">"case_pk"</span>: <span class="s">"11408xxxxxx"</span>,
+  <span class="k">"name"</span>: <span class="s">"○○工程採購案"</span>,
+  <span class="k">"category"</span>: <span class="s">"工程"</span>,
+  <span class="k">"budget_wan"</span>: <span class="s">850</span>,
+  <span class="k">"deadline_iso"</span>: <span class="s">"2026-07-20"</span>,
+  <span class="k">"current_revision_id"</span>: <span class="s">1032</span>,
+  <span class="k">"feasibility_team"</span>: <span class="s">78</span>
+}
+<span class="c">// tender_vectors — Layer C，pgvector HNSW cosine，bge-m3＝1024 維</span></pre>
+
+    <div class="layer-grid">
+      <div>
+        <div class="num">LAYER A</div>
+        <h4>公開標案資料</h4>
+        <ul>
+          <li>sources</li>
+          <li>daily_runs</li>
+          <li>tenders</li>
+          <li>daily_tender</li>
+          <li>tender_snapshots</li>
+          <li>tender_revisions</li>
+          <li>crawl_runs</li>
+          <li>crawl_failures</li>
+        </ul>
+      </div>
+      <div>
+        <div class="num">LAYER B</div>
+        <h4>同事行為與想法</h4>
+        <ul>
+          <li>saved_searches</li>
+          <li>annotations</li>
+          <li>evaluations</li>
+          <li>events</li>
+          <li>shares</li>
+          <li>tender_user_state</li>
+          <li>user_manual_keywords</li>
+          <li>assistant_threads</li>
+          <li>assistant_messages</li>
+        </ul>
+      </div>
+      <div>
+        <div class="num">LAYER C</div>
+        <h4>學出來的知識</h4>
+        <ul>
+          <li>tender_vectors</li>
+          <li>keyword_weights</li>
+          <li>keyword_weight_revisions</li>
+          <li>doc_summaries</li>
+          <li>decision_vectors</li>
+          <li>knowledge_chunks</li>
+          <li>evolution_logs</li>
+          <li>preference_profiles</li>
+          <li>user_keyword_weights</li>
+          <li>tier_threshold_revisions</li>
+        </ul>
+      </div>
+      <div>
+        <div class="num">SYSTEM</div>
+        <h4>帳號與系統設定</h4>
+        <ul>
+          <li>alembic_version</li>
+          <li>users</li>
+          <li>push_logs</li>
+          <li>assistant_brain_config</li>
+          <li>detail_field_visibility_config</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 08 Schema 視覺化 ERD ============ -->
+  <section id="schema-erd">
+    <span class="eyebrow">SECTION 08 — SCHEMA VISUALIZER (ERD)</span>
+    <div class="section-rule"></div>
+    <h2>Schema 視覺化 ERD</h2>
+    <p class="cjk-gloss">附件 <code>Schema Visualizer-260708.svg</code> 全量 ERD 圖，因原圖尺寸較大，改為可左右／上下捲動＋滾輪縮放的檢視器，避免整頁被撐開。</p>
+
+    <div class="schema-viewer">
+      <div class="schema-viewer-toolbar">
+        <span class="hint">滑鼠滾輪縮放・拖曳或捲軸平移</span>
+        <div class="schema-viewer-controls">
+          <button type="button" id="schemaZoomOut" aria-label="縮小">－</button>
+          <span class="zoom-pct" id="schemaZoomPct">100%</span>
+          <button type="button" id="schemaZoomIn" aria-label="放大">＋</button>
+          <button type="button" id="schemaZoomReset" aria-label="重設">⤾</button>
+        </div>
+      </div>
+      <div class="schema-viewer-frame" id="schemaFrame">
+        <div class="schema-viewer-canvas" id="schemaCanvas">
+          <object
+            id="schemaObject"
+            data="./assets/schema-visualizer.svg"
+            type="image/svg+xml"
+            width="3600"
+            height="2200">
+            瀏覽器不支援內嵌 SVG，請直接開啟 <a href="./assets/schema-visualizer.svg">schema-visualizer.svg</a>。
+          </object>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 09 下一步 ============ -->
+  <section id="next">
+    <span class="eyebrow">SECTION 09 — NEXT STEPS</span>
+    <div class="section-rule"></div>
+    <h2>下一步</h2>
+    <p class="cjk-gloss">依優先度排序，P0 為部署穩定性相關，P3 為體驗打磨。</p>
+
+    <table class="spec">
+      <thead>
+        <tr><th style="width:10%;">Priority</th><th style="width:26%;">Item</th><th style="width:48%;">Description · 說明</th><th>Owner · ETA</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="status-pill beta">P0</span></td>
+          <td class="cjk">清單真分頁化</td>
+          <td class="cjk">目前 page_size 上限 200／共 2,036 筆，決定 cursor 或 offset 策略並落地。</td>
+          <td class="mono">Backend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill beta">P0</span></td>
+          <td class="cjk">登入 Phase 2（session/token）</td>
+          <td class="cjk">目前 admin 靠 <code>X-User-Role</code> 標頭把關，屬輕量信任邊界，需補正式 session/token 機制。</td>
+          <td class="mono">Backend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill wip">P1</span></td>
+          <td class="cjk">category 欄位回填</td>
+          <td class="cjk">跑 <code>backfill_category</code>（需能連 PCC 的環境）解除知識學習特徵覆蓋天花板。</td>
+          <td class="mono">Backend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill wip">P1</span></td>
+          <td class="cjk">語意搜尋正式環境監控</td>
+          <td class="cjk">向量已灌入，持續觀察正式環境召回品質與延遲，決定是否需要快取層。</td>
+          <td class="mono">Backend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill wip">P1</span></td>
+          <td class="cjk">助手 Phase 3 情境檢索</td>
+          <td class="cjk">串接語意檢索作為助手回答佐證，取代目前純 LLM 生成。</td>
+          <td class="mono">Backend+Frontend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill todo">P2</span></td>
+          <td class="cjk">助手 Phase 4 留存</td>
+          <td class="cjk">跨 session 記住使用者偏好與歷史對話重點。</td>
+          <td class="mono">Frontend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill todo">P2</span></td>
+          <td class="cjk">/insights 洞察頁去 mock 化</td>
+          <td class="cjk">目前部分為 mock，改接真實統計端點。</td>
+          <td class="mono">Frontend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill todo">P2</span></td>
+          <td class="cjk">建議迴避字根候選品質收斂</td>
+          <td class="cjk">累積更多 consent-aware 樣本後檢視候選字根準確度。</td>
+          <td class="mono">Backend · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill todo">P3</span></td>
+          <td class="cjk">舊個人 GitHub repo／本機排程退役</td>
+          <td class="cjk">Windows 本機排程與舊個人帳號雙軌驗證完成後退役（HQ 案源開發 W2）。</td>
+          <td class="mono">Infra · TBD</td>
+        </tr>
+        <tr>
+          <td><span class="status-pill todo">P3</span></td>
+          <td class="cjk">白名單擴大邀請機制</td>
+          <td class="cjk">若合作範圍擴大到外部人員，需設計邀請／授權納入白名單的流程。</td>
+          <td class="mono">Product · TBD</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 10 未決議題 ============ -->
+  <section id="open">
+    <span class="eyebrow">SECTION 10 — OPEN QUESTIONS</span>
+    <div class="section-rule"></div>
+    <h2>未決議題</h2>
+    <p class="cjk-gloss">尚待拍板的方向性問題，非單純技術債。</p>
+
+    <table class="spec">
+      <thead>
+        <tr><th style="width:6%;">#</th><th style="width:30%;">Question · 議題</th><th>Context · 背景與選項</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">Q1</td>
+          <td class="cjk">清單真分頁化要走 cursor 還是 offset？</td>
+          <td class="cjk">offset 實作簡單但大資料量效能較差；cursor 對前端排序/篩選互動要求較高，需先定案排序穩定性。</td>
+        </tr>
+        <tr>
+          <td class="mono">Q2</td>
+          <td class="cjk">CLI 大腦 provider 是否要在正式環境下線？</td>
+          <td class="cjk">Railway 容器沒有 <code>claude</code> 執行檔，正式環境預設已切 byok；CLI 仍是本機開發期最自主的選項，去留需權衡維護成本。</td>
+        </tr>
+        <tr>
+          <td class="mono">Q3</td>
+          <td class="cjk">語意搜尋的 🐛 標記是否可正式拿掉？</td>
+          <td class="cjk">2026-07-02 已灌入 2036 筆向量並通過正式環境驗證，但尚未有長時間穩定觀察，建議再觀察一段時間再改標記。</td>
+        </tr>
+        <tr>
+          <td class="mono">Q4</td>
+          <td class="cjk">登入 Phase 2（session/token）排入哪個里程碑？</td>
+          <td class="cjk">目前輕量版可用但非長久之計，需評估與其他 P0/P1 項目的排序。</td>
+        </tr>
+        <tr>
+          <td class="mono">Q5</td>
+          <td class="cjk">助手 Phase 3／Phase 4 優先序如何排？</td>
+          <td class="cjk">情境檢索（證據可信度）與留存（使用黏著度）都重要，需視近期使用回饋決定先後。</td>
+        </tr>
+        <tr>
+          <td class="mono">Q6</td>
+          <td class="cjk">白名單未來若開放外部邀請註冊，共享範圍與具名規則如何調整？</td>
+          <td class="cjk">目前合作範圍＝@hqdesign.tw 白名單；若擴大需重新定義 Layer B 揭露邊界與具名機制。</td>
+        </tr>
+        <tr>
+          <td class="mono">Q7</td>
+          <td class="cjk">本機 Windows 排程與舊個人 repo 何時正式退役？</td>
+          <td class="cjk">需先完成雙軌驗證（HQ 案源開發 W2），目前仍雙軌並行以確保報表不中斷。</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="doc-footer">
+    <div><span class="v">Tender AI · PRD 最新進度</span> · v1.0 · 2026.07.08</div>
+    <div>© HQ Interior & Space Design · 惠強室內裝修</div>
+  </footer>
+
+</div>
+<script src="script.js"></script>
+</body>
+</html>

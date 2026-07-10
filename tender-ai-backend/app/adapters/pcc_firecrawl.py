@@ -38,7 +38,13 @@ BACKOFF_BASE = 2.0  # 指數退避基數（秒）
 
 
 class FirecrawlError(RuntimeError):
-    """Firecrawl API 呼叫失敗（重試耗盡或回應無 rawHtml）。"""
+    """Firecrawl API 呼叫失敗（重試耗盡或回應無 rawHtml）。
+
+    ``status_code`` 僅在 401/402/403（金鑰/額度/權限問題，見 ``_scrape``）時設定，
+    供呼叫端判斷「是否該切換備援 transport」，不必解析錯誤訊息字串。
+    """
+
+    status_code: int | None = None
 
 
 class PCCFirecrawlAdapter(PCCAdapter):
@@ -118,7 +124,9 @@ class PCCFirecrawlAdapter(PCCAdapter):
                 code = exc.response.status_code if exc.response is not None else None
                 if code in (401, 402, 403):
                     detail = (exc.response.text or "")[:200] if exc.response is not None else ""
-                    raise FirecrawlError(f"Firecrawl API {code}：{detail}") from exc
+                    err = FirecrawlError(f"Firecrawl API {code}：{detail}")
+                    err.status_code = code
+                    raise err from exc
                 last_exc = exc
                 if attempt < MAX_RETRIES:
                     time.sleep(BACKOFF_BASE * (2 ** (attempt - 1)))

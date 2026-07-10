@@ -1,0 +1,791 @@
+## Tender AI — 前後端 + 後台 API 全清單與系統 Spec
+
+本文件是 Tender AI monorepo 目前實作狀態的**事實來源（as-built reference）**：把後端 13 個 router／48 個端點、認證與安全模型、資料三層（Layer A/B/C）的資料模型、前端 15 條生產路由與其 API 消費對應，以及既有 spec／計畫文件，整理成可逐項稽核的單一文件。所有條目皆對照實際原始碼（檔名＋行號），不是構想稿。
+
+目標讀者：要接手 codebase 的工程師、要對帳前後端契約的人、以及要判斷「哪些端點動到 Layer B 共享行為資料、對外邊界在哪」的把關者。它不是新功能提案——它把散落在程式與 15 份 spec 裡的契約收斂成一張可導航的地圖；少數仍待拍板的決策集中在文末 **Open Questions**。
+
+> 範圍邊界：端點以 `app/api/v1/` 列舉到的 **48 條**為準（含 `/health`）。統計與細節若與現況不符，請以原始碼為準並回報，而非沿用本文件。
+
+### 系統架構與資料三層
+
+<Diagram id="arch-overview" caption="Monorepo 分層：React 前端 → FastAPI（13 router）→ PostgreSQL+pgvector / Ollama，資料切成 Layer A/B/C，認證閘把守 Layer B 寫入。">
+
+```html
+<div class="diagram-panel arch" data-rough>
+  <div class="diagram-card lane">
+    <div class="diagram-muted lane-label">前端 · tender-ai-frontend</div>
+    <div class="diagram-muted lane-sub">React 19 · TypeScript · Vite 8 · shadcn/ui · Tailwind v4 · i18n(繁中預設)</div>
+    <div class="row">
+      <div class="diagram-node">Dashboard / Tenders / Detail</div>
+      <div class="diagram-node">Swipe / Kanban / Search</div>
+      <div class="diagram-node">Assistant / Push / Insights</div>
+      <div class="diagram-node">Rules / Decisions / Settings · Brain</div>
+    </div>
+    <div class="diagram-muted lane-sub">lib/api.ts · lib/auth-api.ts · lib/events.ts</div>
+  </div>
+
+  <div class="diagram-arrow">HTTP · X-API-Key + Bearer(HMAC)</div>
+
+  <div class="diagram-card lane">
+    <div class="diagram-muted lane-label">後端 · tender-ai-backend · FastAPI /api/v1</div>
+    <div class="row">
+      <div class="diagram-pill">tenders</div>
+      <div class="diagram-pill">behavior</div>
+      <div class="diagram-pill">search</div>
+      <div class="diagram-pill">knowledge</div>
+      <div class="diagram-pill">reasoning</div>
+      <div class="diagram-pill">learning</div>
+      <div class="diagram-pill">push</div>
+      <div class="diagram-pill">assistant</div>
+      <div class="diagram-pill">me</div>
+      <div class="diagram-pill">settings</div>
+      <div class="diagram-pill">auth</div>
+      <div class="diagram-pill">admin</div>
+      <div class="diagram-pill">index</div>
+    </div>
+    <div class="diagram-muted lane-sub">core/auth.py(HMAC) · core/security.py(X-API-Key · pbkdf2_sha256)</div>
+  </div>
+
+  <div class="diagram-arrow">SQLAlchemy · pgvector(bge-m3 1024d) · Ollama(本機)</div>
+
+  <div class="diagram-card lane layers">
+    <div class="diagram-box layer-a">
+      <div class="diagram-muted">Layer A · 公開標案（可從原始 HTML 重建）</div>
+      <div class="diagram-node">tenders · sources · revisions · snapshots · daily_*</div>
+    </div>
+    <div class="diagram-box layer-b">
+      <div class="diagram-muted">Layer B · 同事行為與想法（白名單@hqdesign.tw 共享 · 具名 · 對外永不揭露）</div>
+      <div class="diagram-node">users · events · tender_user_state · evaluations · annotations · shares · saved_searches · push_logs · preferences</div>
+    </div>
+    <div class="diagram-box layer-c">
+      <div class="diagram-muted">Layer C · 學出來的知識（去識別化可重算）</div>
+      <div class="diagram-node">tender_vectors · knowledge_chunks · keyword weights</div>
+    </div>
+  </div>
+</div>
+```
+
+```css
+.arch { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+.arch .lane { padding: 14px 16px; }
+.arch .lane-label { font-weight: 600; margin-bottom: 2px; }
+.arch .lane-sub { font-size: 0.82em; margin-top: 8px; }
+.arch .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.arch .diagram-arrow { text-align: center; font-size: 0.8em; opacity: 0.75; }
+.arch .layers { display: flex; flex-direction: column; gap: 10px; }
+.arch .layer-a { border-left: 3px solid var(--wf-accent); padding: 8px 12px; }
+.arch .layer-b { border-left: 3px solid var(--wf-warn); padding: 8px 12px; }
+.arch .layer-c { border-left: 3px solid var(--wf-ok); padding: 8px 12px; }
+.arch .layers .diagram-node { margin-top: 6px; }
+```
+
+</Diagram>
+
+<Callout id="layer-b-redline" tone="warning">
+
+**Layer B 是「合作範圍內共享」而非「私有」。** 行為／評分／想法在白名單（`@hqdesign.tw` 且 `whitelist_active`）且 `consent_shared` 的前提下，會量化進團隊共享知識庫並**依登入帳號具名**；對白名單外對象**永不揭露、不入公開版控、對外匯出一律去識別化**。下表中標 `Bearer+Key` 的寫入端點即是 Layer B 入口；負權重只能由人工或本人即時判斷產生，系統不得自動寫入（`reasoning.py` / `learn_keywords.py` 修改前須遵此）。
+
+</Callout>
+
+### 認證與安全模型
+
+兩道閘層疊：所有 `/api/v1/*` 預設掛 `require_api_key`（`main.py:83`），需要身分的端點再額外掛 `get_current_user`（Bearer）。
+
+- **X-API-Key**（`core/security.py:22`）— header `X-API-Key`，比對環境變數 `APP_API_KEY`；**未設定時等於不啟用**（開發預設關閉）。
+- **Bearer Token / Phase 2 HMAC**（`core/auth.py`）— 格式 `base64url(payload).base64url(HMAC-SHA256(payload, AUTH_SECRET))`，payload 為 `{uid, iat, exp}`；**無 session 表**、無狀態。`get_current_user()` 每次請求即時查 DB 確認 `whitelist_active=True`（否則 403），role 也每次撈新 → 支援近即時撤銷。`AUTH_SECRET` 未設時簽發/驗證回 503，但唯讀端點仍可服務。
+- **密碼雜湊**（`core/security.py:32`）— `pbkdf2_sha256`，200,000 迭代、每帳號 16-byte 鹽，存為 `pbkdf2_sha256$<iter>$<salt>$<hash>`，定速比對。
+- **CORS**（`main.py:40`）— 允許 `localhost:5173/5174` 與本機任意埠 regex（含 Claude Preview），`allow_credentials=True`。
+
+下方兩個代表性契約展開了完整 request/response 形狀（其餘端點的 method/path/auth 見全表）：
+
+<Endpoint id="ep-login" method="POST" path="/api/v1/auth/login" summary="登入並簽發 HMAC Bearer token" auth="X-API-Key" params={[
+  {
+    "name": "email",
+    "in": "body",
+    "type": "string",
+    "required": true
+  },
+  {
+    "name": "password",
+    "in": "body",
+    "type": "string",
+    "required": true
+  }
+]} request={{
+  "contentType": "application/json",
+  "example": "{ \"email\": \"alex@hqdesign.tw\", \"password\": \"********\" }"
+}} responses={[
+  {
+    "status": "200",
+    "description": "簽發 token（含使用者與 consent 狀態）",
+    "example": "{ \"token\": \"<base64url payload>.<sig>\", \"user\": { \"id\": 1, \"email\": \"alex@hqdesign.tw\", \"role\": \"admin\", \"whitelist_active\": true, \"consent_shared\": true } }"
+  },
+  {
+    "status": "401",
+    "description": "信箱或密碼錯誤"
+  },
+  {
+    "status": "503",
+    "description": "AUTH_SECRET 未設定，無法簽發"
+  }
+]}>
+
+信箱＋密碼換 token；之後所有 Layer B 寫入端點都帶 `Authorization: Bearer <token>`。`auth.py:26`。
+
+</Endpoint>
+
+<Endpoint id="ep-evaluate" method="POST" path="/api/v1/tenders/{id}/evaluate" summary="可行性判斷 → 即時學習（owner 覆寫路徑）" auth="Bearer + X-API-Key" params={[
+  {
+    "name": "id",
+    "in": "path",
+    "type": "integer",
+    "required": true
+  },
+  {
+    "name": "feasible",
+    "in": "body",
+    "type": "string",
+    "required": true,
+    "description": "可行 / 不可行 / 待確認"
+  },
+  {
+    "name": "criteria",
+    "in": "body",
+    "type": "object"
+  },
+  {
+    "name": "rationale",
+    "in": "body",
+    "type": "string"
+  }
+]} request={{
+  "contentType": "application/json",
+  "example": "{ \"feasible\": \"不可行\", \"rationale\": \"超出預算且工期過短\", \"criteria\": { \"budget\": false, \"timeline\": false } }"
+}} responses={[
+  {
+    "status": "200",
+    "description": "寫入評估並觸發即時學習（本人「不可行」可即時寫入團隊負權重）",
+    "example": "{ \"ok\": true, \"learned\": { \"negative_terms\": [\"<去識別化\"], \"revision_batch\": \"2026-06-29T...\" } }"
+  },
+  {
+    "status": "403",
+    "description": "非白名單或已撤回同意"
+  }
+]}>
+
+唯一允許「即時寫入團隊負權重」的路徑（owner 親自判斷，`allow_auto_negative=True`），保留 append-only／consent-aware／具名／可回退安全網。一般批次學習仍不得自動種負分。`behavior.py:98`。
+
+</Endpoint>
+
+#### 後端 API 全表（13 router · 48 端點）
+
+> 認證代碼：**Key** = 需 X-API-Key（生產啟用時）｜**Bearer+Key** = 額外需登入 token（Layer B 入口）｜**公開** = 無強制驗證。
+
+##### A. 標案讀取（Layer A · tenders / index）
+
+<Table
+  id="tbl-ep-a"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["GET", "/tenders", "Key", "q · category · city · budget · tier · sort · page → TenderListResponse{items,total}", "標案列表（多條件篩選/排序/分頁） · tenders.py:20"],
+    ["GET", "/tenders/{id}", "Key", "?userId → TenderDetail{snapshot, revision, userState}", "單一標案詳情 · tenders.py:58"],
+    ["GET", "/index/status", "Key", "→ {tenderVectors, knowledgeChunks, coverage%}", "向量覆蓋率與缺口 · index_status.py:15"]
+  ]}
+/>
+
+##### B. 行為回寫（Layer B · behavior）
+
+<Table
+  id="tbl-ep-b"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["POST", "/tenders/{id}/save", "Bearer+Key", "{saved:bool} → StateOut", "收藏 · behavior.py:38"],
+    ["POST", "/tenders/{id}/accept", "Bearer+Key", "{status:觀望/備標中/已投/得標/放棄} → StateOut", "更新狀態 · behavior.py:50"],
+    ["POST", "/tenders/{id}/rate", "Bearer+Key", "{star:1-5} → StateOut", "評星 · behavior.py:62"],
+    ["POST", "/tenders/{id}/note", "Bearer+Key", "{note} → AnnotationOut", "新增筆記 · behavior.py:74"],
+    ["POST", "/tenders/{id}/share", "Bearer+Key", "{channel} → ShareOut", "分享紀錄 · behavior.py:86"],
+    ["POST", "/tenders/{id}/evaluate", "Bearer+Key", "{feasible,criteria,rationale} → {ok,learned}", "可行性判斷＋即時學習 · behavior.py:98"],
+    ["POST", "/events", "Bearer+Key", "{type,tenderId?,payload} → {ok}", "行為埋點 · behavior.py:135"],
+    ["GET", "/saved-searches", "Bearer+Key", "→ SavedSearch[]", "列出保存搜尋 · behavior.py:148"],
+    ["POST", "/saved-searches", "Bearer+Key", "{name,queryText,filter} → SavedSearch", "建立保存搜尋 · behavior.py:157"]
+  ]}
+/>
+
+##### C. 語意檢索與知識庫（search / knowledge）
+
+<Table
+  id="tbl-ep-c"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["GET", "/search/semantic", "Key", "q · limit → SemanticSearchResponse{hits[]}", "自然語言語意檢索 · search.py:19"],
+    ["GET", "/search/similar/{id}", "Key", "limit → SemanticHit[]", "相似標案推薦 · search.py:29"],
+    ["GET", "/search/recommend/{id}", "Key", "limit → DecisionRecommendation", "決策向量推薦理由 · search.py:38"],
+    ["GET", "/knowledge/search", "Key", "q · limit → KnowledgeSearchResponse（語意+關鍵字 RRF）", "知識庫混合檢索 · knowledge.py:26"],
+    ["GET", "/knowledge/docs", "Key", "→ KnowledgeDocsResponse{docs[]}", "列出知識文件 · knowledge.py:41"],
+    ["GET", "/knowledge/docs/{id}", "Key", "→ KnowledgeDocDetail{chunks[]}", "調閱單篇全部切塊 · knowledge.py:53"]
+  ]}
+/>
+
+##### D. AI 推理判準（reasoning）
+
+<Table
+  id="tbl-ep-d"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["GET", "/tenders/{id}/reasoning", "Key", "?userId → TenderReasoningOut{verdict, reasonCodes[]}", "可中標判斷＋理由碼 · reasoning.py:45"],
+    ["GET", "/tenders/{id}/keyword-candidates", "Key", "?userId → KeywordCandidatesOut{terms[]}", "速覽判斷原因詞候選 · reasoning.py:28"],
+    ["GET", "/reasoning/profile", "Key", "?userId → CriteriaProfileOut", "系統學到的承標判準輪廓 · reasoning.py:55"]
+  ]}
+/>
+
+##### E. 自我進化與主動推播（learning / push）
+
+<Table
+  id="tbl-ep-e"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["POST", "/evolution/run", "Key", "{force?} → {ran:bool, batch}", "跑一輪自我進化（閘:團隊樣本≥50且有新增） · learning.py:26"],
+    ["GET", "/evolution/status", "Key", "→ {history[], lastBatch}", "進化現況與時間軸 · learning.py:45"],
+    ["POST", "/push/run", "Key", "{userId,limit,minScore,lookbackDays} → PushRunResult", "觸發每日推播批次 · push.py:28"],
+    ["GET", "/push/digest", "Key", "?userId → PushDigestOut{cards[],unread}", "通知面板資料 · push.py:45"],
+    ["POST", "/push/read", "Key", "{userId,pushId?} → {ok}", "標記推播已讀 · push.py:54"]
+  ]}
+/>
+
+##### F. 標案助手（assistant）
+
+<Table
+  id="tbl-ep-f"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["POST", "/assistant/chat", "公開（支援 Bearer）", "{threadId?,message} → SSE 串流 ChatEvent", "標案助手串流對話 · assistant.py:55"],
+    ["GET", "/assistant/threads", "公開（支援 Bearer）", "limit? · q? → AssistantThreadListOut", "對話串列表（最近活動） · assistant.py:68"],
+    ["GET", "/assistant/threads/{id}", "公開（支援 Bearer）", "→ AssistantThreadDetailOut{messages[]}", "單一對話串完整訊息 · assistant.py:85"]
+  ]}
+/>
+
+##### G. 個人帳號與偏好（me）
+
+<Table
+  id="tbl-ep-g"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["GET", "/me", "Bearer+Key", "→ {id,email,role,whitelist_active,consent_shared}", "當前使用者狀態 · me.py:45"],
+    ["PUT", "/me/consent", "Bearer+Key", "{consentShared:bool} → {ok,consent_at}", "設定/撤回共享同意 · me.py:55"],
+    ["PUT", "/me/password", "Bearer+Key", "{oldPassword,newPassword} → {ok}", "本人改密 · me.py:66"],
+    ["GET", "/me/preference-profile", "Bearer+Key", "→ PreferenceProfile", "AI 學到的個人化偏好 · me.py:82"],
+    ["GET", "/me/abandoned-keyword-candidates", "Bearer+Key", "→ {candidates[]}", "規則頁建議迴避字根 · me.py:94"],
+    ["GET", "/me/tender-decisions", "Bearer+Key", "→ {decisions[]}", "決策回顧（評分管理） · me.py:115"],
+    ["POST", "/me/keywords", "Bearer+Key", "{op:add/remove,term,kind} → {ok}", "手動覆寫關鍵字 · me.py:130"]
+  ]}
+/>
+
+##### H. 認證與全域設定（auth / settings）
+
+<Table
+  id="tbl-ep-h"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["POST", "/auth/login", "Key", "{email,password} → {token,user}", "登入簽發 token · auth.py:26"],
+    ["GET", "/settings/brain", "Key", "→ AssistantBrainConfig（不含金鑰本體）", "讀小助手大腦設定 · settings.py:43"],
+    ["PUT", "/settings/brain", "Key", "{provider,model,agent...} → config", "更新大腦設定 · settings.py:52"],
+    ["GET", "/settings/brain/agents", "公開", "→ {agents[]}（CLI 註冊表）", "前端選單用 · settings.py:72"],
+    ["POST", "/settings/brain/test", "公開", "{candidateConfig} → {ok,sample}", "對候選設定煙測 · settings.py:89"],
+    ["GET", "/settings/detail-fields", "Key", "→ {hiddenFields[]}", "讀詳情欄位隱藏設定 · settings.py:115"],
+    ["PUT", "/settings/detail-fields", "Key", "{hiddenFields[]} → {ok}", "更新詳情欄位隱藏設定 · settings.py:124"]
+  ]}
+/>
+
+##### I. 後台管理（admin）＋系統
+
+<Table
+  id="tbl-ep-i"
+  density="compact"
+  columns={["Method", "Path", "Auth", "Request / Response", "用途 · 檔案:行"]}
+  rows={[
+    ["GET", "/admin/whitelist", "Bearer+Key(admin)", "→ {accounts[]}", "列出所有帳號與白名單狀態 · admin.py:23"],
+    ["POST", "/admin/whitelist", "Bearer+Key(admin)", "{email,active:bool} → {ok}", "開通/停用白名單 · admin.py:35"],
+    ["DELETE", "/admin/whitelist/{email}", "Bearer+Key(admin)", "→ {ok}", "自名單移除帳號 · admin.py:49"],
+    ["POST", "/admin/users/{id}/password", "Bearer+Key(admin)", "{newPassword} → {ok}", "管理員重置密碼 · admin.py:67"],
+    ["GET", "/health", "公開", "→ {status:ok}", "健康檢查 · main.py:78"]
+  ]}
+/>
+
+### 資料模型（依 Layer A/B/C 分組）
+
+8 個 model 檔（不計 `__init__.py`）、31 個 ORM class。以下分層列出載重實體與關鍵欄位；完整欄位以各 model 原始碼為準。學習相關的權重／向量／演進實體集中在 `knowledge.py`（共 9 個 class），構成 Layer C 主體。
+
+#### Layer A — 公開標案 Corpus（可從原始 HTML 重建）
+
+<DataModel
+  id="dm-layer-a"
+  entities={[
+    {
+      id: "sources",
+      name: "sources",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "name", type: "str unique" },
+        { name: "base_url", type: "text", nullable: true }
+      ]
+    },
+    {
+      id: "tenders",
+      name: "tenders",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "source_id", type: "int", fk: "sources.id" },
+        { name: "case_pk", type: "str" },
+        { name: "name", type: "text" },
+        { name: "org", type: "text" },
+        { name: "category", type: "str", nullable: true },
+        { name: "budget_wan", type: "int", nullable: true },
+        { name: "deadline_iso", type: "date", nullable: true },
+        { name: "current_revision_id", type: "int", fk: "tender_revisions.id" },
+        { name: "feasibility_team", type: "int", nullable: true }
+      ]
+    },
+    {
+      id: "tender_snapshots",
+      name: "tender_snapshots",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "tender_id", type: "int", fk: "tenders.id" },
+        { name: "content_hash", type: "str" },
+        { name: "raw_html", type: "text" },
+        { name: "fetched_at", type: "datetime" }
+      ]
+    },
+    {
+      id: "tender_revisions",
+      name: "tender_revisions",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "tender_id", type: "int", fk: "tenders.id" },
+        { name: "snapshot_id", type: "int", fk: "tender_snapshots.id" },
+        { name: "revision_no", type: "int" },
+        { name: "award_method", type: "str", nullable: true },
+        { name: "qualification_codes", type: "jsonb", nullable: true },
+        { name: "category_main", type: "str", nullable: true }
+      ]
+    }
+  ]}
+  relations={[
+    { from: "tenders", to: "sources", kind: "n-1" },
+    { from: "tender_snapshots", to: "tenders", kind: "n-1" },
+    { from: "tender_revisions", to: "tenders", kind: "n-1" },
+    { from: "tender_revisions", to: "tender_snapshots", kind: "n-1" }
+  ]}
+/>
+
+<Callout id="dm-a-note" tone="info">
+
+另有 `daily_runs`／`daily_tender`（每日每源統計與快照，`tender.py`）、`crawl_runs`／`crawl_failures`（enrich 執行日誌與重試帳本，`revision.py`），同屬 Layer A。`current_revision_id` 與 `tenders↔tender_revisions` 形成循環外鍵，讀「目前詳情」優先此欄。
+
+</Callout>
+
+#### Layer B — 同事行為與想法（白名單共享 · 具名 · 對外永不揭露）
+
+<DataModel
+  id="dm-layer-b"
+  entities={[
+    {
+      id: "users",
+      name: "users",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "email", type: "str unique" },
+        { name: "name", type: "str" },
+        { name: "role", type: "str (admin/user)" },
+        { name: "password_hash", type: "str", nullable: true },
+        { name: "whitelist_active", type: "bool" },
+        { name: "consent_shared", type: "bool" },
+        { name: "consent_at", type: "datetime", nullable: true }
+      ]
+    },
+    {
+      id: "events",
+      name: "events",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "user_id", type: "int", fk: "users.id" },
+        { name: "ts", type: "datetime idx" },
+        { name: "type", type: "str" },
+        { name: "tender_id", type: "int", fk: "tenders.id", nullable: true },
+        { name: "payload", type: "jsonb", nullable: true }
+      ]
+    },
+    {
+      id: "tender_user_state",
+      name: "tender_user_state",
+      fields: [
+        { name: "user_id", type: "int", pk: true, fk: "users.id" },
+        { name: "tender_id", type: "int", pk: true, fk: "tenders.id" },
+        { name: "saved", type: "bool" },
+        { name: "status", type: "str" },
+        { name: "star", type: "int (1-5)", nullable: true }
+      ]
+    },
+    {
+      id: "evaluations",
+      name: "evaluations",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "user_id", type: "int", fk: "users.id" },
+        { name: "tender_id", type: "int", fk: "tenders.id" },
+        { name: "feasible", type: "str (可行/不可行...)" },
+        { name: "criteria", type: "jsonb", nullable: true },
+        { name: "rationale", type: "text", nullable: true }
+      ]
+    },
+    {
+      id: "preference_profiles",
+      name: "preference_profiles",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "user_id", type: "int unique", fk: "users.id" },
+        { name: "top_keywords", type: "list" },
+        { name: "avoid_keywords", type: "list" },
+        { name: "preferred_categories", type: "list" }
+      ]
+    },
+    {
+      id: "user_manual_keywords",
+      name: "user_manual_keywords",
+      fields: [
+        { name: "user_id", type: "int", pk: true, fk: "users.id" },
+        { name: "term", type: "str", pk: true },
+        { name: "kind", type: "str (positive/negative/engaged)", pk: true },
+        { name: "excluded", type: "bool" }
+      ]
+    }
+  ]}
+  relations={[
+    { from: "events", to: "users", kind: "n-1" },
+    { from: "tender_user_state", to: "users", kind: "n-1" },
+    { from: "evaluations", to: "users", kind: "n-1" },
+    { from: "preference_profiles", to: "users", kind: "1-1" },
+    { from: "user_manual_keywords", to: "users", kind: "n-1" }
+  ]}
+/>
+
+<Callout id="dm-b-note" tone="warning">
+
+同屬 Layer B 尚有 `annotations`（人工註記）、`shares`（分享）、`saved_searches`（提示詞/篩選預設，`behavior.py`）與 `push_logs`（SL5 推播，`push.py`）。`user_manual_keywords` 是**人工覆寫關鍵字唯一合規路徑**——負分（negative）只能由人手動給或本人即時判斷產生。團隊線學習只納入 `whitelist_active && consent_shared`、結論 ∈ {可行,不可行} 的樣本。
+
+</Callout>
+
+#### Layer C — 學出來的知識（向量／權重，去識別化可重算）
+
+<DataModel
+  id="dm-layer-c"
+  entities={[
+    {
+      id: "tender_vectors",
+      name: "tender_vectors",
+      fields: [
+        { name: "tender_id", type: "int", pk: true, fk: "tenders.id" },
+        { name: "embedding", type: "vector(1024)" },
+        { name: "model", type: "str (bge-m3)" },
+        { name: "content", type: "text" },
+        { name: "updated_at", type: "datetime" }
+      ]
+    },
+    {
+      id: "knowledge_chunks",
+      name: "knowledge_chunks",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "doc_id", type: "str idx" },
+        { name: "chunk_index", type: "int" },
+        { name: "content", type: "text" },
+        { name: "tokens", type: "text (jieba)" },
+        { name: "embedding", type: "vector(1024)" },
+        { name: "model", type: "str" }
+      ]
+    },
+    {
+      id: "keyword_weights",
+      name: "keyword_weights",
+      fields: [
+        { name: "term", type: "str", pk: true },
+        { name: "polarity", type: "str (positive/negative)" },
+        { name: "weight", type: "float" },
+        { name: "support", type: "int (樣本數=信心)" },
+        { name: "notes", type: "text", nullable: true }
+      ]
+    },
+    {
+      id: "keyword_weight_revisions",
+      name: "keyword_weight_revisions",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "batch", type: "str (ISO8601 同批)" },
+        { name: "term", type: "str" },
+        { name: "polarity", type: "str" },
+        { name: "weight", type: "float" },
+        { name: "feasible_samples", type: "int" },
+        { name: "infeasible_samples", type: "int" }
+      ]
+    },
+    {
+      id: "user_keyword_weights",
+      name: "user_keyword_weights",
+      fields: [
+        { name: "user_id", type: "int", pk: true, fk: "users.id" },
+        { name: "term", type: "str", pk: true },
+        { name: "polarity", type: "str" },
+        { name: "weight", type: "float" },
+        { name: "support", type: "int" }
+      ]
+    },
+    {
+      id: "decision_vectors",
+      name: "decision_vectors",
+      fields: [
+        { name: "evaluation_id", type: "int", pk: true, fk: "evaluations.id" },
+        { name: "tender_id", type: "int", fk: "tenders.id" },
+        { name: "embedding", type: "vector(1024) HNSW cosine" },
+        { name: "feasible", type: "str (可行/不可行/待議)" },
+        { name: "model", type: "str" }
+      ]
+    },
+    {
+      id: "evolution_logs",
+      name: "evolution_logs",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "batch", type: "str (連回 revisions.batch)" },
+        { name: "trigger", type: "str (manual/api/auto)" },
+        { name: "top_positive", type: "jsonb", nullable: true },
+        { name: "negative_candidates", type: "jsonb 候選(僅建議)", nullable: true },
+        { name: "signals", type: "jsonb 行為聚合", nullable: true }
+      ]
+    },
+    {
+      id: "tier_threshold_revisions",
+      name: "tier_threshold_revisions",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "batch", type: "str (ISO8601)" },
+        { name: "c_high", type: "int 高潛力切點" },
+        { name: "c_low", type: "int 低潛力切點" }
+      ]
+    },
+    {
+      id: "doc_summaries",
+      name: "doc_summaries",
+      fields: [
+        { name: "tender_id", type: "int", pk: true, fk: "tenders.id" },
+        { name: "summary", type: "text", nullable: true },
+        { name: "key_terms", type: "text", nullable: true },
+        { name: "source_doc_url", type: "text", nullable: true }
+      ]
+    }
+  ]}
+  relations={[
+    { from: "tender_vectors", to: "tenders", kind: "1-1" },
+    { from: "user_keyword_weights", to: "users", kind: "n-1" },
+    { from: "decision_vectors", to: "evaluations", kind: "1-1" },
+    { from: "decision_vectors", to: "tenders", kind: "n-1" },
+    { from: "doc_summaries", to: "tenders", kind: "1-1" }
+  ]}
+/>
+
+<Callout id="dm-c-note" tone="info">
+
+**Layer C 是雙軌學習的落點。** 團隊線 `keyword_weights`（`learn_keywords.py` 由 consent-aware 團隊樣本推導）與個人線 `user_keyword_weights`（複合主鍵、只吃本人 events、不需共享同意）平行獨立。`keyword_weight_revisions`／`evolution_logs`／`tier_threshold_revisions` 皆 **append-only 稽核軌跡**——`POST /evolution/run` 跑完寫一批，前端 `/evolution`、`/reasoning/profile` 只讀不算。`evolution_logs.negative_candidates` 是「附理由的疑似迴避詞候選」，**僅供管理者審核、系統不得自動寫負權重**（負分人工專屬紅線）。本層所有實體只存 Layer A 聚合統計與去識別化衍生詞彙，**無人名／email、不回放原始 rationale**。
+
+</Callout>
+
+#### 全域設定與助手（非行為資料）
+
+<DataModel
+  id="dm-config"
+  entities={[
+    {
+      id: "assistant_threads",
+      name: "assistant_threads",
+      fields: [
+        { name: "id", type: "uuid", pk: true },
+        { name: "owner_user_id", type: "str (default)" },
+        { name: "scope", type: "str" },
+        { name: "title", type: "str" },
+        { name: "consent_state", type: "str" }
+      ]
+    },
+    {
+      id: "assistant_messages",
+      name: "assistant_messages",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "thread_id", type: "uuid", fk: "assistant_threads.id" },
+        { name: "role", type: "str (user/assistant)" },
+        { name: "content", type: "text" },
+        { name: "sources", type: "jsonb (Layer A)" }
+      ]
+    },
+    {
+      id: "assistant_brain_config",
+      name: "assistant_brain_config",
+      fields: [
+        { name: "id", type: "int = 1 (單列)", pk: true },
+        { name: "provider", type: "str (ollama/cli/byok)" },
+        { name: "ollama_model", type: "str", nullable: true },
+        { name: "cli_agent", type: "str", nullable: true }
+      ]
+    },
+    {
+      id: "detail_field_visibility_config",
+      name: "detail_field_visibility_config",
+      fields: [
+        { name: "id", type: "int = 1 (單列)", pk: true },
+        { name: "hidden_fields", type: "jsonb list" }
+      ]
+    }
+  ]}
+  relations={[
+    { from: "assistant_messages", to: "assistant_threads", kind: "n-1" }
+  ]}
+/>
+
+<Callout id="dm-config-note" tone="info">
+
+`assistant_brain_config` 為全域單列，**BYOK 金鑰本體不入庫、只進 `.env`**；`assistant_messages.sources` 只存 Layer A 來源，不存 Layer B 行為。對話串登入前以 `owner_user_id="default"` 佔位，未來接登入後綁實際 user。
+
+</Callout>
+
+### 前端路由與 API 消費對應
+
+前端 15 條生產路由（`App.tsx` 內 `<Route>`，不計 catch-all `*` fallback；另有 4 條 dev-only：`/ops-panels`、`/design-system`、`/assistant-studio`、`/charts`，僅 `import.meta.env.DEV` 掛載、生產 build 不含）。API 經三個 lib 收斂：`api.ts`（~30 個資料函式）、`auth-api.ts`（~11 個認證/管理函式）、`events.ts`（`trackEvent`/`trackEventAwait` 兩個埋點函式，type ∈ view/open_detail/click_link/dwell/apply_filter/search/sort/state_preference/card_note_*）。
+
+<Table
+  id="tbl-routes"
+  density="compact"
+  columns={["路由", "元件", "主要 API → 後端端點"]}
+  rows={[
+    ["/", "DashboardPage", "indexStatus / pushDigest → GET /index/status, /push/digest"],
+    ["/tenders", "TendersPage", "listTenders → GET /tenders"],
+    ["/tenders/:id", "TenderDetailPage", "getTenderDetail / tenderReasoning / keywordCandidates / evaluateTender → GET /tenders/{id}(/reasoning,/keyword-candidates), POST /tenders/{id}/evaluate"],
+    ["/swipe", "SwipePage", "listTenders + saveTender/acceptTender + trackEvent → GET /tenders, POST /save·/accept·/events"],
+    ["/insights", "InsightsPage", "criteriaProfile → GET /reasoning/profile"],
+    ["/search", "SearchPage", "semanticSearch / similarTenders → GET /search/semantic·/similar/{id}"],
+    ["/push", "PushPage", "pushDigest / markPushRead → GET /push/digest, POST /push/read"],
+    ["/assistant", "AssistantPage", "listThreads / getThread / chatAssistant → GET /assistant/threads(/{id}), POST /assistant/chat(SSE)"],
+    ["/evolution", "EvolutionPage", "evolutionStatus → GET /evolution/status"],
+    ["/kanban", "KanbanPage", "listTenders + acceptTender → GET /tenders, POST /accept"],
+    ["/rules", "RulesPage", "criteriaProfile + postKeywordOverride → GET /reasoning/profile, POST /me/keywords"],
+    ["/decisions", "DecisionReviewPage", "getTenderDecisions → GET /me/tender-decisions"],
+    ["/settings", "SettingsPage", "fetchMe / changePassword / setConsent → GET /me, PUT /me/password·/consent"],
+    ["/settings/brain", "BrainStudioPage", "getBrain / putBrain / postBrainTest → GET·PUT /settings/brain, POST /settings/brain/test"],
+    ["/knowvio", "KnowvioDashboardPage", "多端點彙整（儀表板複刻）"],
+    ["(登入)", "LoginPage", "login → POST /auth/login"]
+  ]}
+/>
+
+<Callout id="fe-contract-gap" tone="risk">
+
+**契約落差需對帳**：後端列舉到 48 端點，前端 lib 目前覆蓋大部分讀取/行為/認證路徑，但 `/admin/*`（白名單管理、重置密碼）的前端介面、以及 `chatAssistant` 的 SSE 串流解析是高風險對接點。導入新頁面前，先核對 `lib/api.ts` 是否已有對應 helper，避免重複 raw fetch。
+
+</Callout>
+
+### 既有 spec / 計畫文件盤點
+
+`docs/superpowers/specs/` 共 15 份設計 spec（每份頂部多帶狀態橫幅）；`plans/` 下 5 個進行中計畫資料夾＋ UIUX v2 草稿。
+
+<Table
+  id="tbl-specs"
+  density="compact"
+  columns={["文件", "主題", "日期"]}
+  rows={[
+    ["specs/2026-06-18-tender-detail-view-design.md", "標案詳情頁（revision/附件）", "06-18"],
+    ["specs/2026-06-23-assistant-brain-picker-design.md", "小助手大腦配置（概念）", "06-23"],
+    ["specs/2026-06-23-report-subscription-ingest-design.md", "報表訂閱與抓取入庫", "06-23"],
+    ["specs/2026-06-24-decision-review-rating-management-design.md", "決策回顧與評分管理", "06-24"],
+    ["specs/2026-06-24-judgment-actions-realtime-learning-design.md", "判斷動作即時學習", "06-24"],
+    ["specs/2026-06-24-swipe-decision-keyword-attribution-design.md", "速覽判斷關鍵字歸因", "06-24"],
+    ["specs/2026-06-25-design-system-annotation-design.md", "設計系統標註", "06-25"],
+    ["specs/2026-06-25-keyword-weight-management-design.md", "關鍵字權重管理", "06-25"],
+    ["specs/2026-06-25-phase2-auth-design.md", "Phase 2 認證（Bearer/白名單）", "06-25"],
+    ["specs/2026-06-25-可行性推導潛力分級-design.md", "可行性推導與潛力分級", "06-25"],
+    ["specs/2026-06-27-assistant-ui-tender-assistant-ux-design.md", "小助手 UI/UX", "06-27"],
+    ["specs/2026-06-27-knowvio-dashboard-live-data-design.md", "Knowvio 儀表板實時數據", "06-27"],
+    ["specs/2026-06-27-three-phase-product-roadmap-design.md", "三階段產品路線圖", "06-27"],
+    ["specs/2026-06-28-assistant-backend-integration-contract.md", "小助手後端整合契約", "06-28"],
+    ["specs/2026-06-28-brain-picker-multi-cli-model-design.md", "大腦 picker 多 CLI/每代理模型", "06-28"],
+    ["plans/ (目錄)", "assistant-ui-integration · pcc-flexible-ingestion · profile-and-learning-db · project-status-assessment · tender-ai-integrated-roadmap · uiux-v2", "進行中"]
+  ]}
+/>
+
+### 用法與驗證
+
+本文件是 as-built 參照，不含程式變更，「驗證」即確認其與原始碼一致：
+
+<Checklist
+  id="verify-checklist"
+  items={[
+    { id: "verify-endpoints", label: "對端點清單跑 `rg -n \"@router\\.(get|post|put|delete)\" tender-ai-backend/app/api/v1` 比對 method/path 數量", note: "確認 48 條與本文件一致；若有新增/重命名以原始碼為準。" },
+    { id: "verify-openapi", label: "啟動後端後開 /docs（FastAPI Swagger）對照 request/response schema", note: "需可連 DB 的環境；雲端臨時環境連不到 PCC 與本機 Ollama。" },
+    { id: "verify-models", label: "對 data-model 跑 `rg -n \"__tablename__\" tender-ai-backend/app/models` 核對 22 個 ORM class 與分層", note: "" },
+    { id: "verify-fe", label: "對前端 `rg -n \"export (async )?function\" tender-ai-frontend/src/lib` 核對 api.ts/auth-api.ts/events.ts 匯出", note: "確認路由→API 對應沒有遺漏的 raw fetch。" },
+    { id: "open-local", label: "在 Chrome/Chromium 開啟 local-files plan", note: "Safari 可能阻擋 HTTPS 頁面讀取 HTTP localhost bridge。" }
+  ]}
+/>
+
+### Open Questions
+
+<QuestionForm
+  id="open-questions"
+  questions={[
+    {
+      id: "doc-location",
+      title: "這份 API spec 文件要放哪裡、是否入版控？",
+      subtitle: "目前寫在 plans/tender-ai-api-spec/（local-files 模式）。",
+      mode: "single",
+      options: [
+        { id: "loc-docs", label: "移到 docs/governance/ 並入版控", detail: "當作長期 as-built 參照與新人導覽；只含 Layer A 結構，不含 Layer B 行為值，可安全入私有 repo。", recommended: true },
+        { id: "loc-plans", label: "留在 plans/（不主動 commit）", detail: "當暫時性導覽，隨時重生。" },
+        { id: "loc-readme", label: "濃縮成 backend README 一節", detail: "只保留端點表，模型/前端對應省略。" }
+      ],
+      required: true
+    },
+    {
+      id: "endpoint-count",
+      title: "端點權威計數要如何固定？",
+      subtitle: "列舉得到 48 條，先前統計曾出現 51。",
+      mode: "single",
+      options: [
+        { id: "cnt-openapi", label: "以 FastAPI /openapi.json 為單一真實來源", detail: "用腳本從 OpenAPI 自動生成此表，避免人工漂移。", recommended: true },
+        { id: "cnt-manual", label: "維持人工維護的 48 條表", detail: "改動時手動更新；簡單但易過期。" }
+      ],
+      required: false
+    },
+    {
+      id: "admin-fe",
+      title: "後台管理（/admin/*）的前端介面是否納入這次盤點的後續？",
+      subtitle: "後端已有白名單管理/重置密碼端點，前端介面狀態待確認。",
+      mode: "single",
+      options: [
+        { id: "admin-spec", label: "另開一份 admin console spec", detail: "把白名單、帳號、密碼重置、consent 稽核集中設計。", recommended: true },
+        { id: "admin-inline", label: "併入 SettingsPage 的管理員分頁", detail: "不另開頁，降低導覽複雜度。" },
+        { id: "admin-defer", label: "暫不處理", detail: "管理操作先走 API/CLI。" }
+      ],
+      required: false
+    },
+    {
+      id: "openapi-gen",
+      title: "要不要順手把這份手寫表升級成自動產生的 OpenAPI 文件站？",
+      mode: "freeform",
+      placeholder: "例如：是否接受 redoc/swagger-ui、放在哪個路徑、是否需要對外去識別化版本…"
+    }
+  ]}
+  submitLabel="送出決定"
+/>

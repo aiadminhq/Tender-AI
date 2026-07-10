@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tender AI - Dashboard Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#4a4b53",
+                        "primary-container": "#f59e0b",
+                        "on-secondary-container": "#bcbbc5",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#8fd5ff",
+                        "error": "#ffb4ab",
+                        "inverse-on-surface": "#382f25",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#1a1b22",
+                        "on-tertiary-fixed": "#001e2d",
+                        "on-tertiary-fixed-variant": "#004c6a",
+                        "secondary-fixed": "#e3e1ec",
+                        "on-secondary-fixed-variant": "#46464e",
+                        "secondary-fixed-dim": "#c6c5cf",
+                        "on-tertiary-container": "#004966",
+                        "surface-container": "#261e15",
+                        "surface-container-low": "#221a12",
+                        "outline-variant": "#534434",
+                        "on-primary": "#472a00",
+                        "on-surface": "#f0e0d1",
+                        "secondary": "#c6c5cf",
+                        "surface-dim": "#19120a",
+                        "on-primary-fixed-variant": "#653e00",
+                        "surface-container-lowest": "#140d06",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#c5e7ff",
+                        "inverse-primary": "#855300",
+                        "surface-tint": "#ffb95f",
+                        "primary-fixed": "#ffddb8",
+                        "on-primary-container": "#613b00",
+                        "outline": "#a08e7a",
+                        "on-background": "#f0e0d1",
+                        "tertiary-fixed-dim": "#7fd0ff",
+                        "primary": "#ffc174",
+                        "surface-container-highest": "#3c3329",
+                        "surface-bright": "#41382e",
+                        "on-tertiary": "#00344a",
+                        "on-primary-fixed": "#2a1700",
+                        "primary-fixed-dim": "#ffb95f",
+                        "background": "#19120a",
+                        "on-secondary": "#2f3038",
+                        "surface-container-high": "#31281f",
+                        "surface": "#19120a",
+                        "on-surface-variant": "#d8c3ad",
+                        "inverse-surface": "#f0e0d1",
+                        "surface-variant": "#3c3329",
+                        "tertiary-container": "#1abdff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "unit": "4px",
+                        "margin-desktop": "48px",
+                        "bento-gap": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Noto Sans"],
+                        "label-caps": ["JetBrains Mono"],
+                        "metric-lg": ["JetBrains Mono"],
+                        "headline-lg": ["Noto Sans"],
+                        "metric-sm": ["JetBrains Mono"],
+                        "body-md": ["Noto Sans"],
+                        "display-lg": ["Noto Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "metric-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "metric-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #09090B;
+            color: #FAFAFA;
+        }
+        .glass-card {
+            background-color: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(250, 250, 250, 0.1);
+        }
+        .glow-border {
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+        }
+        .amber-text { color: #F59E0B; }
+        .amber-bg { background-color: #F59E0B; }
+        
+        .gauge-circle {
+            stroke: #F59E0B;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 24; /* 76% */
+            transition: stroke-dashoffset 1s ease-in-out;
+            filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.8));
+        }
+        .gauge-circle-82 {
+            stroke: #F59E0B;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 18; /* 82% */
+            transition: stroke-dashoffset 1s ease-in-out;
+            filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.8));
+        }
+        .pulse-glow {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen overflow-x-hidden font-body-md text-body-md">
+<!-- TopNavBar -->
+<nav class="hidden md:flex flex-row justify-between items-center px-gutter py-4 w-full max-w-margin-desktop mx-auto bg-surface/60 backdrop-blur-[30px] border-b border-white/10 shadow-none z-50 sticky top-0">
+<div class="flex items-center gap-8">
+<span class="font-headline-lg text-headline-lg font-bold text-primary">Tender AI</span>
+<div class="flex items-center gap-6">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-body-md text-body-md hover:text-primary transition-colors hover:scale-95 transition-transform inline-block" href="#">Dashboard</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors hover:scale-95 transition-transform inline-block" href="#">Tender Pool</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors hover:scale-95 transition-transform inline-block" href="#">Analytics</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors hover:scale-95 transition-transform inline-block" href="#">Settings</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden ml-2 pulse-glow">
+<img alt="David" class="w-full h-full object-cover" data-alt="A highly detailed close-up portrait of a professional named David in a high-tech corporate setting. The lighting is cinematic with subtle amber and charcoal tones reflecting the Dark Spatial UI aesthetic. Sharp focus, realistic texture, modern light-mode feel but adapted for dark mode integration." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtyy41Otx2YvmUMK2xu69U9SH3sFFDP11Wre8BXRrv-RLMWRUVpVQy2Em6vMxGpdk9cwAXl1VhN3_5yRfyrUkS_69OIafm-dmkyoWqHcVZhRBhVXuASzI6U7Zt7c22KhFeBeESevlHWeGZAQo2hfc0flnjidRpCErSd_uBX3L4MGc-nn1OfY0IQkbqWfPF3pOsHo1K98vjwciCMRRtG7hRlEk0BoXLIhl7egAv79a_JwBZfPtqRnBmBx_Ry4ZKS19u9gDzsfrilA"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar (Mobile) -->
+<nav class="md:hidden fixed left-0 top-0 h-full w-64 bg-surface/60 backdrop-blur-[30px] border-r border-white/10 shadow-none z-40 flex flex-col p-4">
+<div class="mb-8">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Tender AI</span>
+</div>
+<div class="flex items-center gap-3 mb-8">
+<div class="w-10 h-10 rounded-full border-2 border-primary overflow-hidden pulse-glow">
+<img alt="David" class="w-full h-full object-cover" data-alt="A highly detailed close-up portrait of a professional named David in a high-tech corporate setting. The lighting is cinematic with subtle amber and charcoal tones reflecting the Dark Spatial UI aesthetic. Sharp focus, realistic texture, modern light-mode feel but adapted for dark mode integration." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZ7lFH13e316o8EbfM5lLNLResbe3vF3b4KAM8YdvVeNyEEe5BLpVX1iXaf211dZfCmULYdSrziY3I6u6cWPF8xl6RRbDhD-8GMJkB0JauAe0ujJjdL2hWYDrYuQy41lEz_UTcbohqlV8LN2QmegIze35pIfy4hfBRN1zeOk2cXn_7KeYCbjYXpiwmvV13oseGSZ0ROwcOz5fBB9oDM3EdkpbZQvtxmplvkzXdyq2u89rTYiryOUcpdBOZelAIpLuDNHHcSuPvWg"/>
+</div>
+<div>
+<div class="font-body-md text-body-md font-bold text-white">David</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant">AI Specialist</div>
+</div>
+</div>
+<button class="mb-8 w-full py-2 bg-primary text-black font-body-md text-body-md font-bold rounded hover:opacity-90 transition-opacity">
+            New Tender
+        </button>
+<div class="flex flex-col gap-2 flex-grow">
+<a class="bg-primary-container text-on-primary-container rounded-lg p-3 flex items-center gap-3 font-label-caps text-label-caps translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span> Dashboard
+            </a>
+<a class="text-on-surface-variant rounded-lg p-3 flex items-center gap-3 font-label-caps text-label-caps hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span> Tender Pool
+            </a>
+<a class="text-on-surface-variant rounded-lg p-3 flex items-center gap-3 font-label-caps text-label-caps hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">insights</span> Analytics
+            </a>
+<a class="text-on-surface-variant rounded-lg p-3 flex items-center gap-3 font-label-caps text-label-caps hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span> Settings
+            </a>
+</div>
+<div class="flex flex-col gap-2 mt-auto border-t border-white/10 pt-4">
+<a class="text-on-surface-variant rounded-lg p-3 flex items-center gap-3 font-label-caps text-label-caps hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span> Help
+            </a>
+<a class="text-on-surface-variant rounded-lg p-3 flex items-center gap-3 font-label-caps text-label-caps hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span> Logout
+            </a>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="w-full max-w-margin-desktop mx-auto px-margin-mobile md:px-gutter py-8 md:pl-gutter md:ml-0 md:w-full">
+<!-- Metrics Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-bento-gap mb-8">
+<div class="glass-card glow-border p-6 rounded-xl flex flex-col justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Daily Volume</span>
+<div class="flex items-baseline gap-2">
+<span class="font-metric-lg text-metric-lg text-white">142</span>
+<span class="font-metric-sm text-metric-sm amber-text">Daily Tenders</span>
+</div>
+</div>
+<div class="glass-card glow-border p-6 rounded-xl flex flex-col justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-2 uppercase">Pipeline</span>
+<div class="flex items-baseline gap-2">
+<span class="font-metric-lg text-metric-lg text-white">8</span>
+<span class="font-metric-sm text-metric-sm amber-text">Active Bids</span>
+</div>
+</div>
+<div class="glass-card glow-border p-6 rounded-xl flex flex-col justify-between items-center justify-center">
+<span class="font-metric-lg text-metric-lg text-white uppercase text-center w-full">Evolution Ready</span>
+</div>
+</div>
+<!-- Two Columns Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-bento-gap">
+<!-- Left Column (2/3) -->
+<div class="lg:col-span-2 flex flex-col gap-bento-gap">
+<div class="glass-card rounded-xl p-6 h-full border-t-2 border-primary/50">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-white mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined amber-text">center_focus_strong</span>
+                        Top Focus Queue
+                    </h2>
+<!-- Row 1 -->
+<div class="bg-black/30 rounded-lg p-5 mb-4 border border-white/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full amber-bg"></div>
+<div class="flex-grow">
+<h3 class="font-body-md text-body-md font-bold text-white mb-1 group-hover:text-primary transition-colors">醫院衛浴更新與感控改善工程</h3>
+<div class="flex flex-wrap gap-3 font-label-caps text-label-caps text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">account_balance_wallet</span> Budget: 3,360萬</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> 12 days left</span>
+</div>
+</div>
+<div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+<!-- Circular Gauge -->
+<div class="relative w-16 h-16 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90" viewbox="0 0 36 36">
+<circle class="stroke-surface-container-highest" cx="18" cy="18" fill="none" r="16" stroke-width="2"></circle>
+<circle class="gauge-circle" cx="18" cy="18" fill="none" r="16" stroke-linecap="round" stroke-width="2"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center flex-col">
+<span class="font-metric-sm text-metric-sm font-bold text-white leading-none">76%</span>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row gap-2">
+<button class="px-4 py-2 bg-primary/20 border border-primary text-primary font-label-caps text-label-caps rounded hover:bg-primary hover:text-black transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                                    [Accept]
+                                </button>
+<button class="px-4 py-2 bg-transparent border border-white/20 text-white font-label-caps text-label-caps rounded hover:bg-white/10 transition-colors">
+                                    [Ignore]
+                                </button>
+</div>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="bg-black/30 rounded-lg p-5 border border-white/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full amber-bg"></div>
+<div class="flex-grow">
+<h3 class="font-body-md text-body-md font-bold text-white mb-1 group-hover:text-primary transition-colors">北醫大樓天花板修繕採購</h3>
+<div class="flex flex-wrap gap-3 font-label-caps text-label-caps text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">account_balance_wallet</span> Budget: 450萬</span>
+<span class="flex items-center gap-1 amber-text"><span class="material-symbols-outlined text-[14px]">warning</span> 4 days left</span>
+</div>
+</div>
+<div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+<!-- Circular Gauge -->
+<div class="relative w-16 h-16 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90" viewbox="0 0 36 36">
+<circle class="stroke-surface-container-highest" cx="18" cy="18" fill="none" r="16" stroke-width="2"></circle>
+<circle class="gauge-circle-82" cx="18" cy="18" fill="none" r="16" stroke-linecap="round" stroke-width="2"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center flex-col">
+<span class="font-metric-sm text-metric-sm font-bold text-white leading-none">82%</span>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row gap-2">
+<button class="px-4 py-2 bg-primary/20 border border-primary text-primary font-label-caps text-label-caps rounded hover:bg-primary hover:text-black transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                                    [Accept]
+                                </button>
+<button class="px-4 py-2 bg-transparent border border-white/20 text-white font-label-caps text-label-caps rounded hover:bg-white/10 transition-colors">
+                                    [Ignore]
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column (1/3) -->
+<div class="lg:col-span-1 flex flex-col gap-bento-gap">
+<!-- Stack Card 1: Active ML Rules -->
+<div class="glass-card rounded-xl p-5 border-t border-white/10 flex-grow">
+<h3 class="font-body-md text-body-md font-bold text-white mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">rule</span>
+                        Active ML Rules
+                    </h3>
+<div class="mb-4">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Focus Keywords</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-primary/10 border border-primary/30 text-primary font-label-caps text-label-caps rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full amber-bg pulse-glow"></span> 醫療設備
+                            </span>
+<span class="px-2 py-1 bg-primary/10 border border-primary/30 text-primary font-label-caps text-label-caps rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full amber-bg pulse-glow"></span> 裝修工程
+                            </span>
+<span class="px-2 py-1 bg-primary/10 border border-primary/30 text-primary font-label-caps text-label-caps rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full amber-bg pulse-glow"></span> 感控
+                            </span>
+</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-2">Avoid Keywords</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-surface-container-highest border border-white/10 text-on-surface font-label-caps text-label-caps rounded-full">
+                                道路維護
+                            </span>
+<span class="px-2 py-1 bg-surface-container-highest border border-white/10 text-on-surface font-label-caps text-label-caps rounded-full">
+                                綠化
+                            </span>
+</div>
+</div>
+</div>
+<!-- Stack Card 2: Team Sync -->
+<div class="glass-card rounded-xl p-5 border-t border-white/10 flex-grow">
+<h3 class="font-body-md text-body-md font-bold text-white mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">group</span>
+                        Layer B Team Sync Stats
+                    </h3>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center font-label-caps text-label-caps font-bold">CW</div>
+<span class="font-body-md text-body-md text-white">Christian Wu</span>
+</div>
+<span class="font-metric-sm text-metric-sm amber-text">Active</span>
+</div>
+<div class="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center font-label-caps text-label-caps font-bold">A</div>
+<span class="font-body-md text-body-md text-white">Aaron</span>
+</div>
+<span class="font-metric-sm text-metric-sm text-on-surface-variant">Syncing...</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Assistant Button -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-black rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.5)] hover:scale-110 transition-transform z-50 pulse-glow">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</button>
+</body></html>

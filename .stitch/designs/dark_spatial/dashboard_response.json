@@ -1,0 +1,438 @@
+{
+  "id": 1782627482842,
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [
+      {
+        "text": "{\"projectId\":\"5757726888608838473\",\"sessionId\":\"8808559365338082046\",\"outputComponents\":[{\"designSystem\":{\"name\":\"assets/11d7c20bd4cd4ee2beb4c73a6e278afa\",\"designSystem\":{\"displayName\":\"Tender AI\",\"styleGuidelines\":\"## Brand & Style\\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \\\"technological warmth\\\" through its amber-on-charcoal palette.\\n\\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \\\"glowing\\\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\\n\\n## Layout & Spacing\\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\\n\\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\\n\\n## Elevation & Depth\\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\\n\\n1.  **Level 0 (Background):** Solid #09090B.\\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\\n4.  **Active Depth:** Elements that are focused or \\\"on\\\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \\\"Ghost\\\" style with an Amber 1px border and a subtle outer glow on hover.\\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \\\"Glowing Border\\\" where a segment of the stroke is highlighted in Amber.\\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \\\"track\\\" is dark charcoal, and the \\\"progress\\\" is Neon Amber with a 10px blur shadow to create the glowing effect.\\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.\",\"theme\":{\"colorMode\":\"DARK\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f59e0b\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"JETBRAINS_MONO\",\"namedColors\":{\"background\":\"#19120a\",\"error\":\"#ffb4ab\",\"error_container\":\"#93000a\",\"inverse_on_surface\":\"#382f25\",\"inverse_primary\":\"#855300\",\"inverse_surface\":\"#f0e0d1\",\"on_background\":\"#f0e0d1\",\"on_error\":\"#690005\",\"on_error_container\":\"#ffdad6\",\"on_primary\":\"#472a00\",\"on_primary_container\":\"#613b00\",\"on_primary_fixed\":\"#2a1700\",\"on_primary_fixed_variant\":\"#653e00\",\"on_secondary\":\"#2f3038\",\"on_secondary_container\":\"#bcbbc5\",\"on_secondary_fixed\":\"#1a1b22\",\"on_secondary_fixed_variant\":\"#46464e\",\"on_surface\":\"#f0e0d1\",\"on_surface_variant\":\"#d8c3ad\",\"on_tertiary\":\"#00344a\",\"on_tertiary_container\":\"#004966\",\"on_tertiary_fixed\":\"#001e2d\",\"on_tertiary_fixed_variant\":\"#004c6a\",\"outline\":\"#a08e7a\",\"outline_variant\":\"#534434\",\"primary\":\"#ffc174\",\"primary_container\":\"#f59e0b\",\"primary_fixed\":\"#ffddb8\",\"primary_fixed_dim\":\"#ffb95f\",\"secondary\":\"#c6c5cf\",\"secondary_container\":\"#4a4b53\",\"secondary_fixed\":\"#e3e1ec\",\"secondary_fixed_dim\":\"#c6c5cf\",\"surface\":\"#19120a\",\"surface_bright\":\"#41382e\",\"surface_container\":\"#261e15\",\"surface_container_high\":\"#31281f\",\"surface_container_highest\":\"#3c3329\",\"surface_container_low\":\"#221a12\",\"surface_container_lowest\":\"#140d06\",\"surface_dim\":\"#19120a\",\"surface_tint\":\"#ffb95f\",\"surface_variant\":\"#3c3329\",\"tertiary\":\"#8fd5ff\",\"tertiary_container\":\"#1abdff\",\"tertiary_fixed\":\"#c5e7ff\",\"tertiary_fixed_dim\":\"#7fd0ff\"},\"designMd\":\"---\\nname: Tender AI\\ncolors:\\n  surface: '#19120a'\\n  surface-dim: '#19120a'\\n  surface-bright: '#41382e'\\n  surface-container-lowest: '#140d06'\\n  surface-container-low: '#221a12'\\n  surface-container: '#261e15'\\n  surface-container-high: '#31281f'\\n  surface-container-highest: '#3c3329'\\n  on-surface: '#f0e0d1'\\n  on-surface-variant: '#d8c3ad'\\n  inverse-surface: '#f0e0d1'\\n  inverse-on-surface: '#382f25'\\n  outline: '#a08e7a'\\n  outline-variant: '#534434'\\n  surface-tint: '#ffb95f'\\n  primary: '#ffc174'\\n  on-primary: '#472a00'\\n  primary-container: '#f59e0b'\\n  on-primary-container: '#613b00'\\n  inverse-primary: '#855300'\\n  secondary: '#c6c5cf'\\n  on-secondary: '#2f3038'\\n  secondary-container: '#4a4b53'\\n  on-secondary-container: '#bcbbc5'\\n  tertiary: '#8fd5ff'\\n  on-tertiary: '#00344a'\\n  tertiary-container: '#1abdff'\\n  on-tertiary-container: '#004966'\\n  error: '#ffb4ab'\\n  on-error: '#690005'\\n  error-container: '#93000a'\\n  on-error-container: '#ffdad6'\\n  primary-fixed: '#ffddb8'\\n  primary-fixed-dim: '#ffb95f'\\n  on-primary-fixed: '#2a1700'\\n  on-primary-fixed-variant: '#653e00'\\n  secondary-fixed: '#e3e1ec'\\n  secondary-fixed-dim: '#c6c5cf'\\n  on-secondary-fixed: '#1a1b22'\\n  on-secondary-fixed-variant: '#46464e'\\n  tertiary-fixed: '#c5e7ff'\\n  tertiary-fixed-dim: '#7fd0ff'\\n  on-tertiary-fixed: '#001e2d'\\n  on-tertiary-fixed-variant: '#004c6a'\\n  background: '#19120a'\\n  on-background: '#f0e0d1'\\n  surface-variant: '#3c3329'\\ntypography:\\n  display-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 48px\\n    fontWeight: '700'\\n    lineHeight: 56px\\n    letterSpacing: -0.02em\\n  headline-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 32px\\n    fontWeight: '600'\\n    lineHeight: 40px\\n  headline-lg-mobile:\\n    fontFamily: Noto Sans\\n    fontSize: 24px\\n    fontWeight: '600'\\n    lineHeight: 32px\\n  body-md:\\n    fontFamily: Noto Sans\\n    fontSize: 16px\\n    fontWeight: '400'\\n    lineHeight: 24px\\n  metric-lg:\\n    fontFamily: JetBrains Mono\\n    fontSize: 24px\\n    fontWeight: '500'\\n    lineHeight: 32px\\n    letterSpacing: -0.01em\\n  metric-sm:\\n    fontFamily: JetBrains Mono\\n    fontSize: 14px\\n    fontWeight: '500'\\n    lineHeight: 20px\\n  label-caps:\\n    fontFamily: JetBrains Mono\\n    fontSize: 12px\\n    fontWeight: '600'\\n    lineHeight: 16px\\n    letterSpacing: 0.05em\\nrounded:\\n  sm: 0.25rem\\n  DEFAULT: 0.5rem\\n  md: 0.75rem\\n  lg: 1rem\\n  xl: 1.5rem\\n  full: 9999px\\nspacing:\\n  unit: 4px\\n  gutter: 24px\\n  margin-desktop: 48px\\n  margin-mobile: 16px\\n  bento-gap: 16px\\n---\\n\\n## Brand & Style\\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \\\"technological warmth\\\" through its amber-on-charcoal palette.\\n\\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \\\"glowing\\\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\\n\\n## Colors\\nThe palette is dominated by a deep, monochromatic foundation to maximize the impact of the **Neon Amber** accent.\\n\\n- **Background:** A pure, ink-like dark gray (#09090B) serves as the infinite canvas.\\n- **Primary (Neon Amber):** Used for critical actions, active states, and data highlights. When active, this color should utilize a 12px-20px Gaussian blur \\\"outer glow\\\" to simulate light emission.\\n- **Surfaces:** Semi-transparent charcoal layers allow for backdrop-blur effects (20px-40px), creating a sense of stacked glass plates.\\n- **Text:** High-contrast white (#FAFAFA) is used for all primary reading paths, while muted zinc (#71717A) is reserved for secondary metadata.\\n\\n## Typography\\nThe typography system balances human-centric readability with technical precision. \\n\\n**Noto Sans** is the workhorse for the UI, providing a clean, neutral canvas for labels, buttons, and descriptions. **JetBrains Mono** is strategically deployed for \\\"Metrics and Data\\\"—anywhere numerical values, timestamps, or code-like identifiers appear. This monospaced contrast reinforces the \\\"AI/Technical\\\" nature of the brand. Use `label-caps` for small utility headers to provide a structural, architectural feel to bento-grid layouts.\\n\\n## Layout & Spacing\\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\\n\\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\\n\\n## Elevation & Depth\\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\\n\\n1.  **Level 0 (Background):** Solid #09090B.\\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\\n4.  **Active Depth:** Elements that are focused or \\\"on\\\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\\n\\n## Shapes\\nThe shape language is controlled and modern. \\n\\nA `roundedness` of **2** (0.5rem / 8px) is the standard for cards and inputs, providing a soft but disciplined look. For \\\"Spatial\\\" elements like floating navigation bars or action chips, use `rounded-xl` (1.5rem) to suggest a more organic, tactile object. Large bento-grid containers should use `rounded-lg` (1rem) to create a distinct frame for internal elements.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \\\"Ghost\\\" style with an Amber 1px border and a subtle outer glow on hover.\\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \\\"Glowing Border\\\" where a segment of the stroke is highlighted in Amber.\\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \\\"track\\\" is dark charcoal, and the \\\"progress\\\" is Neon Amber with a 10px blur shadow to create the glowing effect.\\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.\",\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f59e0b\",\"overrideSecondaryColor\":\"#71717a\",\"spacingScale\":2,\"typography\":{\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"display-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"label-caps\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"12px\",\"fontWeight\":\"600\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.05em\"},\"metric-lg\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"24px\",\"fontWeight\":\"500\",\"lineHeight\":\"32px\",\"letterSpacing\":\"-0.01em\"},\"metric-sm\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"14px\",\"fontWeight\":\"500\",\"lineHeight\":\"20px\"}},\"spacing\":{\"bento-gap\":\"16px\",\"gutter\":\"24px\",\"margin-desktop\":\"48px\",\"margin-mobile\":\"16px\",\"unit\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Jetbrains Mono\"}},\"version\":\"1\"}},{\"design\":{\"screens\":[{\"screenshot\":{\"name\":\"projects/5757726888608838473/files/56023bcccb6c4bde8138217b282b250c\",\"downloadUrl\":\"https://lh3.googleusercontent.com/aida/AP1WRLtlBpEra_mfMPlf-v-RXNghEITuBZZr8yvMpRilFlidj0mhkZbEDkyo_cwxMsjDBQ7mk5glqLsa3qVZrSzJ6HLhfvj-vgVr-zXs2kUgu-5Bj7tUgKBw0UYxpOSf72Fdd2oa5a4UQjkOpHnQuKYixuLIqNq1afPSaFiQF1Y3Ww6BYU9cyD-nvCQmKCbEwgGmtUrSY9OaVadcNFyC8s3WS6ZVoT2g87QvAijWYyI_JqK53aOppEEOKcoKwQ\"},\"htmlCode\":{\"name\":\"projects/5757726888608838473/files/7b61ea945d8e446da3de67151b0b05c9\",\"downloadUrl\":\"https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzYzZGYwMzY3NmQ0MDQ0MWQ5MDEzNzI5YTRkM2FjMGFmEgoSBhCVjN2bchgBkgEjCgpwcm9qZWN0X2lkEhVCEzU3NTc3MjY4ODg2MDg4Mzg0NzM&filename=&opi=96797242\",\"mimeType\":\"text/html\"},\"id\":\"cae00fb867d24b649f8454a6aafb7c90\",\"generatedBy\":\"figaro_agent\",\"width\":\"2560\",\"height\":\"2444\",\"title\":\"Tender AI Dashboard Hub - Dark Spatial\",\"prompt\":\"Generate the \\\"Tender AI\\\" Dashboard Hub in \\\"Dark Spatial Amber\\\" style.\\nBackground: #09090B.\\nTop Navigation: Use the transparent TopNavBar component. User David profile should have a yellow indicator ring.\\nBento Metrics Row: Three cards with glowing amber borders.\\n- \\\"142 Daily Tenders\\\" (Monospace)\\n- \\\"8 Active Bids\\\" (Monospace)\\n- \\\"Evolution Ready\\\" (Monospace)\\nMain Content (Two Columns):\\n- Left (2/3): \\\"Top Focus Queue\\\". Dark glassmorphism card. \\n  - Row 1: \\\"醫院衛浴更新與感控改善工程\\\" (Budget: 3,360萬, 12 days left). 76% Feasibility neon amber circular gauge. Buttons: \\\"[Accept]\\\" (amber glow), \\\"[Ignore]\\\" (dark outline).\\n  - Row 2: \\\"北醫大樓天花板修繕採購\\\" (Budget: 450萬, 4 days left). 82% Feasibility neon amber circular gauge.\\n- Right (1/3): \\n  - Stack Card 1: Active ML rules (Focus vs Avoid keywords).\\n  - Stack Card 2: \\\"Layer B Team Sync Stats\\\" with tags for Christian Wu and Aaron.\\nBottom-Right: A floating assistant chat button with a pulsing amber glow.\\nAll text should be bright white #FAFAFA. Use neon amber #F59E0B for highlights and gauges.\",\"name\":\"projects/5757726888608838473/screens/cae00fb867d24b649f8454a6aafb7c90\",\"theme\":{\"colorMode\":\"DARK\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f59e0b\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"JETBRAINS_MONO\",\"namedColors\":{\"background\":\"#19120a\",\"error\":\"#ffb4ab\",\"error_container\":\"#93000a\",\"inverse_on_surface\":\"#382f25\",\"inverse_primary\":\"#855300\",\"inverse_surface\":\"#f0e0d1\",\"on_background\":\"#f0e0d1\",\"on_error\":\"#690005\",\"on_error_container\":\"#ffdad6\",\"on_primary\":\"#472a00\",\"on_primary_container\":\"#613b00\",\"on_primary_fixed\":\"#2a1700\",\"on_primary_fixed_variant\":\"#653e00\",\"on_secondary\":\"#2f3038\",\"on_secondary_container\":\"#bcbbc5\",\"on_secondary_fixed\":\"#1a1b22\",\"on_secondary_fixed_variant\":\"#46464e\",\"on_surface\":\"#f0e0d1\",\"on_surface_variant\":\"#d8c3ad\",\"on_tertiary\":\"#00344a\",\"on_tertiary_container\":\"#004966\",\"on_tertiary_fixed\":\"#001e2d\",\"on_tertiary_fixed_variant\":\"#004c6a\",\"outline\":\"#a08e7a\",\"outline_variant\":\"#534434\",\"primary\":\"#ffc174\",\"primary_container\":\"#f59e0b\",\"primary_fixed\":\"#ffddb8\",\"primary_fixed_dim\":\"#ffb95f\",\"secondary\":\"#c6c5cf\",\"secondary_container\":\"#4a4b53\",\"secondary_fixed\":\"#e3e1ec\",\"secondary_fixed_dim\":\"#c6c5cf\",\"surface\":\"#19120a\",\"surface_bright\":\"#41382e\",\"surface_container\":\"#261e15\",\"surface_container_high\":\"#31281f\",\"surface_container_highest\":\"#3c3329\",\"surface_container_low\":\"#221a12\",\"surface_container_lowest\":\"#140d06\",\"surface_dim\":\"#19120a\",\"surface_tint\":\"#ffb95f\",\"surface_variant\":\"#3c3329\",\"tertiary\":\"#8fd5ff\",\"tertiary_container\":\"#1abdff\",\"tertiary_fixed\":\"#c5e7ff\",\"tertiary_fixed_dim\":\"#7fd0ff\"},\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f59e0b\",\"overrideSecondaryColor\":\"#71717a\",\"spacingScale\":2,\"typography\":{\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"display-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"label-caps\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"12px\",\"fontWeight\":\"600\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.05em\"},\"metric-lg\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"24px\",\"fontWeight\":\"500\",\"lineHeight\":\"32px\",\"letterSpacing\":\"-0.01em\"},\"metric-sm\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"14px\",\"fontWeight\":\"500\",\"lineHeight\":\"20px\"}},\"spacing\":{\"bento-gap\":\"16px\",\"gutter\":\"24px\",\"margin-desktop\":\"48px\",\"margin-mobile\":\"16px\",\"unit\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Jetbrains Mono\"},\"deviceType\":\"DESKTOP\",\"screenType\":\"DESIGN\",\"screenMetadata\":{\"agentType\":\"PRO_AGENT\",\"status\":\"COMPLETE\"},\"designSystem\":{\"name\":\"assets/11d7c20bd4cd4ee2beb4c73a6e278afa\",\"designSystem\":{\"displayName\":\"Tender AI\",\"styleGuidelines\":\"## Brand & Style\\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \\\"technological warmth\\\" through its amber-on-charcoal palette.\\n\\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \\\"glowing\\\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\\n\\n## Layout & Spacing\\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\\n\\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\\n\\n## Elevation & Depth\\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\\n\\n1.  **Level 0 (Background):** Solid #09090B.\\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\\n4.  **Active Depth:** Elements that are focused or \\\"on\\\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \\\"Ghost\\\" style with an Amber 1px border and a subtle outer glow on hover.\\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \\\"Glowing Border\\\" where a segment of the stroke is highlighted in Amber.\\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \\\"track\\\" is dark charcoal, and the \\\"progress\\\" is Neon Amber with a 10px blur shadow to create the glowing effect.\\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.\",\"theme\":{\"colorMode\":\"DARK\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f59e0b\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"JETBRAINS_MONO\",\"namedColors\":{\"background\":\"#19120a\",\"error\":\"#ffb4ab\",\"error_container\":\"#93000a\",\"inverse_on_surface\":\"#382f25\",\"inverse_primary\":\"#855300\",\"inverse_surface\":\"#f0e0d1\",\"on_background\":\"#f0e0d1\",\"on_error\":\"#690005\",\"on_error_container\":\"#ffdad6\",\"on_primary\":\"#472a00\",\"on_primary_container\":\"#613b00\",\"on_primary_fixed\":\"#2a1700\",\"on_primary_fixed_variant\":\"#653e00\",\"on_secondary\":\"#2f3038\",\"on_secondary_container\":\"#bcbbc5\",\"on_secondary_fixed\":\"#1a1b22\",\"on_secondary_fixed_variant\":\"#46464e\",\"on_surface\":\"#f0e0d1\",\"on_surface_variant\":\"#d8c3ad\",\"on_tertiary\":\"#00344a\",\"on_tertiary_container\":\"#004966\",\"on_tertiary_fixed\":\"#001e2d\",\"on_tertiary_fixed_variant\":\"#004c6a\",\"outline\":\"#a08e7a\",\"outline_variant\":\"#534434\",\"primary\":\"#ffc174\",\"primary_container\":\"#f59e0b\",\"primary_fixed\":\"#ffddb8\",\"primary_fixed_dim\":\"#ffb95f\",\"secondary\":\"#c6c5cf\",\"secondary_container\":\"#4a4b53\",\"secondary_fixed\":\"#e3e1ec\",\"secondary_fixed_dim\":\"#c6c5cf\",\"surface\":\"#19120a\",\"surface_bright\":\"#41382e\",\"surface_container\":\"#261e15\",\"surface_container_high\":\"#31281f\",\"surface_container_highest\":\"#3c3329\",\"surface_container_low\":\"#221a12\",\"surface_container_lowest\":\"#140d06\",\"surface_dim\":\"#19120a\",\"surface_tint\":\"#ffb95f\",\"surface_variant\":\"#3c3329\",\"tertiary\":\"#8fd5ff\",\"tertiary_container\":\"#1abdff\",\"tertiary_fixed\":\"#c5e7ff\",\"tertiary_fixed_dim\":\"#7fd0ff\"},\"designMd\":\"---\\nname: Tender AI\\ncolors:\\n  surface: '#19120a'\\n  surface-dim: '#19120a'\\n  surface-bright: '#41382e'\\n  surface-container-lowest: '#140d06'\\n  surface-container-low: '#221a12'\\n  surface-container: '#261e15'\\n  surface-container-high: '#31281f'\\n  surface-container-highest: '#3c3329'\\n  on-surface: '#f0e0d1'\\n  on-surface-variant: '#d8c3ad'\\n  inverse-surface: '#f0e0d1'\\n  inverse-on-surface: '#382f25'\\n  outline: '#a08e7a'\\n  outline-variant: '#534434'\\n  surface-tint: '#ffb95f'\\n  primary: '#ffc174'\\n  on-primary: '#472a00'\\n  primary-container: '#f59e0b'\\n  on-primary-container: '#613b00'\\n  inverse-primary: '#855300'\\n  secondary: '#c6c5cf'\\n  on-secondary: '#2f3038'\\n  secondary-container: '#4a4b53'\\n  on-secondary-container: '#bcbbc5'\\n  tertiary: '#8fd5ff'\\n  on-tertiary: '#00344a'\\n  tertiary-container: '#1abdff'\\n  on-tertiary-container: '#004966'\\n  error: '#ffb4ab'\\n  on-error: '#690005'\\n  error-container: '#93000a'\\n  on-error-container: '#ffdad6'\\n  primary-fixed: '#ffddb8'\\n  primary-fixed-dim: '#ffb95f'\\n  on-primary-fixed: '#2a1700'\\n  on-primary-fixed-variant: '#653e00'\\n  secondary-fixed: '#e3e1ec'\\n  secondary-fixed-dim: '#c6c5cf'\\n  on-secondary-fixed: '#1a1b22'\\n  on-secondary-fixed-variant: '#46464e'\\n  tertiary-fixed: '#c5e7ff'\\n  tertiary-fixed-dim: '#7fd0ff'\\n  on-tertiary-fixed: '#001e2d'\\n  on-tertiary-fixed-variant: '#004c6a'\\n  background: '#19120a'\\n  on-background: '#f0e0d1'\\n  surface-variant: '#3c3329'\\ntypography:\\n  display-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 48px\\n    fontWeight: '700'\\n    lineHeight: 56px\\n    letterSpacing: -0.02em\\n  headline-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 32px\\n    fontWeight: '600'\\n    lineHeight: 40px\\n  headline-lg-mobile:\\n    fontFamily: Noto Sans\\n    fontSize: 24px\\n    fontWeight: '600'\\n    lineHeight: 32px\\n  body-md:\\n    fontFamily: Noto Sans\\n    fontSize: 16px\\n    fontWeight: '400'\\n    lineHeight: 24px\\n  metric-lg:\\n    fontFamily: JetBrains Mono\\n    fontSize: 24px\\n    fontWeight: '500'\\n    lineHeight: 32px\\n    letterSpacing: -0.01em\\n  metric-sm:\\n    fontFamily: JetBrains Mono\\n    fontSize: 14px\\n    fontWeight: '500'\\n    lineHeight: 20px\\n  label-caps:\\n    fontFamily: JetBrains Mono\\n    fontSize: 12px\\n    fontWeight: '600'\\n    lineHeight: 16px\\n    letterSpacing: 0.05em\\nrounded:\\n  sm: 0.25rem\\n  DEFAULT: 0.5rem\\n  md: 0.75rem\\n  lg: 1rem\\n  xl: 1.5rem\\n  full: 9999px\\nspacing:\\n  unit: 4px\\n  gutter: 24px\\n  margin-desktop: 48px\\n  margin-mobile: 16px\\n  bento-gap: 16px\\n---\\n\\n## Brand & Style\\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \\\"technological warmth\\\" through its amber-on-charcoal palette.\\n\\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \\\"glowing\\\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\\n\\n## Colors\\nThe palette is dominated by a deep, monochromatic foundation to maximize the impact of the **Neon Amber** accent.\\n\\n- **Background:** A pure, ink-like dark gray (#09090B) serves as the infinite canvas.\\n- **Primary (Neon Amber):** Used for critical actions, active states, and data highlights. When active, this color should utilize a 12px-20px Gaussian blur \\\"outer glow\\\" to simulate light emission.\\n- **Surfaces:** Semi-transparent charcoal layers allow for backdrop-blur effects (20px-40px), creating a sense of stacked glass plates.\\n- **Text:** High-contrast white (#FAFAFA) is used for all primary reading paths, while muted zinc (#71717A) is reserved for secondary metadata.\\n\\n## Typography\\nThe typography system balances human-centric readability with technical precision. \\n\\n**Noto Sans** is the workhorse for the UI, providing a clean, neutral canvas for labels, buttons, and descriptions. **JetBrains Mono** is strategically deployed for \\\"Metrics and Data\\\"—anywhere numerical values, timestamps, or code-like identifiers appear. This monospaced contrast reinforces the \\\"AI/Technical\\\" nature of the brand. Use `label-caps` for small utility headers to provide a structural, architectural feel to bento-grid layouts.\\n\\n## Layout & Spacing\\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\\n\\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\\n\\n## Elevation & Depth\\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\\n\\n1.  **Level 0 (Background):** Solid #09090B.\\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\\n4.  **Active Depth:** Elements that are focused or \\\"on\\\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\\n\\n## Shapes\\nThe shape language is controlled and modern. \\n\\nA `roundedness` of **2** (0.5rem / 8px) is the standard for cards and inputs, providing a soft but disciplined look. For \\\"Spatial\\\" elements like floating navigation bars or action chips, use `rounded-xl` (1.5rem) to suggest a more organic, tactile object. Large bento-grid containers should use `rounded-lg` (1rem) to create a distinct frame for internal elements.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \\\"Ghost\\\" style with an Amber 1px border and a subtle outer glow on hover.\\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \\\"Glowing Border\\\" where a segment of the stroke is highlighted in Amber.\\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \\\"track\\\" is dark charcoal, and the \\\"progress\\\" is Neon Amber with a 10px blur shadow to create the glowing effect.\\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.\",\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f59e0b\",\"overrideSecondaryColor\":\"#71717a\",\"spacingScale\":2,\"typography\":{\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"display-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"label-caps\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"12px\",\"fontWeight\":\"600\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.05em\"},\"metric-lg\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"24px\",\"fontWeight\":\"500\",\"lineHeight\":\"32px\",\"letterSpacing\":\"-0.01em\"},\"metric-sm\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"14px\",\"fontWeight\":\"500\",\"lineHeight\":\"20px\"}},\"spacing\":{\"bento-gap\":\"16px\",\"gutter\":\"24px\",\"margin-desktop\":\"48px\",\"margin-mobile\":\"16px\",\"unit\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Jetbrains Mono\"}},\"version\":\"1\"}}],\"theme\":{}}},{\"text\":\"I've designed the **Tender AI Dashboard Hub** using a \\\"Dark Spatial Amber\\\" aesthetic. \\n\\n### Design Highlights:\\n*   **Spatial Atmosphere:** The interface features a pure dark gray background (`#09090B`) with semi-transparent charcoal cards and glassmorphism blur effects to create depth.\\n*   **Bento Metrics:** A row of glowing amber-bordered cards displays your key performance indicators (Tenders, Bids, Evolution Status) using monospace typography for a precise, data-driven feel.\\n*   **Focus Queue:** The main 2/3 width panel showcases critical tenders with **neon amber circular gauges** representing feasibility scores. I've implemented the high-contrast \\\"[Accept]\\\" buttons with an outer glow to draw immediate focus.\\n*   **Active Monitoring:** The right panel provides a clear view of your ML keyword rules and team synchronization status for Christian and Aaron.\\n*   **Pulsing Assistant:** A floating AI assistant button in the bottom-right features a subtle pulse animation in neon amber, serving as your \\\"Command Center\\\" anchor.\\n\\nHow does this spatial direction look to you? We can further refine the \\\"Evolution\\\" animations or adjust the glassmorphism intensity if needed.\"},{\"suggestion\":\"Make the glassmorphism blur stronger\"},{\"suggestion\":\"Add a 'New Tender' button to the header\"},{\"suggestion\":\"Can we see a mobile version of this?\"}]}",
+        "type": "text"
+      }
+    ],
+    "structuredContent": {
+      "outputComponents": [
+        {
+          "designSystem": {
+            "designSystem": {
+              "displayName": "Tender AI",
+              "styleGuidelines": "## Brand & Style\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \"technological warmth\" through its amber-on-charcoal palette.\n\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \"glowing\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\n\n## Layout & Spacing\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\n\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\n\n## Elevation & Depth\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\n\n1.  **Level 0 (Background):** Solid #09090B.\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\n4.  **Active Depth:** Elements that are focused or \"on\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\n\n## Components\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \"Ghost\" style with an Amber 1px border and a subtle outer glow on hover.\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \"Glowing Border\" where a segment of the stroke is highlighted in Amber.\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \"track\" is dark charcoal, and the \"progress\" is Neon Amber with a 10px blur shadow to create the glowing effect.\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.",
+              "theme": {
+                "bodyFont": "NOTO_SANS",
+                "bodyFontFamily": "Noto Sans",
+                "colorMode": "DARK",
+                "colorVariant": "FIDELITY",
+                "customColor": "#f59e0b",
+                "designMd": "---\nname: Tender AI\ncolors:\n  surface: '#19120a'\n  surface-dim: '#19120a'\n  surface-bright: '#41382e'\n  surface-container-lowest: '#140d06'\n  surface-container-low: '#221a12'\n  surface-container: '#261e15'\n  surface-container-high: '#31281f'\n  surface-container-highest: '#3c3329'\n  on-surface: '#f0e0d1'\n  on-surface-variant: '#d8c3ad'\n  inverse-surface: '#f0e0d1'\n  inverse-on-surface: '#382f25'\n  outline: '#a08e7a'\n  outline-variant: '#534434'\n  surface-tint: '#ffb95f'\n  primary: '#ffc174'\n  on-primary: '#472a00'\n  primary-container: '#f59e0b'\n  on-primary-container: '#613b00'\n  inverse-primary: '#855300'\n  secondary: '#c6c5cf'\n  on-secondary: '#2f3038'\n  secondary-container: '#4a4b53'\n  on-secondary-container: '#bcbbc5'\n  tertiary: '#8fd5ff'\n  on-tertiary: '#00344a'\n  tertiary-container: '#1abdff'\n  on-tertiary-container: '#004966'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#ffddb8'\n  primary-fixed-dim: '#ffb95f'\n  on-primary-fixed: '#2a1700'\n  on-primary-fixed-variant: '#653e00'\n  secondary-fixed: '#e3e1ec'\n  secondary-fixed-dim: '#c6c5cf'\n  on-secondary-fixed: '#1a1b22'\n  on-secondary-fixed-variant: '#46464e'\n  tertiary-fixed: '#c5e7ff'\n  tertiary-fixed-dim: '#7fd0ff'\n  on-tertiary-fixed: '#001e2d'\n  on-tertiary-fixed-variant: '#004c6a'\n  background: '#19120a'\n  on-background: '#f0e0d1'\n  surface-variant: '#3c3329'\ntypography:\n  display-lg:\n    fontFamily: Noto Sans\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Noto Sans\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n  headline-lg-mobile:\n    fontFamily: Noto Sans\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  body-md:\n    fontFamily: Noto Sans\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  metric-lg:\n    fontFamily: JetBrains Mono\n    fontSize: 24px\n    fontWeight: '500'\n    lineHeight: 32px\n    letterSpacing: -0.01em\n  metric-sm:\n    fontFamily: JetBrains Mono\n    fontSize: 14px\n    fontWeight: '500'\n    lineHeight: 20px\n  label-caps:\n    fontFamily: JetBrains Mono\n    fontSize: 12px\n    fontWeight: '600'\n    lineHeight: 16px\n    letterSpacing: 0.05em\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  unit: 4px\n  gutter: 24px\n  margin-desktop: 48px\n  margin-mobile: 16px\n  bento-gap: 16px\n---\n\n## Brand & Style\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \"technological warmth\" through its amber-on-charcoal palette.\n\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \"glowing\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\n\n## Colors\nThe palette is dominated by a deep, monochromatic foundation to maximize the impact of the **Neon Amber** accent.\n\n- **Background:** A pure, ink-like dark gray (#09090B) serves as the infinite canvas.\n- **Primary (Neon Amber):** Used for critical actions, active states, and data highlights. When active, this color should utilize a 12px-20px Gaussian blur \"outer glow\" to simulate light emission.\n- **Surfaces:** Semi-transparent charcoal layers allow for backdrop-blur effects (20px-40px), creating a sense of stacked glass plates.\n- **Text:** High-contrast white (#FAFAFA) is used for all primary reading paths, while muted zinc (#71717A) is reserved for secondary metadata.\n\n## Typography\nThe typography system balances human-centric readability with technical precision. \n\n**Noto Sans** is the workhorse for the UI, providing a clean, neutral canvas for labels, buttons, and descriptions. **JetBrains Mono** is strategically deployed for \"Metrics and Data\"—anywhere numerical values, timestamps, or code-like identifiers appear. This monospaced contrast reinforces the \"AI/Technical\" nature of the brand. Use `label-caps` for small utility headers to provide a structural, architectural feel to bento-grid layouts.\n\n## Layout & Spacing\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\n\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\n\n## Elevation & Depth\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\n\n1.  **Level 0 (Background):** Solid #09090B.\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\n4.  **Active Depth:** Elements that are focused or \"on\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\n\n## Shapes\nThe shape language is controlled and modern. \n\nA `roundedness` of **2** (0.5rem / 8px) is the standard for cards and inputs, providing a soft but disciplined look. For \"Spatial\" elements like floating navigation bars or action chips, use `rounded-xl` (1.5rem) to suggest a more organic, tactile object. Large bento-grid containers should use `rounded-lg` (1rem) to create a distinct frame for internal elements.\n\n## Components\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \"Ghost\" style with an Amber 1px border and a subtle outer glow on hover.\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \"Glowing Border\" where a segment of the stroke is highlighted in Amber.\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \"track\" is dark charcoal, and the \"progress\" is Neon Amber with a 10px blur shadow to create the glowing effect.\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.",
+                "font": "NOTO_SANS",
+                "headlineFont": "NOTO_SANS",
+                "headlineFontFamily": "Noto Sans",
+                "labelFont": "JETBRAINS_MONO",
+                "labelFontFamily": "Jetbrains Mono",
+                "namedColors": {
+                  "background": "#19120a",
+                  "error": "#ffb4ab",
+                  "error_container": "#93000a",
+                  "inverse_on_surface": "#382f25",
+                  "inverse_primary": "#855300",
+                  "inverse_surface": "#f0e0d1",
+                  "on_background": "#f0e0d1",
+                  "on_error": "#690005",
+                  "on_error_container": "#ffdad6",
+                  "on_primary": "#472a00",
+                  "on_primary_container": "#613b00",
+                  "on_primary_fixed": "#2a1700",
+                  "on_primary_fixed_variant": "#653e00",
+                  "on_secondary": "#2f3038",
+                  "on_secondary_container": "#bcbbc5",
+                  "on_secondary_fixed": "#1a1b22",
+                  "on_secondary_fixed_variant": "#46464e",
+                  "on_surface": "#f0e0d1",
+                  "on_surface_variant": "#d8c3ad",
+                  "on_tertiary": "#00344a",
+                  "on_tertiary_container": "#004966",
+                  "on_tertiary_fixed": "#001e2d",
+                  "on_tertiary_fixed_variant": "#004c6a",
+                  "outline": "#a08e7a",
+                  "outline_variant": "#534434",
+                  "primary": "#ffc174",
+                  "primary_container": "#f59e0b",
+                  "primary_fixed": "#ffddb8",
+                  "primary_fixed_dim": "#ffb95f",
+                  "secondary": "#c6c5cf",
+                  "secondary_container": "#4a4b53",
+                  "secondary_fixed": "#e3e1ec",
+                  "secondary_fixed_dim": "#c6c5cf",
+                  "surface": "#19120a",
+                  "surface_bright": "#41382e",
+                  "surface_container": "#261e15",
+                  "surface_container_high": "#31281f",
+                  "surface_container_highest": "#3c3329",
+                  "surface_container_low": "#221a12",
+                  "surface_container_lowest": "#140d06",
+                  "surface_dim": "#19120a",
+                  "surface_tint": "#ffb95f",
+                  "surface_variant": "#3c3329",
+                  "tertiary": "#8fd5ff",
+                  "tertiary_container": "#1abdff",
+                  "tertiary_fixed": "#c5e7ff",
+                  "tertiary_fixed_dim": "#7fd0ff"
+                },
+                "overridePrimaryColor": "#f59e0b",
+                "overrideSecondaryColor": "#71717a",
+                "roundness": "ROUND_EIGHT",
+                "spacing": {
+                  "bento-gap": "16px",
+                  "gutter": "24px",
+                  "margin-desktop": "48px",
+                  "margin-mobile": "16px",
+                  "unit": "4px"
+                },
+                "spacingScale": 2,
+                "typography": {
+                  "body-md": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "16px",
+                    "fontWeight": "400",
+                    "lineHeight": "24px"
+                  },
+                  "display-lg": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "48px",
+                    "fontWeight": "700",
+                    "letterSpacing": "-0.02em",
+                    "lineHeight": "56px"
+                  },
+                  "headline-lg": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "32px",
+                    "fontWeight": "600",
+                    "lineHeight": "40px"
+                  },
+                  "headline-lg-mobile": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "24px",
+                    "fontWeight": "600",
+                    "lineHeight": "32px"
+                  },
+                  "label-caps": {
+                    "fontFamily": "JetBrains Mono",
+                    "fontSize": "12px",
+                    "fontWeight": "600",
+                    "letterSpacing": "0.05em",
+                    "lineHeight": "16px"
+                  },
+                  "metric-lg": {
+                    "fontFamily": "JetBrains Mono",
+                    "fontSize": "24px",
+                    "fontWeight": "500",
+                    "letterSpacing": "-0.01em",
+                    "lineHeight": "32px"
+                  },
+                  "metric-sm": {
+                    "fontFamily": "JetBrains Mono",
+                    "fontSize": "14px",
+                    "fontWeight": "500",
+                    "lineHeight": "20px"
+                  }
+                }
+              }
+            },
+            "name": "assets/11d7c20bd4cd4ee2beb4c73a6e278afa",
+            "version": "1"
+          }
+        },
+        {
+          "design": {
+            "screens": [
+              {
+                "designSystem": {
+                  "designSystem": {
+                    "displayName": "Tender AI",
+                    "styleGuidelines": "## Brand & Style\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \"technological warmth\" through its amber-on-charcoal palette.\n\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \"glowing\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\n\n## Layout & Spacing\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\n\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\n\n## Elevation & Depth\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\n\n1.  **Level 0 (Background):** Solid #09090B.\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\n4.  **Active Depth:** Elements that are focused or \"on\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\n\n## Components\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \"Ghost\" style with an Amber 1px border and a subtle outer glow on hover.\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \"Glowing Border\" where a segment of the stroke is highlighted in Amber.\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \"track\" is dark charcoal, and the \"progress\" is Neon Amber with a 10px blur shadow to create the glowing effect.\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.",
+                    "theme": {
+                      "bodyFont": "NOTO_SANS",
+                      "bodyFontFamily": "Noto Sans",
+                      "colorMode": "DARK",
+                      "colorVariant": "FIDELITY",
+                      "customColor": "#f59e0b",
+                      "designMd": "---\nname: Tender AI\ncolors:\n  surface: '#19120a'\n  surface-dim: '#19120a'\n  surface-bright: '#41382e'\n  surface-container-lowest: '#140d06'\n  surface-container-low: '#221a12'\n  surface-container: '#261e15'\n  surface-container-high: '#31281f'\n  surface-container-highest: '#3c3329'\n  on-surface: '#f0e0d1'\n  on-surface-variant: '#d8c3ad'\n  inverse-surface: '#f0e0d1'\n  inverse-on-surface: '#382f25'\n  outline: '#a08e7a'\n  outline-variant: '#534434'\n  surface-tint: '#ffb95f'\n  primary: '#ffc174'\n  on-primary: '#472a00'\n  primary-container: '#f59e0b'\n  on-primary-container: '#613b00'\n  inverse-primary: '#855300'\n  secondary: '#c6c5cf'\n  on-secondary: '#2f3038'\n  secondary-container: '#4a4b53'\n  on-secondary-container: '#bcbbc5'\n  tertiary: '#8fd5ff'\n  on-tertiary: '#00344a'\n  tertiary-container: '#1abdff'\n  on-tertiary-container: '#004966'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#ffddb8'\n  primary-fixed-dim: '#ffb95f'\n  on-primary-fixed: '#2a1700'\n  on-primary-fixed-variant: '#653e00'\n  secondary-fixed: '#e3e1ec'\n  secondary-fixed-dim: '#c6c5cf'\n  on-secondary-fixed: '#1a1b22'\n  on-secondary-fixed-variant: '#46464e'\n  tertiary-fixed: '#c5e7ff'\n  tertiary-fixed-dim: '#7fd0ff'\n  on-tertiary-fixed: '#001e2d'\n  on-tertiary-fixed-variant: '#004c6a'\n  background: '#19120a'\n  on-background: '#f0e0d1'\n  surface-variant: '#3c3329'\ntypography:\n  display-lg:\n    fontFamily: Noto Sans\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Noto Sans\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n  headline-lg-mobile:\n    fontFamily: Noto Sans\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  body-md:\n    fontFamily: Noto Sans\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  metric-lg:\n    fontFamily: JetBrains Mono\n    fontSize: 24px\n    fontWeight: '500'\n    lineHeight: 32px\n    letterSpacing: -0.01em\n  metric-sm:\n    fontFamily: JetBrains Mono\n    fontSize: 14px\n    fontWeight: '500'\n    lineHeight: 20px\n  label-caps:\n    fontFamily: JetBrains Mono\n    fontSize: 12px\n    fontWeight: '600'\n    lineHeight: 16px\n    letterSpacing: 0.05em\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  unit: 4px\n  gutter: 24px\n  margin-desktop: 48px\n  margin-mobile: 16px\n  bento-gap: 16px\n---\n\n## Brand & Style\nThe design system for this product is rooted in a **Dark Spatial** aesthetic, blending high-performance data visualization with an immersive, atmospheric interface. It targets a sophisticated audience that requires precision and speed, evoking a sense of \"technological warmth\" through its amber-on-charcoal palette.\n\nThe style leverages **Glassmorphism** and **Spatial UI** principles to create perceived physical depth. It utilizes bento-grid structures to organize complex data into digestible, high-contrast modules. Visual hierarchy is established through \"glowing\" states and light-emission physics, making the UI feel like a futuristic head-up display (HUD).\n\n## Colors\nThe palette is dominated by a deep, monochromatic foundation to maximize the impact of the **Neon Amber** accent.\n\n- **Background:** A pure, ink-like dark gray (#09090B) serves as the infinite canvas.\n- **Primary (Neon Amber):** Used for critical actions, active states, and data highlights. When active, this color should utilize a 12px-20px Gaussian blur \"outer glow\" to simulate light emission.\n- **Surfaces:** Semi-transparent charcoal layers allow for backdrop-blur effects (20px-40px), creating a sense of stacked glass plates.\n- **Text:** High-contrast white (#FAFAFA) is used for all primary reading paths, while muted zinc (#71717A) is reserved for secondary metadata.\n\n## Typography\nThe typography system balances human-centric readability with technical precision. \n\n**Noto Sans** is the workhorse for the UI, providing a clean, neutral canvas for labels, buttons, and descriptions. **JetBrains Mono** is strategically deployed for \"Metrics and Data\"—anywhere numerical values, timestamps, or code-like identifiers appear. This monospaced contrast reinforces the \"AI/Technical\" nature of the brand. Use `label-caps` for small utility headers to provide a structural, architectural feel to bento-grid layouts.\n\n## Layout & Spacing\nThis design system utilizes a **Bento-Grid** philosophy. Content is grouped into logical modules (cards) that occupy specific spans on a 12-column fluid grid.\n\n- **Desktop:** 12 columns, 24px gutters. Bento containers should use a 16px gap to maintain tight visual clusters.\n- **Mobile:** 4 columns, 16px margins. Bento modules stack vertically, prioritizing metric cards at the top.\n- **Spatial Padding:** Elements within cards should use generous internal padding (min 24px) to allow the glassmorphism texture to be visible. Use a 4px base-unit for all spacing increments.\n\n## Elevation & Depth\nDepth is achieved through **optical transparency** rather than traditional drop shadows.\n\n1.  **Level 0 (Background):** Solid #09090B.\n2.  **Level 1 (Bento Cards):** Semi-transparent charcoal (rgba 24, 24, 27, 0.6) with a `backdrop-filter: blur(30px)`.\n3.  **Level 2 (Modals/Popovers):** Higher transparency with a subtle 1px inner border in white (opacity 10%) to define the edge.\n4.  **Active Depth:** Elements that are focused or \"on\" emit an Amber glow (#F59E0B at 20% opacity) that bleeds onto the surface below them, simulating a physical light source.\n\n## Shapes\nThe shape language is controlled and modern. \n\nA `roundedness` of **2** (0.5rem / 8px) is the standard for cards and inputs, providing a soft but disciplined look. For \"Spatial\" elements like floating navigation bars or action chips, use `rounded-xl` (1.5rem) to suggest a more organic, tactile object. Large bento-grid containers should use `rounded-lg` (1rem) to create a distinct frame for internal elements.\n\n## Components\n- **Buttons:** Primary buttons are solid Amber (#F59E0B) with black text. Secondary buttons are \"Ghost\" style with an Amber 1px border and a subtle outer glow on hover.\n- **Bento Cards:** The foundational container. Must include a 1px border (rgba 250, 250, 250, 0.1). High-priority cards may feature a \"Glowing Border\" where a segment of the stroke is highlighted in Amber.\n- **Neon Gauges:** Circular data visualizations using a 4px stroke width. The \"track\" is dark charcoal, and the \"progress\" is Neon Amber with a 10px blur shadow to create the glowing effect.\n- **Inputs:** Darker than the surface (rgba 0, 0, 0, 0.3) with a bottom-only 2px border that turns Amber when focused.\n- **Chips/Status:** Small, pill-shaped indicators. Use a JetBrains Mono font. Active statuses should have a small blinking dot (amber) next to the text to signify real-time data flow.\n- **Metric Displays:** Large JetBrains Mono values paired with a small trend line (sparkline) in Amber.",
+                      "font": "NOTO_SANS",
+                      "headlineFont": "NOTO_SANS",
+                      "headlineFontFamily": "Noto Sans",
+                      "labelFont": "JETBRAINS_MONO",
+                      "labelFontFamily": "Jetbrains Mono",
+                      "namedColors": {
+                        "background": "#19120a",
+                        "error": "#ffb4ab",
+                        "error_container": "#93000a",
+                        "inverse_on_surface": "#382f25",
+                        "inverse_primary": "#855300",
+                        "inverse_surface": "#f0e0d1",
+                        "on_background": "#f0e0d1",
+                        "on_error": "#690005",
+                        "on_error_container": "#ffdad6",
+                        "on_primary": "#472a00",
+                        "on_primary_container": "#613b00",
+                        "on_primary_fixed": "#2a1700",
+                        "on_primary_fixed_variant": "#653e00",
+                        "on_secondary": "#2f3038",
+                        "on_secondary_container": "#bcbbc5",
+                        "on_secondary_fixed": "#1a1b22",
+                        "on_secondary_fixed_variant": "#46464e",
+                        "on_surface": "#f0e0d1",
+                        "on_surface_variant": "#d8c3ad",
+                        "on_tertiary": "#00344a",
+                        "on_tertiary_container": "#004966",
+                        "on_tertiary_fixed": "#001e2d",
+                        "on_tertiary_fixed_variant": "#004c6a",
+                        "outline": "#a08e7a",
+                        "outline_variant": "#534434",
+                        "primary": "#ffc174",
+                        "primary_container": "#f59e0b",
+                        "primary_fixed": "#ffddb8",
+                        "primary_fixed_dim": "#ffb95f",
+                        "secondary": "#c6c5cf",
+                        "secondary_container": "#4a4b53",
+                        "secondary_fixed": "#e3e1ec",
+                        "secondary_fixed_dim": "#c6c5cf",
+                        "surface": "#19120a",
+                        "surface_bright": "#41382e",
+                        "surface_container": "#261e15",
+                        "surface_container_high": "#31281f",
+                        "surface_container_highest": "#3c3329",
+                        "surface_container_low": "#221a12",
+                        "surface_container_lowest": "#140d06",
+                        "surface_dim": "#19120a",
+                        "surface_tint": "#ffb95f",
+                        "surface_variant": "#3c3329",
+                        "tertiary": "#8fd5ff",
+                        "tertiary_container": "#1abdff",
+                        "tertiary_fixed": "#c5e7ff",
+                        "tertiary_fixed_dim": "#7fd0ff"
+                      },
+                      "overridePrimaryColor": "#f59e0b",
+                      "overrideSecondaryColor": "#71717a",
+                      "roundness": "ROUND_EIGHT",
+                      "spacing": {
+                        "bento-gap": "16px",
+                        "gutter": "24px",
+                        "margin-desktop": "48px",
+                        "margin-mobile": "16px",
+                        "unit": "4px"
+                      },
+                      "spacingScale": 2,
+                      "typography": {
+                        "body-md": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "16px",
+                          "fontWeight": "400",
+                          "lineHeight": "24px"
+                        },
+                        "display-lg": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "48px",
+                          "fontWeight": "700",
+                          "letterSpacing": "-0.02em",
+                          "lineHeight": "56px"
+                        },
+                        "headline-lg": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "32px",
+                          "fontWeight": "600",
+                          "lineHeight": "40px"
+                        },
+                        "headline-lg-mobile": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "24px",
+                          "fontWeight": "600",
+                          "lineHeight": "32px"
+                        },
+                        "label-caps": {
+                          "fontFamily": "JetBrains Mono",
+                          "fontSize": "12px",
+                          "fontWeight": "600",
+                          "letterSpacing": "0.05em",
+                          "lineHeight": "16px"
+                        },
+                        "metric-lg": {
+                          "fontFamily": "JetBrains Mono",
+                          "fontSize": "24px",
+                          "fontWeight": "500",
+                          "letterSpacing": "-0.01em",
+                          "lineHeight": "32px"
+                        },
+                        "metric-sm": {
+                          "fontFamily": "JetBrains Mono",
+                          "fontSize": "14px",
+                          "fontWeight": "500",
+                          "lineHeight": "20px"
+                        }
+                      }
+                    }
+                  },
+                  "name": "assets/11d7c20bd4cd4ee2beb4c73a6e278afa",
+                  "version": "1"
+                },
+                "deviceType": "DESKTOP",
+                "generatedBy": "figaro_agent",
+                "height": "2444",
+                "htmlCode": {
+                  "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzYzZGYwMzY3NmQ0MDQ0MWQ5MDEzNzI5YTRkM2FjMGFmEgoSBhCVjN2bchgBkgEjCgpwcm9qZWN0X2lkEhVCEzU3NTc3MjY4ODg2MDg4Mzg0NzM&filename=&opi=96797242",
+                  "mimeType": "text/html",
+                  "name": "projects/5757726888608838473/files/7b61ea945d8e446da3de67151b0b05c9"
+                },
+                "id": "cae00fb867d24b649f8454a6aafb7c90",
+                "name": "projects/5757726888608838473/screens/cae00fb867d24b649f8454a6aafb7c90",
+                "prompt": "Generate the \"Tender AI\" Dashboard Hub in \"Dark Spatial Amber\" style.\nBackground: #09090B.\nTop Navigation: Use the transparent TopNavBar component. User David profile should have a yellow indicator ring.\nBento Metrics Row: Three cards with glowing amber borders.\n- \"142 Daily Tenders\" (Monospace)\n- \"8 Active Bids\" (Monospace)\n- \"Evolution Ready\" (Monospace)\nMain Content (Two Columns):\n- Left (2/3): \"Top Focus Queue\". Dark glassmorphism card. \n  - Row 1: \"醫院衛浴更新與感控改善工程\" (Budget: 3,360萬, 12 days left). 76% Feasibility neon amber circular gauge. Buttons: \"[Accept]\" (amber glow), \"[Ignore]\" (dark outline).\n  - Row 2: \"北醫大樓天花板修繕採購\" (Budget: 450萬, 4 days left). 82% Feasibility neon amber circular gauge.\n- Right (1/3): \n  - Stack Card 1: Active ML rules (Focus vs Avoid keywords).\n  - Stack Card 2: \"Layer B Team Sync Stats\" with tags for Christian Wu and Aaron.\nBottom-Right: A floating assistant chat button with a pulsing amber glow.\nAll text should be bright white #FAFAFA. Use neon amber #F59E0B for highlights and gauges.",
+                "screenMetadata": {
+                  "agentType": "PRO_AGENT",
+                  "status": "COMPLETE"
+                },
+                "screenType": "DESIGN",
+                "screenshot": {
+                  "downloadUrl": "https://lh3.googleusercontent.com/aida/AP1WRLtlBpEra_mfMPlf-v-RXNghEITuBZZr8yvMpRilFlidj0mhkZbEDkyo_cwxMsjDBQ7mk5glqLsa3qVZrSzJ6HLhfvj-vgVr-zXs2kUgu-5Bj7tUgKBw0UYxpOSf72Fdd2oa5a4UQjkOpHnQuKYixuLIqNq1afPSaFiQF1Y3Ww6BYU9cyD-nvCQmKCbEwgGmtUrSY9OaVadcNFyC8s3WS6ZVoT2g87QvAijWYyI_JqK53aOppEEOKcoKwQ",
+                  "name": "projects/5757726888608838473/files/56023bcccb6c4bde8138217b282b250c"
+                },
+                "theme": {
+                  "bodyFont": "NOTO_SANS",
+                  "bodyFontFamily": "Noto Sans",
+                  "colorMode": "DARK",
+                  "colorVariant": "FIDELITY",
+                  "customColor": "#f59e0b",
+                  "font": "NOTO_SANS",
+                  "headlineFont": "NOTO_SANS",
+                  "headlineFontFamily": "Noto Sans",
+                  "labelFont": "JETBRAINS_MONO",
+                  "labelFontFamily": "Jetbrains Mono",
+                  "namedColors": {
+                    "background": "#19120a",
+                    "error": "#ffb4ab",
+                    "error_container": "#93000a",
+                    "inverse_on_surface": "#382f25",
+                    "inverse_primary": "#855300",
+                    "inverse_surface": "#f0e0d1",
+                    "on_background": "#f0e0d1",
+                    "on_error": "#690005",
+                    "on_error_container": "#ffdad6",
+                    "on_primary": "#472a00",
+                    "on_primary_container": "#613b00",
+                    "on_primary_fixed": "#2a1700",
+                    "on_primary_fixed_variant": "#653e00",
+                    "on_secondary": "#2f3038",
+                    "on_secondary_container": "#bcbbc5",
+                    "on_secondary_fixed": "#1a1b22",
+                    "on_secondary_fixed_variant": "#46464e",
+                    "on_surface": "#f0e0d1",
+                    "on_surface_variant": "#d8c3ad",
+                    "on_tertiary": "#00344a",
+                    "on_tertiary_container": "#004966",
+                    "on_tertiary_fixed": "#001e2d",
+                    "on_tertiary_fixed_variant": "#004c6a",
+                    "outline": "#a08e7a",
+                    "outline_variant": "#534434",
+                    "primary": "#ffc174",
+                    "primary_container": "#f59e0b",
+                    "primary_fixed": "#ffddb8",
+                    "primary_fixed_dim": "#ffb95f",
+                    "secondary": "#c6c5cf",
+                    "secondary_container": "#4a4b53",
+                    "secondary_fixed": "#e3e1ec",
+                    "secondary_fixed_dim": "#c6c5cf",
+                    "surface": "#19120a",
+                    "surface_bright": "#41382e",
+                    "surface_container": "#261e15",
+                    "surface_container_high": "#31281f",
+                    "surface_container_highest": "#3c3329",
+                    "surface_container_low": "#221a12",
+                    "surface_container_lowest": "#140d06",
+                    "surface_dim": "#19120a",
+                    "surface_tint": "#ffb95f",
+                    "surface_variant": "#3c3329",
+                    "tertiary": "#8fd5ff",
+                    "tertiary_container": "#1abdff",
+                    "tertiary_fixed": "#c5e7ff",
+                    "tertiary_fixed_dim": "#7fd0ff"
+                  },
+                  "overridePrimaryColor": "#f59e0b",
+                  "overrideSecondaryColor": "#71717a",
+                  "roundness": "ROUND_EIGHT",
+                  "spacing": {
+                    "bento-gap": "16px",
+                    "gutter": "24px",
+                    "margin-desktop": "48px",
+                    "margin-mobile": "16px",
+                    "unit": "4px"
+                  },
+                  "spacingScale": 2,
+                  "typography": {
+                    "body-md": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "16px",
+                      "fontWeight": "400",
+                      "lineHeight": "24px"
+                    },
+                    "display-lg": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "48px",
+                      "fontWeight": "700",
+                      "letterSpacing": "-0.02em",
+                      "lineHeight": "56px"
+                    },
+                    "headline-lg": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "32px",
+                      "fontWeight": "600",
+                      "lineHeight": "40px"
+                    },
+                    "headline-lg-mobile": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "24px",
+                      "fontWeight": "600",
+                      "lineHeight": "32px"
+                    },
+                    "label-caps": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "12px",
+                      "fontWeight": "600",
+                      "letterSpacing": "0.05em",
+                      "lineHeight": "16px"
+                    },
+                    "metric-lg": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "24px",
+                      "fontWeight": "500",
+                      "letterSpacing": "-0.01em",
+                      "lineHeight": "32px"
+                    },
+                    "metric-sm": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "14px",
+                      "fontWeight": "500",
+                      "lineHeight": "20px"
+                    }
+                  }
+                },
+                "title": "Tender AI Dashboard Hub - Dark Spatial",
+                "width": "2560"
+              }
+            ],
+            "theme": {}
+          }
+        },
+        {
+          "text": "I've designed the **Tender AI Dashboard Hub** using a \"Dark Spatial Amber\" aesthetic. \n\n### Design Highlights:\n*   **Spatial Atmosphere:** The interface features a pure dark gray background (`#09090B`) with semi-transparent charcoal cards and glassmorphism blur effects to create depth.\n*   **Bento Metrics:** A row of glowing amber-bordered cards displays your key performance indicators (Tenders, Bids, Evolution Status) using monospace typography for a precise, data-driven feel.\n*   **Focus Queue:** The main 2/3 width panel showcases critical tenders with **neon amber circular gauges** representing feasibility scores. I've implemented the high-contrast \"[Accept]\" buttons with an outer glow to draw immediate focus.\n*   **Active Monitoring:** The right panel provides a clear view of your ML keyword rules and team synchronization status for Christian and Aaron.\n*   **Pulsing Assistant:** A floating AI assistant button in the bottom-right features a subtle pulse animation in neon amber, serving as your \"Command Center\" anchor.\n\nHow does this spatial direction look to you? We can further refine the \"Evolution\" animations or adjust the glassmorphism intensity if needed."
+        },
+        {
+          "suggestion": "Make the glassmorphism blur stronger"
+        },
+        {
+          "suggestion": "Add a 'New Tender' button to the header"
+        },
+        {
+          "suggestion": "Can we see a mobile version of this?"
+        }
+      ],
+      "projectId": "5757726888608838473",
+      "sessionId": "8808559365338082046"
+    }
+  }
+}

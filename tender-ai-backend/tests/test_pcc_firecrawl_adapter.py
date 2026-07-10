@@ -109,8 +109,9 @@ def test_scrape_no_retry_on_payment_required(adapter, monkeypatch):
 
     monkeypatch.setattr(mod.time, "sleep", lambda s: None)
     monkeypatch.setattr(mod.requests, "post", fake_post)
-    with pytest.raises(mod.FirecrawlError, match="402"):
+    with pytest.raises(mod.FirecrawlError, match="402") as exc_info:
         adapter._scrape("https://web.pcc.gov.tw/x")
+    assert exc_info.value.status_code == 402
     assert calls["n"] == 1
 
 

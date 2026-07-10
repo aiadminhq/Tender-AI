@@ -1,0 +1,471 @@
+{
+  "id": 1782650014615,
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [
+      {
+        "text": "{\"projectId\":\"5757726888608838473\",\"sessionId\":\"3627489342868125765\",\"outputComponents\":[{\"designSystem\":{\"name\":\"assets/b0161371d4294fc1ab3e86496ff8a0fb\",\"designSystem\":{\"displayName\":\"Warm Bento\",\"styleGuidelines\":\"## Brand & Style\\nThe design system is centered on the \\\"Bento\\\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\\n\\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \\\"Canvas\\\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Grid** model with strict \\\"Bento\\\" container constraints. \\n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\\n- **Table Density:** While cards are airy, data tables follow a \\\"Stripe-like\\\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\\n\\n## Elevation & Depth\\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \\n\\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.\",\"theme\":{\"colorMode\":\"LIGHT\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f97316\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"NOTO_SANS\",\"namedColors\":{\"background\":\"#f9f9fc\",\"error\":\"#ba1a1a\",\"error_container\":\"#ffdad6\",\"inverse_on_surface\":\"#f0f0f3\",\"inverse_primary\":\"#ffb690\",\"inverse_surface\":\"#2f3033\",\"on_background\":\"#1a1c1e\",\"on_error\":\"#ffffff\",\"on_error_container\":\"#93000a\",\"on_primary\":\"#ffffff\",\"on_primary_container\":\"#582200\",\"on_primary_fixed\":\"#341100\",\"on_primary_fixed_variant\":\"#783200\",\"on_secondary\":\"#ffffff\",\"on_secondary_container\":\"#656467\",\"on_secondary_fixed\":\"#1b1b1e\",\"on_secondary_fixed_variant\":\"#47464a\",\"on_surface\":\"#1a1c1e\",\"on_surface_variant\":\"#584237\",\"on_tertiary\":\"#ffffff\",\"on_tertiary_container\":\"#313333\",\"on_tertiary_fixed\":\"#1a1c1c\",\"on_tertiary_fixed_variant\":\"#454747\",\"outline\":\"#8c7164\",\"outline_variant\":\"#e0c0b1\",\"primary\":\"#9d4300\",\"primary_container\":\"#f97316\",\"primary_fixed\":\"#ffdbca\",\"primary_fixed_dim\":\"#ffb690\",\"secondary\":\"#5f5e61\",\"secondary_container\":\"#e4e1e6\",\"secondary_fixed\":\"#e4e1e6\",\"secondary_fixed_dim\":\"#c8c5ca\",\"surface\":\"#f9f9fc\",\"surface_bright\":\"#f9f9fc\",\"surface_container\":\"#eeedf0\",\"surface_container_high\":\"#e8e8eb\",\"surface_container_highest\":\"#e2e2e5\",\"surface_container_low\":\"#f3f3f6\",\"surface_container_lowest\":\"#ffffff\",\"surface_dim\":\"#dadadd\",\"surface_tint\":\"#9d4300\",\"surface_variant\":\"#e2e2e5\",\"tertiary\":\"#5d5f5e\",\"tertiary_container\":\"#9a9b9a\",\"tertiary_fixed\":\"#e2e2e2\",\"tertiary_fixed_dim\":\"#c6c7c6\"},\"designMd\":\"---\\nname: Warm Bento\\ncolors:\\n  surface: '#f9f9fc'\\n  surface-dim: '#dadadd'\\n  surface-bright: '#f9f9fc'\\n  surface-container-lowest: '#ffffff'\\n  surface-container-low: '#f3f3f6'\\n  surface-container: '#eeedf0'\\n  surface-container-high: '#e8e8eb'\\n  surface-container-highest: '#e2e2e5'\\n  on-surface: '#1a1c1e'\\n  on-surface-variant: '#584237'\\n  inverse-surface: '#2f3033'\\n  inverse-on-surface: '#f0f0f3'\\n  outline: '#8c7164'\\n  outline-variant: '#e0c0b1'\\n  surface-tint: '#9d4300'\\n  primary: '#9d4300'\\n  on-primary: '#ffffff'\\n  primary-container: '#f97316'\\n  on-primary-container: '#582200'\\n  inverse-primary: '#ffb690'\\n  secondary: '#5f5e61'\\n  on-secondary: '#ffffff'\\n  secondary-container: '#e4e1e6'\\n  on-secondary-container: '#656467'\\n  tertiary: '#5d5f5e'\\n  on-tertiary: '#ffffff'\\n  tertiary-container: '#9a9b9a'\\n  on-tertiary-container: '#313333'\\n  error: '#ba1a1a'\\n  on-error: '#ffffff'\\n  error-container: '#ffdad6'\\n  on-error-container: '#93000a'\\n  primary-fixed: '#ffdbca'\\n  primary-fixed-dim: '#ffb690'\\n  on-primary-fixed: '#341100'\\n  on-primary-fixed-variant: '#783200'\\n  secondary-fixed: '#e4e1e6'\\n  secondary-fixed-dim: '#c8c5ca'\\n  on-secondary-fixed: '#1b1b1e'\\n  on-secondary-fixed-variant: '#47464a'\\n  tertiary-fixed: '#e2e2e2'\\n  tertiary-fixed-dim: '#c6c7c6'\\n  on-tertiary-fixed: '#1a1c1c'\\n  on-tertiary-fixed-variant: '#454747'\\n  background: '#f9f9fc'\\n  on-background: '#1a1c1e'\\n  surface-variant: '#e2e2e5'\\ntypography:\\n  display:\\n    fontFamily: Noto Sans\\n    fontSize: 48px\\n    fontWeight: '700'\\n    lineHeight: 56px\\n    letterSpacing: -0.02em\\n  headline-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 32px\\n    fontWeight: '600'\\n    lineHeight: 40px\\n    letterSpacing: -0.01em\\n  headline-lg-mobile:\\n    fontFamily: Noto Sans\\n    fontSize: 24px\\n    fontWeight: '600'\\n    lineHeight: 32px\\n  headline-md:\\n    fontFamily: Noto Sans\\n    fontSize: 20px\\n    fontWeight: '600'\\n    lineHeight: 28px\\n  body-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 16px\\n    fontWeight: '400'\\n    lineHeight: 24px\\n  body-md:\\n    fontFamily: Noto Sans\\n    fontSize: 14px\\n    fontWeight: '400'\\n    lineHeight: 20px\\n  label-md:\\n    fontFamily: Noto Sans\\n    fontSize: 12px\\n    fontWeight: '600'\\n    lineHeight: 16px\\n    letterSpacing: 0.05em\\n  code:\\n    fontFamily: JetBrains Mono\\n    fontSize: 13px\\n    fontWeight: '400'\\n    lineHeight: 20px\\nrounded:\\n  sm: 0.25rem\\n  DEFAULT: 0.5rem\\n  md: 0.75rem\\n  lg: 1rem\\n  xl: 1.5rem\\n  full: 9999px\\nspacing:\\n  base: 8px\\n  xs: 4px\\n  sm: 12px\\n  md: 24px\\n  lg: 40px\\n  xl: 64px\\n  container-padding: 32px\\n  gutter: 24px\\n---\\n\\n## Brand & Style\\nThe design system is centered on the \\\"Bento\\\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\\n\\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \\\"Canvas\\\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\\n\\n## Colors\\nThe palette is intentionally restrained to maintain a premium feel. \\n- **Canvas (#FBFBFA):** The global background color. It provides a warm, paper-like quality that distinguishes the application from standard digital interfaces.\\n- **Surface (#FFFFFF):** Used for elevated \\\"Bento\\\" containers, cards, and input areas. This creates a subtle but clear distinction against the Canvas.\\n- **Accent (#F97316):** A clean, energetic orange used sparingly for primary actions, progress indicators, and active states.\\n- **Text (#18181B):** A deep charcoal, almost black, ensuring high contrast and modern sophistication.\\n- **Border (#E4E4E7):** A thin, quiet grey used for structural separation without adding visual noise.\\n\\n## Typography\\nThis design system utilizes **Noto Sans** for its universal clarity and balanced proportions. The type scale is optimized for information density and readability in complex dashboards.\\n\\n- **Headlines:** Use tighter letter-spacing and heavier weights to anchor sections.\\n- **Body Text:** Maintains a standard weight for maximum legibility.\\n- **Labels:** Small caps or slightly tracked-out bold weights are used for metadata and table headers to create a distinct visual layer from body content.\\n- **Hierarchy:** Contrast is achieved primarily through weight and size rather than color shifts, keeping the UI looking clean and intentional.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Grid** model with strict \\\"Bento\\\" container constraints. \\n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\\n- **Table Density:** While cards are airy, data tables follow a \\\"Stripe-like\\\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\\n\\n## Elevation & Depth\\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \\n\\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\\n\\n## Shapes\\nThe shape language is \\\"Softly Geometric.\\\" While the grid is rigid, the corners are generous to soften the professional tone.\\n- **Base Components:** (Inputs, Buttons) use `rounded-lg` (16px).\\n- **Containers:** (Cards, Bento Blocks) use `rounded-xl` (24px).\\n- **Outer Shells:** Modals and large wrapper sections use `rounded-2xl` (32px).\\n- **Consistency:** Never mix sharp corners with rounded ones; every container must carry the radius to maintain the \\\"Bento\\\" aesthetic.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.\",\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f97316\",\"overrideSecondaryColor\":\"#18181b\",\"overrideTertiaryColor\":\"#fbfbfa\",\"overrideNeutralColor\":\"#e4e4e7\",\"spacingScale\":2,\"typography\":{\"body-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"14px\",\"fontWeight\":\"400\",\"lineHeight\":\"20px\"},\"code\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"13px\",\"fontWeight\":\"400\",\"lineHeight\":\"20px\"},\"display\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\",\"letterSpacing\":\"-0.01em\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"headline-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"20px\",\"fontWeight\":\"600\",\"lineHeight\":\"28px\"},\"label-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"12px\",\"fontWeight\":\"600\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.05em\"}},\"spacing\":{\"base\":\"8px\",\"container-padding\":\"32px\",\"gutter\":\"24px\",\"lg\":\"40px\",\"md\":\"24px\",\"sm\":\"12px\",\"xl\":\"64px\",\"xs\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Noto Sans\"}},\"version\":\"1\"}},{\"design\":{\"screens\":[{\"screenshot\":{\"name\":\"projects/5757726888608838473/files/56a7a6eb67dc44f3840532054404ff7c\",\"downloadUrl\":\"https://lh3.googleusercontent.com/aida/AP1WRLvc7Kv1dWAjcSOVHH-A3UVA2vrxmGuCw8FyUaasLsdGzsqQN0L28_f1ablAY5g5Opx9VXtxPY9gFr-CrCn26n9MlpC2MBTTTm_SNkMr_aqMJYy20Y2vIfGJgVWHAsvXMoEwoL2fLOeV1BXVFcvosFOF7B8K204pggxz_toyjSGgWqKprLK4PuXPxRJ1VLf9kLMyqKEx35Bq1WeyZj13rqK-UzFjm-MYj0gnNJlFpqLjyKOhPXDXE_7lXw\"},\"htmlCode\":{\"name\":\"projects/5757726888608838473/files/6d44d267ef714c97a94a9e9c0fc7c510\",\"downloadUrl\":\"https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzUwN2U5MjVjYzcxMjQzNjc5NzI0ODQwMjA2YzBjMzBiEgoSBhCVjN2bchgBkgEjCgpwcm9qZWN0X2lkEhVCEzU3NTc3MjY4ODg2MDg4Mzg0NzM&filename=&opi=96797242\",\"mimeType\":\"text/html\"},\"id\":\"ce1b5c6737f9413989af766a94e46484\",\"generatedBy\":\"figaro_agent\",\"width\":\"2560\",\"height\":\"2048\",\"title\":\"Tender AI 標案超級清單 - Bento Style\",\"prompt\":\"Redesign of \\\"Tender Super List\\\" as a Premium Warm Bento dashboard. \\n\\nLayout:\\n1. TopNavBar from {{DATA:COMPONENTS:COMPONENTS_20}}.\\n2. Main Content: Two columns (1/4 and 3/4).\\n   - Left Sidebar (Filter Panel): \\n     - White floating card, p-6 padding, border #E4E4E7.\\n     - Slider for budget \\\"Highest 50M\\\" with large display text.\\n     - Category filters: Green, Blue, Purple tags, rounded-lg.\\n     - Keywords section: \\\"Key Weights\\\" and \\\"Avoid/Exclude\\\" with refined tags + x buttons.\\n     - Bottom: Switch for \\\"Auto-exclude tenders closing within 7 days\\\".\\n   - Right Table (Super List):\\n     - Large white floating card, border #E4E4E7.\\n     - Header: \\\"Filtered 42 High-Potential Tenders\\\", sort dropdown (Deadline, Feasibility).\\n     - Row density: 72px height, px-6 padding, thin gray separators.\\n     - Row Content:\\n       * Agency (e.g., MOHW) + Green \\\"Engineering\\\" badge. Title \\\"MOHW Building Renovation\\\" (14px bold).\\n       * Budget \\\"12M\\\" and Deadline \\\"2026-07-12 (12 days left)\\\".\\n       * Right: Circular progress ring \\\"92%\\\" in green, plus capsule buttons \\\"✓ Accept\\\" and \\\"✗ Ignore\\\" (32px height, minimal).\\n3. Pagination: Minimal \\\"Prev\\\" and \\\"Next\\\" with page numbers.\\n\\nOverall Aesthetic: White surfaces, #FBFBFA canvas, #F97316 accent, generous whitespace, thin borders. All text in Traditional Chinese.\",\"name\":\"projects/5757726888608838473/screens/ce1b5c6737f9413989af766a94e46484\",\"theme\":{\"colorMode\":\"LIGHT\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f97316\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"NOTO_SANS\",\"namedColors\":{\"background\":\"#f9f9fc\",\"error\":\"#ba1a1a\",\"error_container\":\"#ffdad6\",\"inverse_on_surface\":\"#f0f0f3\",\"inverse_primary\":\"#ffb690\",\"inverse_surface\":\"#2f3033\",\"on_background\":\"#1a1c1e\",\"on_error\":\"#ffffff\",\"on_error_container\":\"#93000a\",\"on_primary\":\"#ffffff\",\"on_primary_container\":\"#582200\",\"on_primary_fixed\":\"#341100\",\"on_primary_fixed_variant\":\"#783200\",\"on_secondary\":\"#ffffff\",\"on_secondary_container\":\"#656467\",\"on_secondary_fixed\":\"#1b1b1e\",\"on_secondary_fixed_variant\":\"#47464a\",\"on_surface\":\"#1a1c1e\",\"on_surface_variant\":\"#584237\",\"on_tertiary\":\"#ffffff\",\"on_tertiary_container\":\"#313333\",\"on_tertiary_fixed\":\"#1a1c1c\",\"on_tertiary_fixed_variant\":\"#454747\",\"outline\":\"#8c7164\",\"outline_variant\":\"#e0c0b1\",\"primary\":\"#9d4300\",\"primary_container\":\"#f97316\",\"primary_fixed\":\"#ffdbca\",\"primary_fixed_dim\":\"#ffb690\",\"secondary\":\"#5f5e61\",\"secondary_container\":\"#e4e1e6\",\"secondary_fixed\":\"#e4e1e6\",\"secondary_fixed_dim\":\"#c8c5ca\",\"surface\":\"#f9f9fc\",\"surface_bright\":\"#f9f9fc\",\"surface_container\":\"#eeedf0\",\"surface_container_high\":\"#e8e8eb\",\"surface_container_highest\":\"#e2e2e5\",\"surface_container_low\":\"#f3f3f6\",\"surface_container_lowest\":\"#ffffff\",\"surface_dim\":\"#dadadd\",\"surface_tint\":\"#9d4300\",\"surface_variant\":\"#e2e2e5\",\"tertiary\":\"#5d5f5e\",\"tertiary_container\":\"#9a9b9a\",\"tertiary_fixed\":\"#e2e2e2\",\"tertiary_fixed_dim\":\"#c6c7c6\"},\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f97316\",\"overrideSecondaryColor\":\"#18181b\",\"overrideTertiaryColor\":\"#fbfbfa\",\"overrideNeutralColor\":\"#e4e4e7\",\"spacingScale\":2,\"typography\":{\"body-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"14px\",\"fontWeight\":\"400\",\"lineHeight\":\"20px\"},\"code\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"13px\",\"fontWeight\":\"400\",\"lineHeight\":\"20px\"},\"display\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\",\"letterSpacing\":\"-0.01em\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"headline-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"20px\",\"fontWeight\":\"600\",\"lineHeight\":\"28px\"},\"label-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"12px\",\"fontWeight\":\"600\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.05em\"}},\"spacing\":{\"base\":\"8px\",\"container-padding\":\"32px\",\"gutter\":\"24px\",\"lg\":\"40px\",\"md\":\"24px\",\"sm\":\"12px\",\"xl\":\"64px\",\"xs\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Noto Sans\"},\"deviceType\":\"DESKTOP\",\"screenType\":\"DESIGN\",\"screenMetadata\":{\"agentType\":\"PRO_AGENT\",\"status\":\"COMPLETE\"},\"designSystem\":{\"name\":\"assets/b0161371d4294fc1ab3e86496ff8a0fb\",\"designSystem\":{\"displayName\":\"Warm Bento\",\"styleGuidelines\":\"## Brand & Style\\nThe design system is centered on the \\\"Bento\\\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\\n\\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \\\"Canvas\\\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Grid** model with strict \\\"Bento\\\" container constraints. \\n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\\n- **Table Density:** While cards are airy, data tables follow a \\\"Stripe-like\\\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\\n\\n## Elevation & Depth\\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \\n\\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.\",\"theme\":{\"colorMode\":\"LIGHT\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f97316\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"NOTO_SANS\",\"namedColors\":{\"background\":\"#f9f9fc\",\"error\":\"#ba1a1a\",\"error_container\":\"#ffdad6\",\"inverse_on_surface\":\"#f0f0f3\",\"inverse_primary\":\"#ffb690\",\"inverse_surface\":\"#2f3033\",\"on_background\":\"#1a1c1e\",\"on_error\":\"#ffffff\",\"on_error_container\":\"#93000a\",\"on_primary\":\"#ffffff\",\"on_primary_container\":\"#582200\",\"on_primary_fixed\":\"#341100\",\"on_primary_fixed_variant\":\"#783200\",\"on_secondary\":\"#ffffff\",\"on_secondary_container\":\"#656467\",\"on_secondary_fixed\":\"#1b1b1e\",\"on_secondary_fixed_variant\":\"#47464a\",\"on_surface\":\"#1a1c1e\",\"on_surface_variant\":\"#584237\",\"on_tertiary\":\"#ffffff\",\"on_tertiary_container\":\"#313333\",\"on_tertiary_fixed\":\"#1a1c1c\",\"on_tertiary_fixed_variant\":\"#454747\",\"outline\":\"#8c7164\",\"outline_variant\":\"#e0c0b1\",\"primary\":\"#9d4300\",\"primary_container\":\"#f97316\",\"primary_fixed\":\"#ffdbca\",\"primary_fixed_dim\":\"#ffb690\",\"secondary\":\"#5f5e61\",\"secondary_container\":\"#e4e1e6\",\"secondary_fixed\":\"#e4e1e6\",\"secondary_fixed_dim\":\"#c8c5ca\",\"surface\":\"#f9f9fc\",\"surface_bright\":\"#f9f9fc\",\"surface_container\":\"#eeedf0\",\"surface_container_high\":\"#e8e8eb\",\"surface_container_highest\":\"#e2e2e5\",\"surface_container_low\":\"#f3f3f6\",\"surface_container_lowest\":\"#ffffff\",\"surface_dim\":\"#dadadd\",\"surface_tint\":\"#9d4300\",\"surface_variant\":\"#e2e2e5\",\"tertiary\":\"#5d5f5e\",\"tertiary_container\":\"#9a9b9a\",\"tertiary_fixed\":\"#e2e2e2\",\"tertiary_fixed_dim\":\"#c6c7c6\"},\"designMd\":\"---\\nname: Warm Bento\\ncolors:\\n  surface: '#f9f9fc'\\n  surface-dim: '#dadadd'\\n  surface-bright: '#f9f9fc'\\n  surface-container-lowest: '#ffffff'\\n  surface-container-low: '#f3f3f6'\\n  surface-container: '#eeedf0'\\n  surface-container-high: '#e8e8eb'\\n  surface-container-highest: '#e2e2e5'\\n  on-surface: '#1a1c1e'\\n  on-surface-variant: '#584237'\\n  inverse-surface: '#2f3033'\\n  inverse-on-surface: '#f0f0f3'\\n  outline: '#8c7164'\\n  outline-variant: '#e0c0b1'\\n  surface-tint: '#9d4300'\\n  primary: '#9d4300'\\n  on-primary: '#ffffff'\\n  primary-container: '#f97316'\\n  on-primary-container: '#582200'\\n  inverse-primary: '#ffb690'\\n  secondary: '#5f5e61'\\n  on-secondary: '#ffffff'\\n  secondary-container: '#e4e1e6'\\n  on-secondary-container: '#656467'\\n  tertiary: '#5d5f5e'\\n  on-tertiary: '#ffffff'\\n  tertiary-container: '#9a9b9a'\\n  on-tertiary-container: '#313333'\\n  error: '#ba1a1a'\\n  on-error: '#ffffff'\\n  error-container: '#ffdad6'\\n  on-error-container: '#93000a'\\n  primary-fixed: '#ffdbca'\\n  primary-fixed-dim: '#ffb690'\\n  on-primary-fixed: '#341100'\\n  on-primary-fixed-variant: '#783200'\\n  secondary-fixed: '#e4e1e6'\\n  secondary-fixed-dim: '#c8c5ca'\\n  on-secondary-fixed: '#1b1b1e'\\n  on-secondary-fixed-variant: '#47464a'\\n  tertiary-fixed: '#e2e2e2'\\n  tertiary-fixed-dim: '#c6c7c6'\\n  on-tertiary-fixed: '#1a1c1c'\\n  on-tertiary-fixed-variant: '#454747'\\n  background: '#f9f9fc'\\n  on-background: '#1a1c1e'\\n  surface-variant: '#e2e2e5'\\ntypography:\\n  display:\\n    fontFamily: Noto Sans\\n    fontSize: 48px\\n    fontWeight: '700'\\n    lineHeight: 56px\\n    letterSpacing: -0.02em\\n  headline-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 32px\\n    fontWeight: '600'\\n    lineHeight: 40px\\n    letterSpacing: -0.01em\\n  headline-lg-mobile:\\n    fontFamily: Noto Sans\\n    fontSize: 24px\\n    fontWeight: '600'\\n    lineHeight: 32px\\n  headline-md:\\n    fontFamily: Noto Sans\\n    fontSize: 20px\\n    fontWeight: '600'\\n    lineHeight: 28px\\n  body-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 16px\\n    fontWeight: '400'\\n    lineHeight: 24px\\n  body-md:\\n    fontFamily: Noto Sans\\n    fontSize: 14px\\n    fontWeight: '400'\\n    lineHeight: 20px\\n  label-md:\\n    fontFamily: Noto Sans\\n    fontSize: 12px\\n    fontWeight: '600'\\n    lineHeight: 16px\\n    letterSpacing: 0.05em\\n  code:\\n    fontFamily: JetBrains Mono\\n    fontSize: 13px\\n    fontWeight: '400'\\n    lineHeight: 20px\\nrounded:\\n  sm: 0.25rem\\n  DEFAULT: 0.5rem\\n  md: 0.75rem\\n  lg: 1rem\\n  xl: 1.5rem\\n  full: 9999px\\nspacing:\\n  base: 8px\\n  xs: 4px\\n  sm: 12px\\n  md: 24px\\n  lg: 40px\\n  xl: 64px\\n  container-padding: 32px\\n  gutter: 24px\\n---\\n\\n## Brand & Style\\nThe design system is centered on the \\\"Bento\\\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\\n\\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \\\"Canvas\\\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\\n\\n## Colors\\nThe palette is intentionally restrained to maintain a premium feel. \\n- **Canvas (#FBFBFA):** The global background color. It provides a warm, paper-like quality that distinguishes the application from standard digital interfaces.\\n- **Surface (#FFFFFF):** Used for elevated \\\"Bento\\\" containers, cards, and input areas. This creates a subtle but clear distinction against the Canvas.\\n- **Accent (#F97316):** A clean, energetic orange used sparingly for primary actions, progress indicators, and active states.\\n- **Text (#18181B):** A deep charcoal, almost black, ensuring high contrast and modern sophistication.\\n- **Border (#E4E4E7):** A thin, quiet grey used for structural separation without adding visual noise.\\n\\n## Typography\\nThis design system utilizes **Noto Sans** for its universal clarity and balanced proportions. The type scale is optimized for information density and readability in complex dashboards.\\n\\n- **Headlines:** Use tighter letter-spacing and heavier weights to anchor sections.\\n- **Body Text:** Maintains a standard weight for maximum legibility.\\n- **Labels:** Small caps or slightly tracked-out bold weights are used for metadata and table headers to create a distinct visual layer from body content.\\n- **Hierarchy:** Contrast is achieved primarily through weight and size rather than color shifts, keeping the UI looking clean and intentional.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Grid** model with strict \\\"Bento\\\" container constraints. \\n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\\n- **Table Density:** While cards are airy, data tables follow a \\\"Stripe-like\\\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\\n\\n## Elevation & Depth\\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \\n\\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\\n\\n## Shapes\\nThe shape language is \\\"Softly Geometric.\\\" While the grid is rigid, the corners are generous to soften the professional tone.\\n- **Base Components:** (Inputs, Buttons) use `rounded-lg` (16px).\\n- **Containers:** (Cards, Bento Blocks) use `rounded-xl` (24px).\\n- **Outer Shells:** Modals and large wrapper sections use `rounded-2xl` (32px).\\n- **Consistency:** Never mix sharp corners with rounded ones; every container must carry the radius to maintain the \\\"Bento\\\" aesthetic.\\n\\n## Components\\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.\",\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f97316\",\"overrideSecondaryColor\":\"#18181b\",\"overrideTertiaryColor\":\"#fbfbfa\",\"overrideNeutralColor\":\"#e4e4e7\",\"spacingScale\":2,\"typography\":{\"body-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"14px\",\"fontWeight\":\"400\",\"lineHeight\":\"20px\"},\"code\":{\"fontFamily\":\"JetBrains Mono\",\"fontSize\":\"13px\",\"fontWeight\":\"400\",\"lineHeight\":\"20px\"},\"display\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\",\"letterSpacing\":\"-0.01em\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"headline-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"20px\",\"fontWeight\":\"600\",\"lineHeight\":\"28px\"},\"label-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"12px\",\"fontWeight\":\"600\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.05em\"}},\"spacing\":{\"base\":\"8px\",\"container-padding\":\"32px\",\"gutter\":\"24px\",\"lg\":\"40px\",\"md\":\"24px\",\"sm\":\"12px\",\"xl\":\"64px\",\"xs\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Noto Sans\"}},\"version\":\"1\"}}],\"theme\":{}}},{\"text\":\"我已完成「標案超級清單」的重新設計，採用了 **Premium Warm Bento** 風格，將視覺重點放在提升資訊層次感與操作流暢度。\\n\\n### 設計重點：\\n*   **Bento 佈局優化**：將頁面拆分為 1:3 的結構，左側為獨立的篩選控制面板，右側為高密度的數據表格，有效解決資訊擁擠問題。\\n*   **Stripe 啟發的表格設計**：表格行高設定為 72px，並運用極簡細邊框 (#E4E4E7) 與充足的留白，讓 42 筆高潛力標案的清單在視覺上依然保持輕盈。\\n*   **精確的表單控制件**：\\n    *   **預算滑桿 (Slider)**：上方配有大字顯示，讓門檻一目了然。\\n    *   **圓角標籤與膠囊按鈕**：採用 `rounded-xl` 與高度 32px 的按鈕，維持高階感。\\n    *   **關鍵字編輯區**：細分加權與排除區塊，並配備精細的標籤刪除鈕。\\n*   **視覺反饋**：右側表格引入了高雅的圓環進度計 (92%)，搭配「承接」與「略過」的極簡膠囊按鈕，直覺引導使用者進行決策。\\n\\n您可以在畫布上查看 Tender AI 標案超級清單 - Bento Style。如果您想調整篩選器的互動細節，或是微調表格的欄位權重，請隨時告訴我！\"},{\"suggestion\":\"調整表格標題為深色加粗字體\"},{\"suggestion\":\"增加滑桿的動畫效果\"},{\"suggestion\":\"更換圓環進度計的顏色風格\"}]}",
+        "type": "text"
+      }
+    ],
+    "structuredContent": {
+      "outputComponents": [
+        {
+          "designSystem": {
+            "designSystem": {
+              "displayName": "Warm Bento",
+              "styleGuidelines": "## Brand & Style\nThe design system is centered on the \"Bento\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\n\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \"Canvas\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\n\n## Layout & Spacing\nThe layout follows a **Fluid Grid** model with strict \"Bento\" container constraints. \n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\n- **Table Density:** While cards are airy, data tables follow a \"Stripe-like\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\n\n## Elevation & Depth\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \n\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\n\n## Components\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.",
+              "theme": {
+                "bodyFont": "NOTO_SANS",
+                "bodyFontFamily": "Noto Sans",
+                "colorMode": "LIGHT",
+                "colorVariant": "FIDELITY",
+                "customColor": "#f97316",
+                "designMd": "---\nname: Warm Bento\ncolors:\n  surface: '#f9f9fc'\n  surface-dim: '#dadadd'\n  surface-bright: '#f9f9fc'\n  surface-container-lowest: '#ffffff'\n  surface-container-low: '#f3f3f6'\n  surface-container: '#eeedf0'\n  surface-container-high: '#e8e8eb'\n  surface-container-highest: '#e2e2e5'\n  on-surface: '#1a1c1e'\n  on-surface-variant: '#584237'\n  inverse-surface: '#2f3033'\n  inverse-on-surface: '#f0f0f3'\n  outline: '#8c7164'\n  outline-variant: '#e0c0b1'\n  surface-tint: '#9d4300'\n  primary: '#9d4300'\n  on-primary: '#ffffff'\n  primary-container: '#f97316'\n  on-primary-container: '#582200'\n  inverse-primary: '#ffb690'\n  secondary: '#5f5e61'\n  on-secondary: '#ffffff'\n  secondary-container: '#e4e1e6'\n  on-secondary-container: '#656467'\n  tertiary: '#5d5f5e'\n  on-tertiary: '#ffffff'\n  tertiary-container: '#9a9b9a'\n  on-tertiary-container: '#313333'\n  error: '#ba1a1a'\n  on-error: '#ffffff'\n  error-container: '#ffdad6'\n  on-error-container: '#93000a'\n  primary-fixed: '#ffdbca'\n  primary-fixed-dim: '#ffb690'\n  on-primary-fixed: '#341100'\n  on-primary-fixed-variant: '#783200'\n  secondary-fixed: '#e4e1e6'\n  secondary-fixed-dim: '#c8c5ca'\n  on-secondary-fixed: '#1b1b1e'\n  on-secondary-fixed-variant: '#47464a'\n  tertiary-fixed: '#e2e2e2'\n  tertiary-fixed-dim: '#c6c7c6'\n  on-tertiary-fixed: '#1a1c1c'\n  on-tertiary-fixed-variant: '#454747'\n  background: '#f9f9fc'\n  on-background: '#1a1c1e'\n  surface-variant: '#e2e2e5'\ntypography:\n  display:\n    fontFamily: Noto Sans\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Noto Sans\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-lg-mobile:\n    fontFamily: Noto Sans\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-md:\n    fontFamily: Noto Sans\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Noto Sans\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  body-md:\n    fontFamily: Noto Sans\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 20px\n  label-md:\n    fontFamily: Noto Sans\n    fontSize: 12px\n    fontWeight: '600'\n    lineHeight: 16px\n    letterSpacing: 0.05em\n  code:\n    fontFamily: JetBrains Mono\n    fontSize: 13px\n    fontWeight: '400'\n    lineHeight: 20px\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  base: 8px\n  xs: 4px\n  sm: 12px\n  md: 24px\n  lg: 40px\n  xl: 64px\n  container-padding: 32px\n  gutter: 24px\n---\n\n## Brand & Style\nThe design system is centered on the \"Bento\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\n\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \"Canvas\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\n\n## Colors\nThe palette is intentionally restrained to maintain a premium feel. \n- **Canvas (#FBFBFA):** The global background color. It provides a warm, paper-like quality that distinguishes the application from standard digital interfaces.\n- **Surface (#FFFFFF):** Used for elevated \"Bento\" containers, cards, and input areas. This creates a subtle but clear distinction against the Canvas.\n- **Accent (#F97316):** A clean, energetic orange used sparingly for primary actions, progress indicators, and active states.\n- **Text (#18181B):** A deep charcoal, almost black, ensuring high contrast and modern sophistication.\n- **Border (#E4E4E7):** A thin, quiet grey used for structural separation without adding visual noise.\n\n## Typography\nThis design system utilizes **Noto Sans** for its universal clarity and balanced proportions. The type scale is optimized for information density and readability in complex dashboards.\n\n- **Headlines:** Use tighter letter-spacing and heavier weights to anchor sections.\n- **Body Text:** Maintains a standard weight for maximum legibility.\n- **Labels:** Small caps or slightly tracked-out bold weights are used for metadata and table headers to create a distinct visual layer from body content.\n- **Hierarchy:** Contrast is achieved primarily through weight and size rather than color shifts, keeping the UI looking clean and intentional.\n\n## Layout & Spacing\nThe layout follows a **Fluid Grid** model with strict \"Bento\" container constraints. \n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\n- **Table Density:** While cards are airy, data tables follow a \"Stripe-like\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\n\n## Elevation & Depth\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \n\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\n\n## Shapes\nThe shape language is \"Softly Geometric.\" While the grid is rigid, the corners are generous to soften the professional tone.\n- **Base Components:** (Inputs, Buttons) use `rounded-lg` (16px).\n- **Containers:** (Cards, Bento Blocks) use `rounded-xl` (24px).\n- **Outer Shells:** Modals and large wrapper sections use `rounded-2xl` (32px).\n- **Consistency:** Never mix sharp corners with rounded ones; every container must carry the radius to maintain the \"Bento\" aesthetic.\n\n## Components\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.",
+                "font": "NOTO_SANS",
+                "headlineFont": "NOTO_SANS",
+                "headlineFontFamily": "Noto Sans",
+                "labelFont": "NOTO_SANS",
+                "labelFontFamily": "Noto Sans",
+                "namedColors": {
+                  "background": "#f9f9fc",
+                  "error": "#ba1a1a",
+                  "error_container": "#ffdad6",
+                  "inverse_on_surface": "#f0f0f3",
+                  "inverse_primary": "#ffb690",
+                  "inverse_surface": "#2f3033",
+                  "on_background": "#1a1c1e",
+                  "on_error": "#ffffff",
+                  "on_error_container": "#93000a",
+                  "on_primary": "#ffffff",
+                  "on_primary_container": "#582200",
+                  "on_primary_fixed": "#341100",
+                  "on_primary_fixed_variant": "#783200",
+                  "on_secondary": "#ffffff",
+                  "on_secondary_container": "#656467",
+                  "on_secondary_fixed": "#1b1b1e",
+                  "on_secondary_fixed_variant": "#47464a",
+                  "on_surface": "#1a1c1e",
+                  "on_surface_variant": "#584237",
+                  "on_tertiary": "#ffffff",
+                  "on_tertiary_container": "#313333",
+                  "on_tertiary_fixed": "#1a1c1c",
+                  "on_tertiary_fixed_variant": "#454747",
+                  "outline": "#8c7164",
+                  "outline_variant": "#e0c0b1",
+                  "primary": "#9d4300",
+                  "primary_container": "#f97316",
+                  "primary_fixed": "#ffdbca",
+                  "primary_fixed_dim": "#ffb690",
+                  "secondary": "#5f5e61",
+                  "secondary_container": "#e4e1e6",
+                  "secondary_fixed": "#e4e1e6",
+                  "secondary_fixed_dim": "#c8c5ca",
+                  "surface": "#f9f9fc",
+                  "surface_bright": "#f9f9fc",
+                  "surface_container": "#eeedf0",
+                  "surface_container_high": "#e8e8eb",
+                  "surface_container_highest": "#e2e2e5",
+                  "surface_container_low": "#f3f3f6",
+                  "surface_container_lowest": "#ffffff",
+                  "surface_dim": "#dadadd",
+                  "surface_tint": "#9d4300",
+                  "surface_variant": "#e2e2e5",
+                  "tertiary": "#5d5f5e",
+                  "tertiary_container": "#9a9b9a",
+                  "tertiary_fixed": "#e2e2e2",
+                  "tertiary_fixed_dim": "#c6c7c6"
+                },
+                "overrideNeutralColor": "#e4e4e7",
+                "overridePrimaryColor": "#f97316",
+                "overrideSecondaryColor": "#18181b",
+                "overrideTertiaryColor": "#fbfbfa",
+                "roundness": "ROUND_EIGHT",
+                "spacing": {
+                  "base": "8px",
+                  "container-padding": "32px",
+                  "gutter": "24px",
+                  "lg": "40px",
+                  "md": "24px",
+                  "sm": "12px",
+                  "xl": "64px",
+                  "xs": "4px"
+                },
+                "spacingScale": 2,
+                "typography": {
+                  "body-lg": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "16px",
+                    "fontWeight": "400",
+                    "lineHeight": "24px"
+                  },
+                  "body-md": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "14px",
+                    "fontWeight": "400",
+                    "lineHeight": "20px"
+                  },
+                  "code": {
+                    "fontFamily": "JetBrains Mono",
+                    "fontSize": "13px",
+                    "fontWeight": "400",
+                    "lineHeight": "20px"
+                  },
+                  "display": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "48px",
+                    "fontWeight": "700",
+                    "letterSpacing": "-0.02em",
+                    "lineHeight": "56px"
+                  },
+                  "headline-lg": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "32px",
+                    "fontWeight": "600",
+                    "letterSpacing": "-0.01em",
+                    "lineHeight": "40px"
+                  },
+                  "headline-lg-mobile": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "24px",
+                    "fontWeight": "600",
+                    "lineHeight": "32px"
+                  },
+                  "headline-md": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "20px",
+                    "fontWeight": "600",
+                    "lineHeight": "28px"
+                  },
+                  "label-md": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "12px",
+                    "fontWeight": "600",
+                    "letterSpacing": "0.05em",
+                    "lineHeight": "16px"
+                  }
+                }
+              }
+            },
+            "name": "assets/b0161371d4294fc1ab3e86496ff8a0fb",
+            "version": "1"
+          }
+        },
+        {
+          "design": {
+            "screens": [
+              {
+                "designSystem": {
+                  "designSystem": {
+                    "displayName": "Warm Bento",
+                    "styleGuidelines": "## Brand & Style\nThe design system is centered on the \"Bento\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\n\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \"Canvas\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\n\n## Layout & Spacing\nThe layout follows a **Fluid Grid** model with strict \"Bento\" container constraints. \n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\n- **Table Density:** While cards are airy, data tables follow a \"Stripe-like\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\n\n## Elevation & Depth\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \n\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\n\n## Components\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.",
+                    "theme": {
+                      "bodyFont": "NOTO_SANS",
+                      "bodyFontFamily": "Noto Sans",
+                      "colorMode": "LIGHT",
+                      "colorVariant": "FIDELITY",
+                      "customColor": "#f97316",
+                      "designMd": "---\nname: Warm Bento\ncolors:\n  surface: '#f9f9fc'\n  surface-dim: '#dadadd'\n  surface-bright: '#f9f9fc'\n  surface-container-lowest: '#ffffff'\n  surface-container-low: '#f3f3f6'\n  surface-container: '#eeedf0'\n  surface-container-high: '#e8e8eb'\n  surface-container-highest: '#e2e2e5'\n  on-surface: '#1a1c1e'\n  on-surface-variant: '#584237'\n  inverse-surface: '#2f3033'\n  inverse-on-surface: '#f0f0f3'\n  outline: '#8c7164'\n  outline-variant: '#e0c0b1'\n  surface-tint: '#9d4300'\n  primary: '#9d4300'\n  on-primary: '#ffffff'\n  primary-container: '#f97316'\n  on-primary-container: '#582200'\n  inverse-primary: '#ffb690'\n  secondary: '#5f5e61'\n  on-secondary: '#ffffff'\n  secondary-container: '#e4e1e6'\n  on-secondary-container: '#656467'\n  tertiary: '#5d5f5e'\n  on-tertiary: '#ffffff'\n  tertiary-container: '#9a9b9a'\n  on-tertiary-container: '#313333'\n  error: '#ba1a1a'\n  on-error: '#ffffff'\n  error-container: '#ffdad6'\n  on-error-container: '#93000a'\n  primary-fixed: '#ffdbca'\n  primary-fixed-dim: '#ffb690'\n  on-primary-fixed: '#341100'\n  on-primary-fixed-variant: '#783200'\n  secondary-fixed: '#e4e1e6'\n  secondary-fixed-dim: '#c8c5ca'\n  on-secondary-fixed: '#1b1b1e'\n  on-secondary-fixed-variant: '#47464a'\n  tertiary-fixed: '#e2e2e2'\n  tertiary-fixed-dim: '#c6c7c6'\n  on-tertiary-fixed: '#1a1c1c'\n  on-tertiary-fixed-variant: '#454747'\n  background: '#f9f9fc'\n  on-background: '#1a1c1e'\n  surface-variant: '#e2e2e5'\ntypography:\n  display:\n    fontFamily: Noto Sans\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Noto Sans\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-lg-mobile:\n    fontFamily: Noto Sans\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-md:\n    fontFamily: Noto Sans\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Noto Sans\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  body-md:\n    fontFamily: Noto Sans\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 20px\n  label-md:\n    fontFamily: Noto Sans\n    fontSize: 12px\n    fontWeight: '600'\n    lineHeight: 16px\n    letterSpacing: 0.05em\n  code:\n    fontFamily: JetBrains Mono\n    fontSize: 13px\n    fontWeight: '400'\n    lineHeight: 20px\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  base: 8px\n  xs: 4px\n  sm: 12px\n  md: 24px\n  lg: 40px\n  xl: 64px\n  container-padding: 32px\n  gutter: 24px\n---\n\n## Brand & Style\nThe design system is centered on the \"Bento\" philosophy: organized, modular, and premium. It targets high-end productivity and fintech applications that require a balance of warmth and professional precision. The aesthetic draws heavily from Stripe’s minimalist dashboard language, emphasizing generous negative space and a rigorous underlying grid.\n\nThe emotional response is one of **calm clarity**. By utilizing a soft off-white \"Canvas\" foundation, the UI avoids the sterile harshness of pure white, creating a welcoming environment. The design style is **Modern Corporate with a Tactile Minimalist twist**, characterized by high-legibility typography, thin neutral borders, and high-impact functional accents.\n\n## Colors\nThe palette is intentionally restrained to maintain a premium feel. \n- **Canvas (#FBFBFA):** The global background color. It provides a warm, paper-like quality that distinguishes the application from standard digital interfaces.\n- **Surface (#FFFFFF):** Used for elevated \"Bento\" containers, cards, and input areas. This creates a subtle but clear distinction against the Canvas.\n- **Accent (#F97316):** A clean, energetic orange used sparingly for primary actions, progress indicators, and active states.\n- **Text (#18181B):** A deep charcoal, almost black, ensuring high contrast and modern sophistication.\n- **Border (#E4E4E7):** A thin, quiet grey used for structural separation without adding visual noise.\n\n## Typography\nThis design system utilizes **Noto Sans** for its universal clarity and balanced proportions. The type scale is optimized for information density and readability in complex dashboards.\n\n- **Headlines:** Use tighter letter-spacing and heavier weights to anchor sections.\n- **Body Text:** Maintains a standard weight for maximum legibility.\n- **Labels:** Small caps or slightly tracked-out bold weights are used for metadata and table headers to create a distinct visual layer from body content.\n- **Hierarchy:** Contrast is achieved primarily through weight and size rather than color shifts, keeping the UI looking clean and intentional.\n\n## Layout & Spacing\nThe layout follows a **Fluid Grid** model with strict \"Bento\" container constraints. \n- **The 8px Grid:** All spacing and sizing must be multiples of 8px to ensure mathematical harmony.\n- **Generous Padding:** Components utilize internal padding that is 1.5x larger than typical utility-first frameworks (e.g., using `24px` where `16px` is standard) to evoke a premium, airy feel.\n- **The Bento Grid:** Content is organized into cards with consistent gutters. On desktop, a 12-column system is used. On mobile, content stacks vertically with 16px horizontal margins.\n- **Table Density:** While cards are airy, data tables follow a \"Stripe-like\" clean density—horizontal borders only, with ample cell padding (12px vertical, 16px horizontal).\n\n## Elevation & Depth\nThis design system avoids heavy drop shadows in favor of **Tonal Layers and Thin Outlines**. \n\n- **Level 0 (Canvas):** The base layer (#FBFBFA).\n- **Level 1 (Surface):** The primary container layer (#FFFFFF). These elements use a 1px solid border (#E4E4E7).\n- **Interactive Depth:** Only upon interaction (hover/active) or for floating modals is a shadow applied. The shadow should be a very soft, highly diffused ambient shadow: `0 4px 20px -2px rgba(24, 24, 27, 0.05)`.\n- **Separation:** Depth is created through the contrast between the Warm Canvas and the Stark White Surface, not through artificial lighting effects.\n\n## Shapes\nThe shape language is \"Softly Geometric.\" While the grid is rigid, the corners are generous to soften the professional tone.\n- **Base Components:** (Inputs, Buttons) use `rounded-lg` (16px).\n- **Containers:** (Cards, Bento Blocks) use `rounded-xl` (24px).\n- **Outer Shells:** Modals and large wrapper sections use `rounded-2xl` (32px).\n- **Consistency:** Never mix sharp corners with rounded ones; every container must carry the radius to maintain the \"Bento\" aesthetic.\n\n## Components\n- **Buttons:** Primary buttons are solid Accent (#F97316) with white text. Secondary buttons use a white surface with a 1px Border (#E4E4E7). All buttons have a height of 40px or 48px for a tactile, premium feel.\n- **Bento Cards:** The core component. White background, 1px border, 24px padding, and 24px corner radius. Title should be Headline-MD.\n- **Input Fields:** Minimalist. 1px border (#E4E4E7) that transitions to Accent (#F97316) on focus. No heavy background fills—keep them white.\n- **Chips:** Small, low-profile badges using the Label-MD type role. Backgrounds should be very pale tints of the status color (e.g., success is a pale green, not the brand orange).\n- **Data Tables:** Inspired by Stripe. No vertical lines. 1px horizontal lines only. The header row uses Label-MD with a light Canvas background fill.\n- **Navigation:** Side-navigation or top-bar uses subtle hover states (Canvas color background) with high-contrast text.",
+                      "font": "NOTO_SANS",
+                      "headlineFont": "NOTO_SANS",
+                      "headlineFontFamily": "Noto Sans",
+                      "labelFont": "NOTO_SANS",
+                      "labelFontFamily": "Noto Sans",
+                      "namedColors": {
+                        "background": "#f9f9fc",
+                        "error": "#ba1a1a",
+                        "error_container": "#ffdad6",
+                        "inverse_on_surface": "#f0f0f3",
+                        "inverse_primary": "#ffb690",
+                        "inverse_surface": "#2f3033",
+                        "on_background": "#1a1c1e",
+                        "on_error": "#ffffff",
+                        "on_error_container": "#93000a",
+                        "on_primary": "#ffffff",
+                        "on_primary_container": "#582200",
+                        "on_primary_fixed": "#341100",
+                        "on_primary_fixed_variant": "#783200",
+                        "on_secondary": "#ffffff",
+                        "on_secondary_container": "#656467",
+                        "on_secondary_fixed": "#1b1b1e",
+                        "on_secondary_fixed_variant": "#47464a",
+                        "on_surface": "#1a1c1e",
+                        "on_surface_variant": "#584237",
+                        "on_tertiary": "#ffffff",
+                        "on_tertiary_container": "#313333",
+                        "on_tertiary_fixed": "#1a1c1c",
+                        "on_tertiary_fixed_variant": "#454747",
+                        "outline": "#8c7164",
+                        "outline_variant": "#e0c0b1",
+                        "primary": "#9d4300",
+                        "primary_container": "#f97316",
+                        "primary_fixed": "#ffdbca",
+                        "primary_fixed_dim": "#ffb690",
+                        "secondary": "#5f5e61",
+                        "secondary_container": "#e4e1e6",
+                        "secondary_fixed": "#e4e1e6",
+                        "secondary_fixed_dim": "#c8c5ca",
+                        "surface": "#f9f9fc",
+                        "surface_bright": "#f9f9fc",
+                        "surface_container": "#eeedf0",
+                        "surface_container_high": "#e8e8eb",
+                        "surface_container_highest": "#e2e2e5",
+                        "surface_container_low": "#f3f3f6",
+                        "surface_container_lowest": "#ffffff",
+                        "surface_dim": "#dadadd",
+                        "surface_tint": "#9d4300",
+                        "surface_variant": "#e2e2e5",
+                        "tertiary": "#5d5f5e",
+                        "tertiary_container": "#9a9b9a",
+                        "tertiary_fixed": "#e2e2e2",
+                        "tertiary_fixed_dim": "#c6c7c6"
+                      },
+                      "overrideNeutralColor": "#e4e4e7",
+                      "overridePrimaryColor": "#f97316",
+                      "overrideSecondaryColor": "#18181b",
+                      "overrideTertiaryColor": "#fbfbfa",
+                      "roundness": "ROUND_EIGHT",
+                      "spacing": {
+                        "base": "8px",
+                        "container-padding": "32px",
+                        "gutter": "24px",
+                        "lg": "40px",
+                        "md": "24px",
+                        "sm": "12px",
+                        "xl": "64px",
+                        "xs": "4px"
+                      },
+                      "spacingScale": 2,
+                      "typography": {
+                        "body-lg": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "16px",
+                          "fontWeight": "400",
+                          "lineHeight": "24px"
+                        },
+                        "body-md": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "14px",
+                          "fontWeight": "400",
+                          "lineHeight": "20px"
+                        },
+                        "code": {
+                          "fontFamily": "JetBrains Mono",
+                          "fontSize": "13px",
+                          "fontWeight": "400",
+                          "lineHeight": "20px"
+                        },
+                        "display": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "48px",
+                          "fontWeight": "700",
+                          "letterSpacing": "-0.02em",
+                          "lineHeight": "56px"
+                        },
+                        "headline-lg": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "32px",
+                          "fontWeight": "600",
+                          "letterSpacing": "-0.01em",
+                          "lineHeight": "40px"
+                        },
+                        "headline-lg-mobile": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "24px",
+                          "fontWeight": "600",
+                          "lineHeight": "32px"
+                        },
+                        "headline-md": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "20px",
+                          "fontWeight": "600",
+                          "lineHeight": "28px"
+                        },
+                        "label-md": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "12px",
+                          "fontWeight": "600",
+                          "letterSpacing": "0.05em",
+                          "lineHeight": "16px"
+                        }
+                      }
+                    }
+                  },
+                  "name": "assets/b0161371d4294fc1ab3e86496ff8a0fb",
+                  "version": "1"
+                },
+                "deviceType": "DESKTOP",
+                "generatedBy": "figaro_agent",
+                "height": "2048",
+                "htmlCode": {
+                  "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzUwN2U5MjVjYzcxMjQzNjc5NzI0ODQwMjA2YzBjMzBiEgoSBhCVjN2bchgBkgEjCgpwcm9qZWN0X2lkEhVCEzU3NTc3MjY4ODg2MDg4Mzg0NzM&filename=&opi=96797242",
+                  "mimeType": "text/html",
+                  "name": "projects/5757726888608838473/files/6d44d267ef714c97a94a9e9c0fc7c510"
+                },
+                "id": "ce1b5c6737f9413989af766a94e46484",
+                "name": "projects/5757726888608838473/screens/ce1b5c6737f9413989af766a94e46484",
+                "prompt": "Redesign of \"Tender Super List\" as a Premium Warm Bento dashboard. \n\nLayout:\n1. TopNavBar from {{DATA:COMPONENTS:COMPONENTS_20}}.\n2. Main Content: Two columns (1/4 and 3/4).\n   - Left Sidebar (Filter Panel): \n     - White floating card, p-6 padding, border #E4E4E7.\n     - Slider for budget \"Highest 50M\" with large display text.\n     - Category filters: Green, Blue, Purple tags, rounded-lg.\n     - Keywords section: \"Key Weights\" and \"Avoid/Exclude\" with refined tags + x buttons.\n     - Bottom: Switch for \"Auto-exclude tenders closing within 7 days\".\n   - Right Table (Super List):\n     - Large white floating card, border #E4E4E7.\n     - Header: \"Filtered 42 High-Potential Tenders\", sort dropdown (Deadline, Feasibility).\n     - Row density: 72px height, px-6 padding, thin gray separators.\n     - Row Content:\n       * Agency (e.g., MOHW) + Green \"Engineering\" badge. Title \"MOHW Building Renovation\" (14px bold).\n       * Budget \"12M\" and Deadline \"2026-07-12 (12 days left)\".\n       * Right: Circular progress ring \"92%\" in green, plus capsule buttons \"✓ Accept\" and \"✗ Ignore\" (32px height, minimal).\n3. Pagination: Minimal \"Prev\" and \"Next\" with page numbers.\n\nOverall Aesthetic: White surfaces, #FBFBFA canvas, #F97316 accent, generous whitespace, thin borders. All text in Traditional Chinese.",
+                "screenMetadata": {
+                  "agentType": "PRO_AGENT",
+                  "status": "COMPLETE"
+                },
+                "screenType": "DESIGN",
+                "screenshot": {
+                  "downloadUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvc7Kv1dWAjcSOVHH-A3UVA2vrxmGuCw8FyUaasLsdGzsqQN0L28_f1ablAY5g5Opx9VXtxPY9gFr-CrCn26n9MlpC2MBTTTm_SNkMr_aqMJYy20Y2vIfGJgVWHAsvXMoEwoL2fLOeV1BXVFcvosFOF7B8K204pggxz_toyjSGgWqKprLK4PuXPxRJ1VLf9kLMyqKEx35Bq1WeyZj13rqK-UzFjm-MYj0gnNJlFpqLjyKOhPXDXE_7lXw",
+                  "name": "projects/5757726888608838473/files/56a7a6eb67dc44f3840532054404ff7c"
+                },
+                "theme": {
+                  "bodyFont": "NOTO_SANS",
+                  "bodyFontFamily": "Noto Sans",
+                  "colorMode": "LIGHT",
+                  "colorVariant": "FIDELITY",
+                  "customColor": "#f97316",
+                  "font": "NOTO_SANS",
+                  "headlineFont": "NOTO_SANS",
+                  "headlineFontFamily": "Noto Sans",
+                  "labelFont": "NOTO_SANS",
+                  "labelFontFamily": "Noto Sans",
+                  "namedColors": {
+                    "background": "#f9f9fc",
+                    "error": "#ba1a1a",
+                    "error_container": "#ffdad6",
+                    "inverse_on_surface": "#f0f0f3",
+                    "inverse_primary": "#ffb690",
+                    "inverse_surface": "#2f3033",
+                    "on_background": "#1a1c1e",
+                    "on_error": "#ffffff",
+                    "on_error_container": "#93000a",
+                    "on_primary": "#ffffff",
+                    "on_primary_container": "#582200",
+                    "on_primary_fixed": "#341100",
+                    "on_primary_fixed_variant": "#783200",
+                    "on_secondary": "#ffffff",
+                    "on_secondary_container": "#656467",
+                    "on_secondary_fixed": "#1b1b1e",
+                    "on_secondary_fixed_variant": "#47464a",
+                    "on_surface": "#1a1c1e",
+                    "on_surface_variant": "#584237",
+                    "on_tertiary": "#ffffff",
+                    "on_tertiary_container": "#313333",
+                    "on_tertiary_fixed": "#1a1c1c",
+                    "on_tertiary_fixed_variant": "#454747",
+                    "outline": "#8c7164",
+                    "outline_variant": "#e0c0b1",
+                    "primary": "#9d4300",
+                    "primary_container": "#f97316",
+                    "primary_fixed": "#ffdbca",
+                    "primary_fixed_dim": "#ffb690",
+                    "secondary": "#5f5e61",
+                    "secondary_container": "#e4e1e6",
+                    "secondary_fixed": "#e4e1e6",
+                    "secondary_fixed_dim": "#c8c5ca",
+                    "surface": "#f9f9fc",
+                    "surface_bright": "#f9f9fc",
+                    "surface_container": "#eeedf0",
+                    "surface_container_high": "#e8e8eb",
+                    "surface_container_highest": "#e2e2e5",
+                    "surface_container_low": "#f3f3f6",
+                    "surface_container_lowest": "#ffffff",
+                    "surface_dim": "#dadadd",
+                    "surface_tint": "#9d4300",
+                    "surface_variant": "#e2e2e5",
+                    "tertiary": "#5d5f5e",
+                    "tertiary_container": "#9a9b9a",
+                    "tertiary_fixed": "#e2e2e2",
+                    "tertiary_fixed_dim": "#c6c7c6"
+                  },
+                  "overrideNeutralColor": "#e4e4e7",
+                  "overridePrimaryColor": "#f97316",
+                  "overrideSecondaryColor": "#18181b",
+                  "overrideTertiaryColor": "#fbfbfa",
+                  "roundness": "ROUND_EIGHT",
+                  "spacing": {
+                    "base": "8px",
+                    "container-padding": "32px",
+                    "gutter": "24px",
+                    "lg": "40px",
+                    "md": "24px",
+                    "sm": "12px",
+                    "xl": "64px",
+                    "xs": "4px"
+                  },
+                  "spacingScale": 2,
+                  "typography": {
+                    "body-lg": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "16px",
+                      "fontWeight": "400",
+                      "lineHeight": "24px"
+                    },
+                    "body-md": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "14px",
+                      "fontWeight": "400",
+                      "lineHeight": "20px"
+                    },
+                    "code": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "13px",
+                      "fontWeight": "400",
+                      "lineHeight": "20px"
+                    },
+                    "display": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "48px",
+                      "fontWeight": "700",
+                      "letterSpacing": "-0.02em",
+                      "lineHeight": "56px"
+                    },
+                    "headline-lg": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "32px",
+                      "fontWeight": "600",
+                      "letterSpacing": "-0.01em",
+                      "lineHeight": "40px"
+                    },
+                    "headline-lg-mobile": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "24px",
+                      "fontWeight": "600",
+                      "lineHeight": "32px"
+                    },
+                    "headline-md": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "20px",
+                      "fontWeight": "600",
+                      "lineHeight": "28px"
+                    },
+                    "label-md": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "12px",
+                      "fontWeight": "600",
+                      "letterSpacing": "0.05em",
+                      "lineHeight": "16px"
+                    }
+                  }
+                },
+                "title": "Tender AI 標案超級清單 - Bento Style",
+                "width": "2560"
+              }
+            ],
+            "theme": {}
+          }
+        },
+        {
+          "text": "我已完成「標案超級清單」的重新設計，採用了 **Premium Warm Bento** 風格，將視覺重點放在提升資訊層次感與操作流暢度。\n\n### 設計重點：\n*   **Bento 佈局優化**：將頁面拆分為 1:3 的結構，左側為獨立的篩選控制面板，右側為高密度的數據表格，有效解決資訊擁擠問題。\n*   **Stripe 啟發的表格設計**：表格行高設定為 72px，並運用極簡細邊框 (#E4E4E7) 與充足的留白，讓 42 筆高潛力標案的清單在視覺上依然保持輕盈。\n*   **精確的表單控制件**：\n    *   **預算滑桿 (Slider)**：上方配有大字顯示，讓門檻一目了然。\n    *   **圓角標籤與膠囊按鈕**：採用 `rounded-xl` 與高度 32px 的按鈕，維持高階感。\n    *   **關鍵字編輯區**：細分加權與排除區塊，並配備精細的標籤刪除鈕。\n*   **視覺反饋**：右側表格引入了高雅的圓環進度計 (92%)，搭配「承接」與「略過」的極簡膠囊按鈕，直覺引導使用者進行決策。\n\n您可以在畫布上查看 Tender AI 標案超級清單 - Bento Style。如果您想調整篩選器的互動細節，或是微調表格的欄位權重，請隨時告訴我！"
+        },
+        {
+          "suggestion": "調整表格標題為深色加粗字體"
+        },
+        {
+          "suggestion": "增加滑桿的動畫效果"
+        },
+        {
+          "suggestion": "更換圓環進度計的顏色風格"
+        }
+      ],
+      "projectId": "5757726888608838473",
+      "sessionId": "3627489342868125765"
+    }
+  }
+}

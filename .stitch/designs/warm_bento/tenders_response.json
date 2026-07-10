@@ -1,0 +1,474 @@
+{
+  "id": 1782627572852,
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [
+      {
+        "text": "{\"projectId\":\"5757726888608838473\",\"sessionId\":\"5156246643637990442\",\"outputComponents\":[{\"designSystem\":{\"name\":\"assets/f28c9be5519240cba56723c444370ab8\",\"designSystem\":{\"displayName\":\"Tender AI Super List\",\"styleGuidelines\":\"## Brand & Style\\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \\\"tender\\\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\\n\\nThe style is characterized by:\\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \\\"human\\\" workspace.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\\n\\n- **Desktop:** 12-columns, 40px outer margins.\\n- **Tablet:** 6-columns, 24px outer margins.\\n- **Mobile:** Single column stack, 16px outer margins.\\n\\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\\n\\n## Elevation & Depth\\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \\n\\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \\\"Soft Ambient\\\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\\n\\n## Components\\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).\",\"theme\":{\"colorMode\":\"LIGHT\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f97316\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"NOTO_SANS\",\"namedColors\":{\"background\":\"#fff8f6\",\"error\":\"#ba1a1a\",\"error_container\":\"#ffdad6\",\"inverse_on_surface\":\"#ffede6\",\"inverse_primary\":\"#ffb690\",\"inverse_surface\":\"#3c2d26\",\"on_background\":\"#251913\",\"on_error\":\"#ffffff\",\"on_error_container\":\"#93000a\",\"on_primary\":\"#ffffff\",\"on_primary_container\":\"#582200\",\"on_primary_fixed\":\"#341100\",\"on_primary_fixed_variant\":\"#783200\",\"on_secondary\":\"#ffffff\",\"on_secondary_container\":\"#007432\",\"on_secondary_fixed\":\"#002109\",\"on_secondary_fixed_variant\":\"#005321\",\"on_surface\":\"#251913\",\"on_surface_variant\":\"#584237\",\"on_tertiary\":\"#ffffff\",\"on_tertiary_container\":\"#00306e\",\"on_tertiary_fixed\":\"#001a42\",\"on_tertiary_fixed_variant\":\"#004395\",\"outline\":\"#8c7164\",\"outline_variant\":\"#e0c0b1\",\"primary\":\"#9d4300\",\"primary_container\":\"#f97316\",\"primary_fixed\":\"#ffdbca\",\"primary_fixed_dim\":\"#ffb690\",\"secondary\":\"#006e2f\",\"secondary_container\":\"#6bff8f\",\"secondary_fixed\":\"#6bff8f\",\"secondary_fixed_dim\":\"#4ae176\",\"surface\":\"#fff8f6\",\"surface_bright\":\"#fff8f6\",\"surface_container\":\"#ffeae0\",\"surface_container_high\":\"#fce3d9\",\"surface_container_highest\":\"#f6ded3\",\"surface_container_low\":\"#fff1eb\",\"surface_container_lowest\":\"#ffffff\",\"surface_dim\":\"#edd5cb\",\"surface_tint\":\"#9d4300\",\"surface_variant\":\"#f6ded3\",\"tertiary\":\"#005ac2\",\"tertiary_container\":\"#6399ff\",\"tertiary_fixed\":\"#d8e2ff\",\"tertiary_fixed_dim\":\"#adc6ff\"},\"designMd\":\"---\\nname: Tender AI Super List\\ncolors:\\n  surface: '#fff8f6'\\n  surface-dim: '#edd5cb'\\n  surface-bright: '#fff8f6'\\n  surface-container-lowest: '#ffffff'\\n  surface-container-low: '#fff1eb'\\n  surface-container: '#ffeae0'\\n  surface-container-high: '#fce3d9'\\n  surface-container-highest: '#f6ded3'\\n  on-surface: '#251913'\\n  on-surface-variant: '#584237'\\n  inverse-surface: '#3c2d26'\\n  inverse-on-surface: '#ffede6'\\n  outline: '#8c7164'\\n  outline-variant: '#e0c0b1'\\n  surface-tint: '#9d4300'\\n  primary: '#9d4300'\\n  on-primary: '#ffffff'\\n  primary-container: '#f97316'\\n  on-primary-container: '#582200'\\n  inverse-primary: '#ffb690'\\n  secondary: '#006e2f'\\n  on-secondary: '#ffffff'\\n  secondary-container: '#6bff8f'\\n  on-secondary-container: '#007432'\\n  tertiary: '#005ac2'\\n  on-tertiary: '#ffffff'\\n  tertiary-container: '#6399ff'\\n  on-tertiary-container: '#00306e'\\n  error: '#ba1a1a'\\n  on-error: '#ffffff'\\n  error-container: '#ffdad6'\\n  on-error-container: '#93000a'\\n  primary-fixed: '#ffdbca'\\n  primary-fixed-dim: '#ffb690'\\n  on-primary-fixed: '#341100'\\n  on-primary-fixed-variant: '#783200'\\n  secondary-fixed: '#6bff8f'\\n  secondary-fixed-dim: '#4ae176'\\n  on-secondary-fixed: '#002109'\\n  on-secondary-fixed-variant: '#005321'\\n  tertiary-fixed: '#d8e2ff'\\n  tertiary-fixed-dim: '#adc6ff'\\n  on-tertiary-fixed: '#001a42'\\n  on-tertiary-fixed-variant: '#004395'\\n  background: '#fff8f6'\\n  on-background: '#251913'\\n  surface-variant: '#f6ded3'\\ntypography:\\n  display:\\n    fontFamily: Noto Sans\\n    fontSize: 48px\\n    fontWeight: '700'\\n    lineHeight: 56px\\n    letterSpacing: -0.02em\\n  headline-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 32px\\n    fontWeight: '600'\\n    lineHeight: 40px\\n    letterSpacing: -0.01em\\n  headline-lg-mobile:\\n    fontFamily: Noto Sans\\n    fontSize: 24px\\n    fontWeight: '600'\\n    lineHeight: 32px\\n  headline-md:\\n    fontFamily: Noto Sans\\n    fontSize: 20px\\n    fontWeight: '600'\\n    lineHeight: 28px\\n  body-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 18px\\n    fontWeight: '400'\\n    lineHeight: 28px\\n  body-md:\\n    fontFamily: Noto Sans\\n    fontSize: 16px\\n    fontWeight: '400'\\n    lineHeight: 24px\\n  label-md:\\n    fontFamily: Noto Sans\\n    fontSize: 14px\\n    fontWeight: '600'\\n    lineHeight: 20px\\n    letterSpacing: 0.01em\\n  label-sm:\\n    fontFamily: Noto Sans\\n    fontSize: 12px\\n    fontWeight: '500'\\n    lineHeight: 16px\\n    letterSpacing: 0.02em\\nrounded:\\n  sm: 0.25rem\\n  DEFAULT: 0.5rem\\n  md: 0.75rem\\n  lg: 1rem\\n  xl: 1.5rem\\n  full: 9999px\\nspacing:\\n  base: 4px\\n  xs: 4px\\n  sm: 8px\\n  md: 16px\\n  lg: 24px\\n  xl: 32px\\n  gutter: 20px\\n  margin-mobile: 16px\\n  margin-desktop: 40px\\n---\\n\\n## Brand & Style\\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \\\"tender\\\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\\n\\nThe style is characterized by:\\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \\\"human\\\" workspace.\\n\\n## Colors\\nThe palette is anchored by a **warm canvas (#FDFDFD)**, which provides a softer background than pure white. \\n\\n- **Primary Accent (#F97316):** Used sparingly for call-to-actions, active states, and high-priority indicators.\\n- **Surface (#FFFFFF):** Elevated containers and bento cells use pure white to pop against the canvas.\\n- **Category Accents:** Functional color coding for organization. \\n    - **Engineering:** Green (#22C55E)\\n    - **Goods:** Blue (#3B82F6)\\n    - **Services:** Purple (#A855F7)\\n- **Text & Borders:** A deep ink-black (#18181B) ensures maximum legibility, while a soft gray (#E4E4E7) defines structure without creating visual noise.\\n\\n## Typography\\nThis design system utilizes **Noto Sans** across all levels to ensure global legibility and a clean, modern aesthetic. \\n\\nThe hierarchy follows an editorial logic:\\n- **Headlines:** Use tighter letter-spacing and heavier weights to create strong visual anchors for bento cells.\\n- **Body:** Generous line-height (1.5x - 1.6x) ensures comfortable reading of long-form tender descriptions.\\n- **Labels:** Used for metadata, badges, and button text, employing semi-bold weights for clear distinction from body text.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\\n\\n- **Desktop:** 12-columns, 40px outer margins.\\n- **Tablet:** 6-columns, 24px outer margins.\\n- **Mobile:** Single column stack, 16px outer margins.\\n\\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\\n\\n## Elevation & Depth\\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \\n\\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \\\"Soft Ambient\\\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\\n\\n## Shapes\\nThe shape language is generous and friendly, emphasizing comfort. \\n- **Bento Cards:** Use `rounded-2xl` (16px) to define the primary containers.\\n- **Standard Components:** Inputs and secondary buttons use `rounded-xl` (12px).\\n- **Primary Buttons/Badges:** Use `rounded-full` for a distinct \\\"pill\\\" shape that contrasts against the rectangular nature of the grid.\\n\\n## Components\\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).\",\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f97316\",\"overrideSecondaryColor\":\"#22c55e\",\"overrideTertiaryColor\":\"#3b82f6\",\"spacingScale\":2,\"typography\":{\"body-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"18px\",\"fontWeight\":\"400\",\"lineHeight\":\"28px\"},\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"display\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\",\"letterSpacing\":\"-0.01em\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"headline-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"20px\",\"fontWeight\":\"600\",\"lineHeight\":\"28px\"},\"label-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"14px\",\"fontWeight\":\"600\",\"lineHeight\":\"20px\",\"letterSpacing\":\"0.01em\"},\"label-sm\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"12px\",\"fontWeight\":\"500\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.02em\"}},\"spacing\":{\"base\":\"4px\",\"gutter\":\"20px\",\"lg\":\"24px\",\"margin-desktop\":\"40px\",\"margin-mobile\":\"16px\",\"md\":\"16px\",\"sm\":\"8px\",\"xl\":\"32px\",\"xs\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Noto Sans\"}},\"version\":\"1\"}},{\"design\":{\"screens\":[{\"screenshot\":{\"name\":\"projects/5757726888608838473/files/cee3977ede594749b1b1c6f90201a82c\",\"downloadUrl\":\"https://lh3.googleusercontent.com/aida/AP1WRLvD93IfLo6b6MJr6uCYENOx5u9Dw9gfNugn5pgrlKVBSePAXdNr8dPzH2trgiFLOvIy5z-OPBtW4UOzEcF6YZijrxc4H_oekAXkdntVBLiRR1CtwvohQKJno7-7biMO0Zh4pWvbEZg9TAoKESdjbJjq2VwsT8QAE5LJyaTvr7HaGsI_aj4QbaIEzQ3YRQIMiOtpoM0F_fRcWYE7DQCSU3U6m14SnHLPMAUAFrsp_6SPkuVsPT6R0vNXJQ\"},\"htmlCode\":{\"name\":\"projects/5757726888608838473/files/6c2bf445c56c4050a5b51d0e4af04d27\",\"downloadUrl\":\"https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzcwN2I5NDI0YWVhYzQ1YmJhNmQ1MDIzNDU5NWRkZDhjEgoSBhCVjN2bchgBkgEjCgpwcm9qZWN0X2lkEhVCEzU3NTc3MjY4ODg2MDg4Mzg0NzM&filename=&opi=96797242\",\"mimeType\":\"text/html\"},\"id\":\"82471c0b002f443ab448348b7dccbc13\",\"generatedBy\":\"figaro_agent\",\"width\":\"2560\",\"height\":\"2048\",\"title\":\"Tender AI 標案超級清單 - Bento Style\",\"prompt\":\"Create the \\\"Tender AI Super List\\\" main screen with a Warm Bento layout.\\n\\nLayout:\\n- SideNavBar (Left): Using {{DATA:COMPONENTS:COMPONENTS_8}}. Include filter controls:\\n  - Budget Threshold Slider: Max 5,000萬.\\n  - Category Checkboxes: 工程 (Green), 財物 (Blue), 勞務 (Purple) with icon accents.\\n  - Keyword Weighting: \\\"Priority Keywords\\\" vs \\\"Exclude Keywords\\\" input areas.\\n  - Toggle Switch: \\\"Exclude cases closing within 7 days\\\".\\n- Main Content Area (Right):\\n  - TopBar: Show \\\"Showing 42 filtered tenders\\\".\\n  - Tender List: A vertical stack of Bento-style cards.\\n  - Card Details:\\n    - Left: Category badge + Title (e.g., \\\"衛福部大樓裝修工程\\\").\\n    - Center: Budget \\\"1,200 萬\\\", Agency \\\"衛生福利部\\\", and a 92% circular feasibility score meter.\\n    - Right: ⭐ Star icon, [✓ 承接] (Orange capsule button), [✗ 略過] (Soft gray button).\\n  - Bottom: Pagination controls and a \\\"Broaden Filters\\\" hint area.\\n\\nStyle: Warm Gray background (#FDFDFD), White cards (#FFFFFF), Orange primary accent (#F97316). 16px rounded corners, fine 1px borders, subtle soft shadows. Crisp typography using Noto Sans. Use icons from Material Symbols.\",\"name\":\"projects/5757726888608838473/screens/82471c0b002f443ab448348b7dccbc13\",\"theme\":{\"colorMode\":\"LIGHT\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f97316\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"NOTO_SANS\",\"namedColors\":{\"background\":\"#fff8f6\",\"error\":\"#ba1a1a\",\"error_container\":\"#ffdad6\",\"inverse_on_surface\":\"#ffede6\",\"inverse_primary\":\"#ffb690\",\"inverse_surface\":\"#3c2d26\",\"on_background\":\"#251913\",\"on_error\":\"#ffffff\",\"on_error_container\":\"#93000a\",\"on_primary\":\"#ffffff\",\"on_primary_container\":\"#582200\",\"on_primary_fixed\":\"#341100\",\"on_primary_fixed_variant\":\"#783200\",\"on_secondary\":\"#ffffff\",\"on_secondary_container\":\"#007432\",\"on_secondary_fixed\":\"#002109\",\"on_secondary_fixed_variant\":\"#005321\",\"on_surface\":\"#251913\",\"on_surface_variant\":\"#584237\",\"on_tertiary\":\"#ffffff\",\"on_tertiary_container\":\"#00306e\",\"on_tertiary_fixed\":\"#001a42\",\"on_tertiary_fixed_variant\":\"#004395\",\"outline\":\"#8c7164\",\"outline_variant\":\"#e0c0b1\",\"primary\":\"#9d4300\",\"primary_container\":\"#f97316\",\"primary_fixed\":\"#ffdbca\",\"primary_fixed_dim\":\"#ffb690\",\"secondary\":\"#006e2f\",\"secondary_container\":\"#6bff8f\",\"secondary_fixed\":\"#6bff8f\",\"secondary_fixed_dim\":\"#4ae176\",\"surface\":\"#fff8f6\",\"surface_bright\":\"#fff8f6\",\"surface_container\":\"#ffeae0\",\"surface_container_high\":\"#fce3d9\",\"surface_container_highest\":\"#f6ded3\",\"surface_container_low\":\"#fff1eb\",\"surface_container_lowest\":\"#ffffff\",\"surface_dim\":\"#edd5cb\",\"surface_tint\":\"#9d4300\",\"surface_variant\":\"#f6ded3\",\"tertiary\":\"#005ac2\",\"tertiary_container\":\"#6399ff\",\"tertiary_fixed\":\"#d8e2ff\",\"tertiary_fixed_dim\":\"#adc6ff\"},\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f97316\",\"overrideSecondaryColor\":\"#22c55e\",\"overrideTertiaryColor\":\"#3b82f6\",\"spacingScale\":2,\"typography\":{\"body-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"18px\",\"fontWeight\":\"400\",\"lineHeight\":\"28px\"},\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"display\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\",\"letterSpacing\":\"-0.01em\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"headline-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"20px\",\"fontWeight\":\"600\",\"lineHeight\":\"28px\"},\"label-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"14px\",\"fontWeight\":\"600\",\"lineHeight\":\"20px\",\"letterSpacing\":\"0.01em\"},\"label-sm\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"12px\",\"fontWeight\":\"500\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.02em\"}},\"spacing\":{\"base\":\"4px\",\"gutter\":\"20px\",\"lg\":\"24px\",\"margin-desktop\":\"40px\",\"margin-mobile\":\"16px\",\"md\":\"16px\",\"sm\":\"8px\",\"xl\":\"32px\",\"xs\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Noto Sans\"},\"deviceType\":\"DESKTOP\",\"screenType\":\"DESIGN\",\"screenMetadata\":{\"agentType\":\"PRO_AGENT\",\"status\":\"COMPLETE\"},\"designSystem\":{\"name\":\"assets/f28c9be5519240cba56723c444370ab8\",\"designSystem\":{\"displayName\":\"Tender AI Super List\",\"styleGuidelines\":\"## Brand & Style\\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \\\"tender\\\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\\n\\nThe style is characterized by:\\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \\\"human\\\" workspace.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\\n\\n- **Desktop:** 12-columns, 40px outer margins.\\n- **Tablet:** 6-columns, 24px outer margins.\\n- **Mobile:** Single column stack, 16px outer margins.\\n\\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\\n\\n## Elevation & Depth\\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \\n\\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \\\"Soft Ambient\\\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\\n\\n## Components\\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).\",\"theme\":{\"colorMode\":\"LIGHT\",\"font\":\"NOTO_SANS\",\"roundness\":\"ROUND_EIGHT\",\"customColor\":\"#f97316\",\"headlineFont\":\"NOTO_SANS\",\"bodyFont\":\"NOTO_SANS\",\"labelFont\":\"NOTO_SANS\",\"namedColors\":{\"background\":\"#fff8f6\",\"error\":\"#ba1a1a\",\"error_container\":\"#ffdad6\",\"inverse_on_surface\":\"#ffede6\",\"inverse_primary\":\"#ffb690\",\"inverse_surface\":\"#3c2d26\",\"on_background\":\"#251913\",\"on_error\":\"#ffffff\",\"on_error_container\":\"#93000a\",\"on_primary\":\"#ffffff\",\"on_primary_container\":\"#582200\",\"on_primary_fixed\":\"#341100\",\"on_primary_fixed_variant\":\"#783200\",\"on_secondary\":\"#ffffff\",\"on_secondary_container\":\"#007432\",\"on_secondary_fixed\":\"#002109\",\"on_secondary_fixed_variant\":\"#005321\",\"on_surface\":\"#251913\",\"on_surface_variant\":\"#584237\",\"on_tertiary\":\"#ffffff\",\"on_tertiary_container\":\"#00306e\",\"on_tertiary_fixed\":\"#001a42\",\"on_tertiary_fixed_variant\":\"#004395\",\"outline\":\"#8c7164\",\"outline_variant\":\"#e0c0b1\",\"primary\":\"#9d4300\",\"primary_container\":\"#f97316\",\"primary_fixed\":\"#ffdbca\",\"primary_fixed_dim\":\"#ffb690\",\"secondary\":\"#006e2f\",\"secondary_container\":\"#6bff8f\",\"secondary_fixed\":\"#6bff8f\",\"secondary_fixed_dim\":\"#4ae176\",\"surface\":\"#fff8f6\",\"surface_bright\":\"#fff8f6\",\"surface_container\":\"#ffeae0\",\"surface_container_high\":\"#fce3d9\",\"surface_container_highest\":\"#f6ded3\",\"surface_container_low\":\"#fff1eb\",\"surface_container_lowest\":\"#ffffff\",\"surface_dim\":\"#edd5cb\",\"surface_tint\":\"#9d4300\",\"surface_variant\":\"#f6ded3\",\"tertiary\":\"#005ac2\",\"tertiary_container\":\"#6399ff\",\"tertiary_fixed\":\"#d8e2ff\",\"tertiary_fixed_dim\":\"#adc6ff\"},\"designMd\":\"---\\nname: Tender AI Super List\\ncolors:\\n  surface: '#fff8f6'\\n  surface-dim: '#edd5cb'\\n  surface-bright: '#fff8f6'\\n  surface-container-lowest: '#ffffff'\\n  surface-container-low: '#fff1eb'\\n  surface-container: '#ffeae0'\\n  surface-container-high: '#fce3d9'\\n  surface-container-highest: '#f6ded3'\\n  on-surface: '#251913'\\n  on-surface-variant: '#584237'\\n  inverse-surface: '#3c2d26'\\n  inverse-on-surface: '#ffede6'\\n  outline: '#8c7164'\\n  outline-variant: '#e0c0b1'\\n  surface-tint: '#9d4300'\\n  primary: '#9d4300'\\n  on-primary: '#ffffff'\\n  primary-container: '#f97316'\\n  on-primary-container: '#582200'\\n  inverse-primary: '#ffb690'\\n  secondary: '#006e2f'\\n  on-secondary: '#ffffff'\\n  secondary-container: '#6bff8f'\\n  on-secondary-container: '#007432'\\n  tertiary: '#005ac2'\\n  on-tertiary: '#ffffff'\\n  tertiary-container: '#6399ff'\\n  on-tertiary-container: '#00306e'\\n  error: '#ba1a1a'\\n  on-error: '#ffffff'\\n  error-container: '#ffdad6'\\n  on-error-container: '#93000a'\\n  primary-fixed: '#ffdbca'\\n  primary-fixed-dim: '#ffb690'\\n  on-primary-fixed: '#341100'\\n  on-primary-fixed-variant: '#783200'\\n  secondary-fixed: '#6bff8f'\\n  secondary-fixed-dim: '#4ae176'\\n  on-secondary-fixed: '#002109'\\n  on-secondary-fixed-variant: '#005321'\\n  tertiary-fixed: '#d8e2ff'\\n  tertiary-fixed-dim: '#adc6ff'\\n  on-tertiary-fixed: '#001a42'\\n  on-tertiary-fixed-variant: '#004395'\\n  background: '#fff8f6'\\n  on-background: '#251913'\\n  surface-variant: '#f6ded3'\\ntypography:\\n  display:\\n    fontFamily: Noto Sans\\n    fontSize: 48px\\n    fontWeight: '700'\\n    lineHeight: 56px\\n    letterSpacing: -0.02em\\n  headline-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 32px\\n    fontWeight: '600'\\n    lineHeight: 40px\\n    letterSpacing: -0.01em\\n  headline-lg-mobile:\\n    fontFamily: Noto Sans\\n    fontSize: 24px\\n    fontWeight: '600'\\n    lineHeight: 32px\\n  headline-md:\\n    fontFamily: Noto Sans\\n    fontSize: 20px\\n    fontWeight: '600'\\n    lineHeight: 28px\\n  body-lg:\\n    fontFamily: Noto Sans\\n    fontSize: 18px\\n    fontWeight: '400'\\n    lineHeight: 28px\\n  body-md:\\n    fontFamily: Noto Sans\\n    fontSize: 16px\\n    fontWeight: '400'\\n    lineHeight: 24px\\n  label-md:\\n    fontFamily: Noto Sans\\n    fontSize: 14px\\n    fontWeight: '600'\\n    lineHeight: 20px\\n    letterSpacing: 0.01em\\n  label-sm:\\n    fontFamily: Noto Sans\\n    fontSize: 12px\\n    fontWeight: '500'\\n    lineHeight: 16px\\n    letterSpacing: 0.02em\\nrounded:\\n  sm: 0.25rem\\n  DEFAULT: 0.5rem\\n  md: 0.75rem\\n  lg: 1rem\\n  xl: 1.5rem\\n  full: 9999px\\nspacing:\\n  base: 4px\\n  xs: 4px\\n  sm: 8px\\n  md: 16px\\n  lg: 24px\\n  xl: 32px\\n  gutter: 20px\\n  margin-mobile: 16px\\n  margin-desktop: 40px\\n---\\n\\n## Brand & Style\\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \\\"tender\\\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\\n\\nThe style is characterized by:\\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \\\"human\\\" workspace.\\n\\n## Colors\\nThe palette is anchored by a **warm canvas (#FDFDFD)**, which provides a softer background than pure white. \\n\\n- **Primary Accent (#F97316):** Used sparingly for call-to-actions, active states, and high-priority indicators.\\n- **Surface (#FFFFFF):** Elevated containers and bento cells use pure white to pop against the canvas.\\n- **Category Accents:** Functional color coding for organization. \\n    - **Engineering:** Green (#22C55E)\\n    - **Goods:** Blue (#3B82F6)\\n    - **Services:** Purple (#A855F7)\\n- **Text & Borders:** A deep ink-black (#18181B) ensures maximum legibility, while a soft gray (#E4E4E7) defines structure without creating visual noise.\\n\\n## Typography\\nThis design system utilizes **Noto Sans** across all levels to ensure global legibility and a clean, modern aesthetic. \\n\\nThe hierarchy follows an editorial logic:\\n- **Headlines:** Use tighter letter-spacing and heavier weights to create strong visual anchors for bento cells.\\n- **Body:** Generous line-height (1.5x - 1.6x) ensures comfortable reading of long-form tender descriptions.\\n- **Labels:** Used for metadata, badges, and button text, employing semi-bold weights for clear distinction from body text.\\n\\n## Layout & Spacing\\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\\n\\n- **Desktop:** 12-columns, 40px outer margins.\\n- **Tablet:** 6-columns, 24px outer margins.\\n- **Mobile:** Single column stack, 16px outer margins.\\n\\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\\n\\n## Elevation & Depth\\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \\n\\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \\\"Soft Ambient\\\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\\n\\n## Shapes\\nThe shape language is generous and friendly, emphasizing comfort. \\n- **Bento Cards:** Use `rounded-2xl` (16px) to define the primary containers.\\n- **Standard Components:** Inputs and secondary buttons use `rounded-xl` (12px).\\n- **Primary Buttons/Badges:** Use `rounded-full` for a distinct \\\"pill\\\" shape that contrasts against the rectangular nature of the grid.\\n\\n## Components\\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).\",\"colorVariant\":\"FIDELITY\",\"overridePrimaryColor\":\"#f97316\",\"overrideSecondaryColor\":\"#22c55e\",\"overrideTertiaryColor\":\"#3b82f6\",\"spacingScale\":2,\"typography\":{\"body-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"18px\",\"fontWeight\":\"400\",\"lineHeight\":\"28px\"},\"body-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"16px\",\"fontWeight\":\"400\",\"lineHeight\":\"24px\"},\"display\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"48px\",\"fontWeight\":\"700\",\"lineHeight\":\"56px\",\"letterSpacing\":\"-0.02em\"},\"headline-lg\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"32px\",\"fontWeight\":\"600\",\"lineHeight\":\"40px\",\"letterSpacing\":\"-0.01em\"},\"headline-lg-mobile\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"24px\",\"fontWeight\":\"600\",\"lineHeight\":\"32px\"},\"headline-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"20px\",\"fontWeight\":\"600\",\"lineHeight\":\"28px\"},\"label-md\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"14px\",\"fontWeight\":\"600\",\"lineHeight\":\"20px\",\"letterSpacing\":\"0.01em\"},\"label-sm\":{\"fontFamily\":\"Noto Sans\",\"fontSize\":\"12px\",\"fontWeight\":\"500\",\"lineHeight\":\"16px\",\"letterSpacing\":\"0.02em\"}},\"spacing\":{\"base\":\"4px\",\"gutter\":\"20px\",\"lg\":\"24px\",\"margin-desktop\":\"40px\",\"margin-mobile\":\"16px\",\"md\":\"16px\",\"sm\":\"8px\",\"xl\":\"32px\",\"xs\":\"4px\"},\"headlineFontFamily\":\"Noto Sans\",\"bodyFontFamily\":\"Noto Sans\",\"labelFontFamily\":\"Noto Sans\"}},\"version\":\"1\"}}],\"theme\":{}}},{\"text\":\"我已經為 Tender AI 打造了「標案超級清單」的初步設計。\\n\\n### 設計重點：\\n- **溫暖 Bento 佈局**：採用 #FDFDFD 暖灰色畫布與純白卡片，搭配 16px 大圓角與極細邊框，營造專業且具現代感的儀表板氛圍。\\n- **多維度決策側欄**：整合了預算滑桿、帶有專屬色彩標籤的類別篩選（工程/財物/勞務），以及關鍵字權重配置，讓案源篩選直觀且高效。\\n- **高密度決策卡片**：在標案列表中，清晰標示了發包機關、預算與「92% 可行性分數環形圖」，並提供醒目的橙色「承接」膠囊按鈕，優化單案決策速度。\\n- **細節處理**：加入了「排除 7 天內截止案件」的快速切換開關，幫助用戶避開時間緊迫的案件。\\n\\n您可以檢查側欄的篩選邏輯，或針對清單卡片的資訊呈現進行調整。需要我調整篩選器的樣式，或是增加標案詳情的彈窗預覽嗎？\"},{\"suggestion\":\"點擊「承接」後的成功反饋介面\"},{\"suggestion\":\"優化預算滑桿的互動視覺細節\"},{\"suggestion\":\"增加標案類別的動態篩選動畫\"}]}",
+        "type": "text"
+      }
+    ],
+    "structuredContent": {
+      "outputComponents": [
+        {
+          "designSystem": {
+            "designSystem": {
+              "displayName": "Tender AI Super List",
+              "styleGuidelines": "## Brand & Style\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \"tender\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\n\nThe style is characterized by:\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \"human\" workspace.\n\n## Layout & Spacing\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\n\n- **Desktop:** 12-columns, 40px outer margins.\n- **Tablet:** 6-columns, 24px outer margins.\n- **Mobile:** Single column stack, 16px outer margins.\n\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\n\n## Elevation & Depth\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \n\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \"Soft Ambient\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\n\n## Components\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).",
+              "theme": {
+                "bodyFont": "NOTO_SANS",
+                "bodyFontFamily": "Noto Sans",
+                "colorMode": "LIGHT",
+                "colorVariant": "FIDELITY",
+                "customColor": "#f97316",
+                "designMd": "---\nname: Tender AI Super List\ncolors:\n  surface: '#fff8f6'\n  surface-dim: '#edd5cb'\n  surface-bright: '#fff8f6'\n  surface-container-lowest: '#ffffff'\n  surface-container-low: '#fff1eb'\n  surface-container: '#ffeae0'\n  surface-container-high: '#fce3d9'\n  surface-container-highest: '#f6ded3'\n  on-surface: '#251913'\n  on-surface-variant: '#584237'\n  inverse-surface: '#3c2d26'\n  inverse-on-surface: '#ffede6'\n  outline: '#8c7164'\n  outline-variant: '#e0c0b1'\n  surface-tint: '#9d4300'\n  primary: '#9d4300'\n  on-primary: '#ffffff'\n  primary-container: '#f97316'\n  on-primary-container: '#582200'\n  inverse-primary: '#ffb690'\n  secondary: '#006e2f'\n  on-secondary: '#ffffff'\n  secondary-container: '#6bff8f'\n  on-secondary-container: '#007432'\n  tertiary: '#005ac2'\n  on-tertiary: '#ffffff'\n  tertiary-container: '#6399ff'\n  on-tertiary-container: '#00306e'\n  error: '#ba1a1a'\n  on-error: '#ffffff'\n  error-container: '#ffdad6'\n  on-error-container: '#93000a'\n  primary-fixed: '#ffdbca'\n  primary-fixed-dim: '#ffb690'\n  on-primary-fixed: '#341100'\n  on-primary-fixed-variant: '#783200'\n  secondary-fixed: '#6bff8f'\n  secondary-fixed-dim: '#4ae176'\n  on-secondary-fixed: '#002109'\n  on-secondary-fixed-variant: '#005321'\n  tertiary-fixed: '#d8e2ff'\n  tertiary-fixed-dim: '#adc6ff'\n  on-tertiary-fixed: '#001a42'\n  on-tertiary-fixed-variant: '#004395'\n  background: '#fff8f6'\n  on-background: '#251913'\n  surface-variant: '#f6ded3'\ntypography:\n  display:\n    fontFamily: Noto Sans\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Noto Sans\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-lg-mobile:\n    fontFamily: Noto Sans\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-md:\n    fontFamily: Noto Sans\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Noto Sans\n    fontSize: 18px\n    fontWeight: '400'\n    lineHeight: 28px\n  body-md:\n    fontFamily: Noto Sans\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  label-md:\n    fontFamily: Noto Sans\n    fontSize: 14px\n    fontWeight: '600'\n    lineHeight: 20px\n    letterSpacing: 0.01em\n  label-sm:\n    fontFamily: Noto Sans\n    fontSize: 12px\n    fontWeight: '500'\n    lineHeight: 16px\n    letterSpacing: 0.02em\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  base: 4px\n  xs: 4px\n  sm: 8px\n  md: 16px\n  lg: 24px\n  xl: 32px\n  gutter: 20px\n  margin-mobile: 16px\n  margin-desktop: 40px\n---\n\n## Brand & Style\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \"tender\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\n\nThe style is characterized by:\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \"human\" workspace.\n\n## Colors\nThe palette is anchored by a **warm canvas (#FDFDFD)**, which provides a softer background than pure white. \n\n- **Primary Accent (#F97316):** Used sparingly for call-to-actions, active states, and high-priority indicators.\n- **Surface (#FFFFFF):** Elevated containers and bento cells use pure white to pop against the canvas.\n- **Category Accents:** Functional color coding for organization. \n    - **Engineering:** Green (#22C55E)\n    - **Goods:** Blue (#3B82F6)\n    - **Services:** Purple (#A855F7)\n- **Text & Borders:** A deep ink-black (#18181B) ensures maximum legibility, while a soft gray (#E4E4E7) defines structure without creating visual noise.\n\n## Typography\nThis design system utilizes **Noto Sans** across all levels to ensure global legibility and a clean, modern aesthetic. \n\nThe hierarchy follows an editorial logic:\n- **Headlines:** Use tighter letter-spacing and heavier weights to create strong visual anchors for bento cells.\n- **Body:** Generous line-height (1.5x - 1.6x) ensures comfortable reading of long-form tender descriptions.\n- **Labels:** Used for metadata, badges, and button text, employing semi-bold weights for clear distinction from body text.\n\n## Layout & Spacing\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\n\n- **Desktop:** 12-columns, 40px outer margins.\n- **Tablet:** 6-columns, 24px outer margins.\n- **Mobile:** Single column stack, 16px outer margins.\n\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\n\n## Elevation & Depth\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \n\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \"Soft Ambient\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\n\n## Shapes\nThe shape language is generous and friendly, emphasizing comfort. \n- **Bento Cards:** Use `rounded-2xl` (16px) to define the primary containers.\n- **Standard Components:** Inputs and secondary buttons use `rounded-xl` (12px).\n- **Primary Buttons/Badges:** Use `rounded-full` for a distinct \"pill\" shape that contrasts against the rectangular nature of the grid.\n\n## Components\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).",
+                "font": "NOTO_SANS",
+                "headlineFont": "NOTO_SANS",
+                "headlineFontFamily": "Noto Sans",
+                "labelFont": "NOTO_SANS",
+                "labelFontFamily": "Noto Sans",
+                "namedColors": {
+                  "background": "#fff8f6",
+                  "error": "#ba1a1a",
+                  "error_container": "#ffdad6",
+                  "inverse_on_surface": "#ffede6",
+                  "inverse_primary": "#ffb690",
+                  "inverse_surface": "#3c2d26",
+                  "on_background": "#251913",
+                  "on_error": "#ffffff",
+                  "on_error_container": "#93000a",
+                  "on_primary": "#ffffff",
+                  "on_primary_container": "#582200",
+                  "on_primary_fixed": "#341100",
+                  "on_primary_fixed_variant": "#783200",
+                  "on_secondary": "#ffffff",
+                  "on_secondary_container": "#007432",
+                  "on_secondary_fixed": "#002109",
+                  "on_secondary_fixed_variant": "#005321",
+                  "on_surface": "#251913",
+                  "on_surface_variant": "#584237",
+                  "on_tertiary": "#ffffff",
+                  "on_tertiary_container": "#00306e",
+                  "on_tertiary_fixed": "#001a42",
+                  "on_tertiary_fixed_variant": "#004395",
+                  "outline": "#8c7164",
+                  "outline_variant": "#e0c0b1",
+                  "primary": "#9d4300",
+                  "primary_container": "#f97316",
+                  "primary_fixed": "#ffdbca",
+                  "primary_fixed_dim": "#ffb690",
+                  "secondary": "#006e2f",
+                  "secondary_container": "#6bff8f",
+                  "secondary_fixed": "#6bff8f",
+                  "secondary_fixed_dim": "#4ae176",
+                  "surface": "#fff8f6",
+                  "surface_bright": "#fff8f6",
+                  "surface_container": "#ffeae0",
+                  "surface_container_high": "#fce3d9",
+                  "surface_container_highest": "#f6ded3",
+                  "surface_container_low": "#fff1eb",
+                  "surface_container_lowest": "#ffffff",
+                  "surface_dim": "#edd5cb",
+                  "surface_tint": "#9d4300",
+                  "surface_variant": "#f6ded3",
+                  "tertiary": "#005ac2",
+                  "tertiary_container": "#6399ff",
+                  "tertiary_fixed": "#d8e2ff",
+                  "tertiary_fixed_dim": "#adc6ff"
+                },
+                "overridePrimaryColor": "#f97316",
+                "overrideSecondaryColor": "#22c55e",
+                "overrideTertiaryColor": "#3b82f6",
+                "roundness": "ROUND_EIGHT",
+                "spacing": {
+                  "base": "4px",
+                  "gutter": "20px",
+                  "lg": "24px",
+                  "margin-desktop": "40px",
+                  "margin-mobile": "16px",
+                  "md": "16px",
+                  "sm": "8px",
+                  "xl": "32px",
+                  "xs": "4px"
+                },
+                "spacingScale": 2,
+                "typography": {
+                  "body-lg": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "18px",
+                    "fontWeight": "400",
+                    "lineHeight": "28px"
+                  },
+                  "body-md": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "16px",
+                    "fontWeight": "400",
+                    "lineHeight": "24px"
+                  },
+                  "display": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "48px",
+                    "fontWeight": "700",
+                    "letterSpacing": "-0.02em",
+                    "lineHeight": "56px"
+                  },
+                  "headline-lg": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "32px",
+                    "fontWeight": "600",
+                    "letterSpacing": "-0.01em",
+                    "lineHeight": "40px"
+                  },
+                  "headline-lg-mobile": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "24px",
+                    "fontWeight": "600",
+                    "lineHeight": "32px"
+                  },
+                  "headline-md": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "20px",
+                    "fontWeight": "600",
+                    "lineHeight": "28px"
+                  },
+                  "label-md": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "14px",
+                    "fontWeight": "600",
+                    "letterSpacing": "0.01em",
+                    "lineHeight": "20px"
+                  },
+                  "label-sm": {
+                    "fontFamily": "Noto Sans",
+                    "fontSize": "12px",
+                    "fontWeight": "500",
+                    "letterSpacing": "0.02em",
+                    "lineHeight": "16px"
+                  }
+                }
+              }
+            },
+            "name": "assets/f28c9be5519240cba56723c444370ab8",
+            "version": "1"
+          }
+        },
+        {
+          "design": {
+            "screens": [
+              {
+                "designSystem": {
+                  "designSystem": {
+                    "displayName": "Tender AI Super List",
+                    "styleGuidelines": "## Brand & Style\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \"tender\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\n\nThe style is characterized by:\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \"human\" workspace.\n\n## Layout & Spacing\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\n\n- **Desktop:** 12-columns, 40px outer margins.\n- **Tablet:** 6-columns, 24px outer margins.\n- **Mobile:** Single column stack, 16px outer margins.\n\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\n\n## Elevation & Depth\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \n\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \"Soft Ambient\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\n\n## Components\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).",
+                    "theme": {
+                      "bodyFont": "NOTO_SANS",
+                      "bodyFontFamily": "Noto Sans",
+                      "colorMode": "LIGHT",
+                      "colorVariant": "FIDELITY",
+                      "customColor": "#f97316",
+                      "designMd": "---\nname: Tender AI Super List\ncolors:\n  surface: '#fff8f6'\n  surface-dim: '#edd5cb'\n  surface-bright: '#fff8f6'\n  surface-container-lowest: '#ffffff'\n  surface-container-low: '#fff1eb'\n  surface-container: '#ffeae0'\n  surface-container-high: '#fce3d9'\n  surface-container-highest: '#f6ded3'\n  on-surface: '#251913'\n  on-surface-variant: '#584237'\n  inverse-surface: '#3c2d26'\n  inverse-on-surface: '#ffede6'\n  outline: '#8c7164'\n  outline-variant: '#e0c0b1'\n  surface-tint: '#9d4300'\n  primary: '#9d4300'\n  on-primary: '#ffffff'\n  primary-container: '#f97316'\n  on-primary-container: '#582200'\n  inverse-primary: '#ffb690'\n  secondary: '#006e2f'\n  on-secondary: '#ffffff'\n  secondary-container: '#6bff8f'\n  on-secondary-container: '#007432'\n  tertiary: '#005ac2'\n  on-tertiary: '#ffffff'\n  tertiary-container: '#6399ff'\n  on-tertiary-container: '#00306e'\n  error: '#ba1a1a'\n  on-error: '#ffffff'\n  error-container: '#ffdad6'\n  on-error-container: '#93000a'\n  primary-fixed: '#ffdbca'\n  primary-fixed-dim: '#ffb690'\n  on-primary-fixed: '#341100'\n  on-primary-fixed-variant: '#783200'\n  secondary-fixed: '#6bff8f'\n  secondary-fixed-dim: '#4ae176'\n  on-secondary-fixed: '#002109'\n  on-secondary-fixed-variant: '#005321'\n  tertiary-fixed: '#d8e2ff'\n  tertiary-fixed-dim: '#adc6ff'\n  on-tertiary-fixed: '#001a42'\n  on-tertiary-fixed-variant: '#004395'\n  background: '#fff8f6'\n  on-background: '#251913'\n  surface-variant: '#f6ded3'\ntypography:\n  display:\n    fontFamily: Noto Sans\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Noto Sans\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-lg-mobile:\n    fontFamily: Noto Sans\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-md:\n    fontFamily: Noto Sans\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Noto Sans\n    fontSize: 18px\n    fontWeight: '400'\n    lineHeight: 28px\n  body-md:\n    fontFamily: Noto Sans\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  label-md:\n    fontFamily: Noto Sans\n    fontSize: 14px\n    fontWeight: '600'\n    lineHeight: 20px\n    letterSpacing: 0.01em\n  label-sm:\n    fontFamily: Noto Sans\n    fontSize: 12px\n    fontWeight: '500'\n    lineHeight: 16px\n    letterSpacing: 0.02em\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  base: 4px\n  xs: 4px\n  sm: 8px\n  md: 16px\n  lg: 24px\n  xl: 32px\n  gutter: 20px\n  margin-mobile: 16px\n  margin-desktop: 40px\n---\n\n## Brand & Style\nThe design system adopts a **Warm Bento** aesthetic—a fusion of Japanese minimalist organization and contemporary software warmth. It targets users who manage complex data but crave a calm, tactile interface. The emotional response is one of clarity and \"tender\" efficiency, achieved through generous whitespace, high-quality typography, and soft structural containers.\n\nThe style is characterized by:\n- **Modular Bento Tiling:** Content is organized into distinct, rounded containers that vary in size but maintain a cohesive grid.\n- **Editorial Precision:** Use of clear typographic hierarchies to make information-dense lists feel scannable and light.\n- **Soft Minimalism:** Unlike cold corporate minimalism, this system uses a warm-toned canvas and vibrant accents to create a welcoming, \"human\" workspace.\n\n## Colors\nThe palette is anchored by a **warm canvas (#FDFDFD)**, which provides a softer background than pure white. \n\n- **Primary Accent (#F97316):** Used sparingly for call-to-actions, active states, and high-priority indicators.\n- **Surface (#FFFFFF):** Elevated containers and bento cells use pure white to pop against the canvas.\n- **Category Accents:** Functional color coding for organization. \n    - **Engineering:** Green (#22C55E)\n    - **Goods:** Blue (#3B82F6)\n    - **Services:** Purple (#A855F7)\n- **Text & Borders:** A deep ink-black (#18181B) ensures maximum legibility, while a soft gray (#E4E4E7) defines structure without creating visual noise.\n\n## Typography\nThis design system utilizes **Noto Sans** across all levels to ensure global legibility and a clean, modern aesthetic. \n\nThe hierarchy follows an editorial logic:\n- **Headlines:** Use tighter letter-spacing and heavier weights to create strong visual anchors for bento cells.\n- **Body:** Generous line-height (1.5x - 1.6x) ensures comfortable reading of long-form tender descriptions.\n- **Labels:** Used for metadata, badges, and button text, employing semi-bold weights for clear distinction from body text.\n\n## Layout & Spacing\nThe layout follows a **Fluid Bento Grid** model. On desktop, content is distributed across a 12-column grid with 20px gutters. Elements are encouraged to span varying column widths (e.g., 4-col for secondary data, 8-col for primary lists) to create the characteristic bento look.\n\n- **Desktop:** 12-columns, 40px outer margins.\n- **Tablet:** 6-columns, 24px outer margins.\n- **Mobile:** Single column stack, 16px outer margins.\n\nSpacing is based on a 4px scale, favoring `16px (md)` for internal padding and `24px (lg)` for vertical separation between sections.\n\n## Elevation & Depth\nDepth is achieved through a combination of **Tonal Layering** and **Subtle Shadows**. \n\n1. **Base Layer:** The Canvas (#FDFDFD) acts as the floor.\n2. **Surface Layer:** White (#FFFFFF) cards sit on the canvas with a 1px border (#E4E4E7).\n3. **Shadow Treatment:** Elevated elements (active cards or hover states) use a \"Soft Ambient\" shadow: `0px 4px 12px rgba(24, 24, 27, 0.04)`.\n4. **Interaction:** Upon hover, a card may transition from a 1px border to a 1.5px border or increase shadow spread to indicate interactivity.\n\n## Shapes\nThe shape language is generous and friendly, emphasizing comfort. \n- **Bento Cards:** Use `rounded-2xl` (16px) to define the primary containers.\n- **Standard Components:** Inputs and secondary buttons use `rounded-xl` (12px).\n- **Primary Buttons/Badges:** Use `rounded-full` for a distinct \"pill\" shape that contrasts against the rectangular nature of the grid.\n\n## Components\n- **Bento Cards:** White background, 16px corner radius, 1px border. Padding should be a minimum of 24px.\n- **Primary Buttons:** Pill-shaped (rounded-full), Orange (#F97316) background, white text.\n- **Secondary Buttons:** Ghost style with a 1px border (#E4E4E7) and 12px corner radius.\n- **Category Badges:** Small, pill-shaped labels. Background is a 10% opacity version of the category color (Green, Blue, or Purple), with the text in the full-saturation color.\n- **Input Fields:** 12px corner radius, soft gray border. On focus, the border transitions to Primary Orange with a subtle outer glow.\n- **Lists:** Clean rows with 1px bottom dividers. High contrast between the title (Bold) and the supporting metadata (Label-sm).",
+                      "font": "NOTO_SANS",
+                      "headlineFont": "NOTO_SANS",
+                      "headlineFontFamily": "Noto Sans",
+                      "labelFont": "NOTO_SANS",
+                      "labelFontFamily": "Noto Sans",
+                      "namedColors": {
+                        "background": "#fff8f6",
+                        "error": "#ba1a1a",
+                        "error_container": "#ffdad6",
+                        "inverse_on_surface": "#ffede6",
+                        "inverse_primary": "#ffb690",
+                        "inverse_surface": "#3c2d26",
+                        "on_background": "#251913",
+                        "on_error": "#ffffff",
+                        "on_error_container": "#93000a",
+                        "on_primary": "#ffffff",
+                        "on_primary_container": "#582200",
+                        "on_primary_fixed": "#341100",
+                        "on_primary_fixed_variant": "#783200",
+                        "on_secondary": "#ffffff",
+                        "on_secondary_container": "#007432",
+                        "on_secondary_fixed": "#002109",
+                        "on_secondary_fixed_variant": "#005321",
+                        "on_surface": "#251913",
+                        "on_surface_variant": "#584237",
+                        "on_tertiary": "#ffffff",
+                        "on_tertiary_container": "#00306e",
+                        "on_tertiary_fixed": "#001a42",
+                        "on_tertiary_fixed_variant": "#004395",
+                        "outline": "#8c7164",
+                        "outline_variant": "#e0c0b1",
+                        "primary": "#9d4300",
+                        "primary_container": "#f97316",
+                        "primary_fixed": "#ffdbca",
+                        "primary_fixed_dim": "#ffb690",
+                        "secondary": "#006e2f",
+                        "secondary_container": "#6bff8f",
+                        "secondary_fixed": "#6bff8f",
+                        "secondary_fixed_dim": "#4ae176",
+                        "surface": "#fff8f6",
+                        "surface_bright": "#fff8f6",
+                        "surface_container": "#ffeae0",
+                        "surface_container_high": "#fce3d9",
+                        "surface_container_highest": "#f6ded3",
+                        "surface_container_low": "#fff1eb",
+                        "surface_container_lowest": "#ffffff",
+                        "surface_dim": "#edd5cb",
+                        "surface_tint": "#9d4300",
+                        "surface_variant": "#f6ded3",
+                        "tertiary": "#005ac2",
+                        "tertiary_container": "#6399ff",
+                        "tertiary_fixed": "#d8e2ff",
+                        "tertiary_fixed_dim": "#adc6ff"
+                      },
+                      "overridePrimaryColor": "#f97316",
+                      "overrideSecondaryColor": "#22c55e",
+                      "overrideTertiaryColor": "#3b82f6",
+                      "roundness": "ROUND_EIGHT",
+                      "spacing": {
+                        "base": "4px",
+                        "gutter": "20px",
+                        "lg": "24px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "16px",
+                        "md": "16px",
+                        "sm": "8px",
+                        "xl": "32px",
+                        "xs": "4px"
+                      },
+                      "spacingScale": 2,
+                      "typography": {
+                        "body-lg": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "18px",
+                          "fontWeight": "400",
+                          "lineHeight": "28px"
+                        },
+                        "body-md": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "16px",
+                          "fontWeight": "400",
+                          "lineHeight": "24px"
+                        },
+                        "display": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "48px",
+                          "fontWeight": "700",
+                          "letterSpacing": "-0.02em",
+                          "lineHeight": "56px"
+                        },
+                        "headline-lg": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "32px",
+                          "fontWeight": "600",
+                          "letterSpacing": "-0.01em",
+                          "lineHeight": "40px"
+                        },
+                        "headline-lg-mobile": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "24px",
+                          "fontWeight": "600",
+                          "lineHeight": "32px"
+                        },
+                        "headline-md": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "20px",
+                          "fontWeight": "600",
+                          "lineHeight": "28px"
+                        },
+                        "label-md": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "14px",
+                          "fontWeight": "600",
+                          "letterSpacing": "0.01em",
+                          "lineHeight": "20px"
+                        },
+                        "label-sm": {
+                          "fontFamily": "Noto Sans",
+                          "fontSize": "12px",
+                          "fontWeight": "500",
+                          "letterSpacing": "0.02em",
+                          "lineHeight": "16px"
+                        }
+                      }
+                    }
+                  },
+                  "name": "assets/f28c9be5519240cba56723c444370ab8",
+                  "version": "1"
+                },
+                "deviceType": "DESKTOP",
+                "generatedBy": "figaro_agent",
+                "height": "2048",
+                "htmlCode": {
+                  "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzcwN2I5NDI0YWVhYzQ1YmJhNmQ1MDIzNDU5NWRkZDhjEgoSBhCVjN2bchgBkgEjCgpwcm9qZWN0X2lkEhVCEzU3NTc3MjY4ODg2MDg4Mzg0NzM&filename=&opi=96797242",
+                  "mimeType": "text/html",
+                  "name": "projects/5757726888608838473/files/6c2bf445c56c4050a5b51d0e4af04d27"
+                },
+                "id": "82471c0b002f443ab448348b7dccbc13",
+                "name": "projects/5757726888608838473/screens/82471c0b002f443ab448348b7dccbc13",
+                "prompt": "Create the \"Tender AI Super List\" main screen with a Warm Bento layout.\n\nLayout:\n- SideNavBar (Left): Using {{DATA:COMPONENTS:COMPONENTS_8}}. Include filter controls:\n  - Budget Threshold Slider: Max 5,000萬.\n  - Category Checkboxes: 工程 (Green), 財物 (Blue), 勞務 (Purple) with icon accents.\n  - Keyword Weighting: \"Priority Keywords\" vs \"Exclude Keywords\" input areas.\n  - Toggle Switch: \"Exclude cases closing within 7 days\".\n- Main Content Area (Right):\n  - TopBar: Show \"Showing 42 filtered tenders\".\n  - Tender List: A vertical stack of Bento-style cards.\n  - Card Details:\n    - Left: Category badge + Title (e.g., \"衛福部大樓裝修工程\").\n    - Center: Budget \"1,200 萬\", Agency \"衛生福利部\", and a 92% circular feasibility score meter.\n    - Right: ⭐ Star icon, [✓ 承接] (Orange capsule button), [✗ 略過] (Soft gray button).\n  - Bottom: Pagination controls and a \"Broaden Filters\" hint area.\n\nStyle: Warm Gray background (#FDFDFD), White cards (#FFFFFF), Orange primary accent (#F97316). 16px rounded corners, fine 1px borders, subtle soft shadows. Crisp typography using Noto Sans. Use icons from Material Symbols.",
+                "screenMetadata": {
+                  "agentType": "PRO_AGENT",
+                  "status": "COMPLETE"
+                },
+                "screenType": "DESIGN",
+                "screenshot": {
+                  "downloadUrl": "https://lh3.googleusercontent.com/aida/AP1WRLvD93IfLo6b6MJr6uCYENOx5u9Dw9gfNugn5pgrlKVBSePAXdNr8dPzH2trgiFLOvIy5z-OPBtW4UOzEcF6YZijrxc4H_oekAXkdntVBLiRR1CtwvohQKJno7-7biMO0Zh4pWvbEZg9TAoKESdjbJjq2VwsT8QAE5LJyaTvr7HaGsI_aj4QbaIEzQ3YRQIMiOtpoM0F_fRcWYE7DQCSU3U6m14SnHLPMAUAFrsp_6SPkuVsPT6R0vNXJQ",
+                  "name": "projects/5757726888608838473/files/cee3977ede594749b1b1c6f90201a82c"
+                },
+                "theme": {
+                  "bodyFont": "NOTO_SANS",
+                  "bodyFontFamily": "Noto Sans",
+                  "colorMode": "LIGHT",
+                  "colorVariant": "FIDELITY",
+                  "customColor": "#f97316",
+                  "font": "NOTO_SANS",
+                  "headlineFont": "NOTO_SANS",
+                  "headlineFontFamily": "Noto Sans",
+                  "labelFont": "NOTO_SANS",
+                  "labelFontFamily": "Noto Sans",
+                  "namedColors": {
+                    "background": "#fff8f6",
+                    "error": "#ba1a1a",
+                    "error_container": "#ffdad6",
+                    "inverse_on_surface": "#ffede6",
+                    "inverse_primary": "#ffb690",
+                    "inverse_surface": "#3c2d26",
+                    "on_background": "#251913",
+                    "on_error": "#ffffff",
+                    "on_error_container": "#93000a",
+                    "on_primary": "#ffffff",
+                    "on_primary_container": "#582200",
+                    "on_primary_fixed": "#341100",
+                    "on_primary_fixed_variant": "#783200",
+                    "on_secondary": "#ffffff",
+                    "on_secondary_container": "#007432",
+                    "on_secondary_fixed": "#002109",
+                    "on_secondary_fixed_variant": "#005321",
+                    "on_surface": "#251913",
+                    "on_surface_variant": "#584237",
+                    "on_tertiary": "#ffffff",
+                    "on_tertiary_container": "#00306e",
+                    "on_tertiary_fixed": "#001a42",
+                    "on_tertiary_fixed_variant": "#004395",
+                    "outline": "#8c7164",
+                    "outline_variant": "#e0c0b1",
+                    "primary": "#9d4300",
+                    "primary_container": "#f97316",
+                    "primary_fixed": "#ffdbca",
+                    "primary_fixed_dim": "#ffb690",
+                    "secondary": "#006e2f",
+                    "secondary_container": "#6bff8f",
+                    "secondary_fixed": "#6bff8f",
+                    "secondary_fixed_dim": "#4ae176",
+                    "surface": "#fff8f6",
+                    "surface_bright": "#fff8f6",
+                    "surface_container": "#ffeae0",
+                    "surface_container_high": "#fce3d9",
+                    "surface_container_highest": "#f6ded3",
+                    "surface_container_low": "#fff1eb",
+                    "surface_container_lowest": "#ffffff",
+                    "surface_dim": "#edd5cb",
+                    "surface_tint": "#9d4300",
+                    "surface_variant": "#f6ded3",
+                    "tertiary": "#005ac2",
+                    "tertiary_container": "#6399ff",
+                    "tertiary_fixed": "#d8e2ff",
+                    "tertiary_fixed_dim": "#adc6ff"
+                  },
+                  "overridePrimaryColor": "#f97316",
+                  "overrideSecondaryColor": "#22c55e",
+                  "overrideTertiaryColor": "#3b82f6",
+                  "roundness": "ROUND_EIGHT",
+                  "spacing": {
+                    "base": "4px",
+                    "gutter": "20px",
+                    "lg": "24px",
+                    "margin-desktop": "40px",
+                    "margin-mobile": "16px",
+                    "md": "16px",
+                    "sm": "8px",
+                    "xl": "32px",
+                    "xs": "4px"
+                  },
+                  "spacingScale": 2,
+                  "typography": {
+                    "body-lg": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "18px",
+                      "fontWeight": "400",
+                      "lineHeight": "28px"
+                    },
+                    "body-md": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "16px",
+                      "fontWeight": "400",
+                      "lineHeight": "24px"
+                    },
+                    "display": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "48px",
+                      "fontWeight": "700",
+                      "letterSpacing": "-0.02em",
+                      "lineHeight": "56px"
+                    },
+                    "headline-lg": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "32px",
+                      "fontWeight": "600",
+                      "letterSpacing": "-0.01em",
+                      "lineHeight": "40px"
+                    },
+                    "headline-lg-mobile": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "24px",
+                      "fontWeight": "600",
+                      "lineHeight": "32px"
+                    },
+                    "headline-md": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "20px",
+                      "fontWeight": "600",
+                      "lineHeight": "28px"
+                    },
+                    "label-md": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "14px",
+                      "fontWeight": "600",
+                      "letterSpacing": "0.01em",
+                      "lineHeight": "20px"
+                    },
+                    "label-sm": {
+                      "fontFamily": "Noto Sans",
+                      "fontSize": "12px",
+                      "fontWeight": "500",
+                      "letterSpacing": "0.02em",
+                      "lineHeight": "16px"
+                    }
+                  }
+                },
+                "title": "Tender AI 標案超級清單 - Bento Style",
+                "width": "2560"
+              }
+            ],
+            "theme": {}
+          }
+        },
+        {
+          "text": "我已經為 Tender AI 打造了「標案超級清單」的初步設計。\n\n### 設計重點：\n- **溫暖 Bento 佈局**：採用 #FDFDFD 暖灰色畫布與純白卡片，搭配 16px 大圓角與極細邊框，營造專業且具現代感的儀表板氛圍。\n- **多維度決策側欄**：整合了預算滑桿、帶有專屬色彩標籤的類別篩選（工程/財物/勞務），以及關鍵字權重配置，讓案源篩選直觀且高效。\n- **高密度決策卡片**：在標案列表中，清晰標示了發包機關、預算與「92% 可行性分數環形圖」，並提供醒目的橙色「承接」膠囊按鈕，優化單案決策速度。\n- **細節處理**：加入了「排除 7 天內截止案件」的快速切換開關，幫助用戶避開時間緊迫的案件。\n\n您可以檢查側欄的篩選邏輯，或針對清單卡片的資訊呈現進行調整。需要我調整篩選器的樣式，或是增加標案詳情的彈窗預覽嗎？"
+        },
+        {
+          "suggestion": "點擊「承接」後的成功反饋介面"
+        },
+        {
+          "suggestion": "優化預算滑桿的互動視覺細節"
+        },
+        {
+          "suggestion": "增加標案類別的動態篩選動畫"
+        }
+      ],
+      "projectId": "5757726888608838473",
+      "sessionId": "5156246643637990442"
+    }
+  }
+}
