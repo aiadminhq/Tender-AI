@@ -89,7 +89,9 @@ function splitTenderTitleRefs(value: string, refs: TenderRef[]): unknown[] {
     const match = matches
       .map((ref) => ({ ref, index: value.indexOf(ref.title, cursor) }))
       .filter((item) => item.index >= 0)
-      .sort((a, b) => a.index - b.index || b.ref.title.length - a.ref.title.length)[0];
+      .sort(
+        (a, b) => a.index - b.index || b.ref.title.length - a.ref.title.length,
+      )[0];
 
     if (!match) break;
     if (match.index > cursor) {
@@ -145,7 +147,8 @@ function appendTableSourceColumn(
     tagName?: string;
     children?: unknown[];
   }>) {
-    if (section.tagName !== "tbody" || !Array.isArray(section.children)) continue;
+    if (section.tagName !== "tbody" || !Array.isArray(section.children))
+      continue;
     for (const row of section.children as Array<{
       tagName?: string;
       children?: unknown[];
@@ -171,7 +174,8 @@ function appendTableSourceColumn(
     tagName?: string;
     children?: unknown[];
   }>) {
-    if (section.tagName !== "thead" || !Array.isArray(section.children)) continue;
+    if (section.tagName !== "thead" || !Array.isArray(section.children))
+      continue;
     for (const row of section.children as Array<{
       tagName?: string;
       children?: unknown[];
@@ -191,9 +195,7 @@ function appendTableSourceColumn(
 // 跳過 a/code/pre 內的文字（避免污染既有連結與程式碼）。無依賴、串流期間反覆套用安全。
 export function makeTenderLinkPlugin(refs: TenderRef[]) {
   const byId = new Map(
-    refs
-      .filter((r) => r.id != null)
-      .map((r) => [String(r.id), r.title]),
+    refs.filter((r) => r.id != null).map((r) => [String(r.id), r.title]),
   );
   const SKIP = new Set(["a", "code", "pre"]);
   const walk = (node: { tagName?: string; children?: unknown[] }) => {
@@ -229,7 +231,9 @@ export function makeTenderLinkPlugin(refs: TenderRef[]) {
     node.children = out;
   };
   return () => (tree: { children?: unknown[] }) => {
-    if (byId.size === 0) return;
+    // 守衛以 refs 為準（非 byId）：即使沒有任何帶 id 的 ref，仍需走訪以
+    // 依 title 連結尚未進本地 DB 的標案、並補表格來源欄外連。
+    if (refs.length === 0) return;
     walk(tree);
   };
 }

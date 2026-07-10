@@ -24,8 +24,13 @@ CHAT = "/api/v1/assistant/chat"
 pytestmark = pytest.mark.usefixtures("ollama_brain")
 
 
-def _payload(prompt: str) -> dict:
-    return {"messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}]}
+def _payload(prompt: str, context: dict | None = None) -> dict:
+    body: dict = {
+        "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
+    }
+    if context is not None:
+        body["context"] = context
+    return body
 
 
 def _events(text: str) -> list[dict]:
@@ -189,3 +194,105 @@ async def test_chat_template_when_llm_disabled(
     assert calls["n"] == 0  # 停用旗標時完全不呼叫 LLM
     final = _by_type(_events(resp.text), "delta")[-1]["text"]
     assert ("相關標案" in final) or ("下一步" in final)
+
+
+# ── Phase 3 情境感知接線：context.focus_tender_id 進檢索與 grounding ──────────
+
+
+async def test_focus_tender_id_pins_current_tender_into_sources(
+    client, seeded, monkeypatch, quiet_retrieval
+):
+    """帶 context.focus_tender_id 時，使用者「正在檢視」的標案須被釘進 sources。
+
+    以 tmu 標案（"北醫醫療設備採購"）為情境標的：純文字提問「工程」不會撈到它，
+    但帶上 focus_tender_id 後，它應被釘為證據（含在 meta sources），證明前端傳來的
+    當前標案 id 確實接進了對話檢索，而非僅顯示於右欄。
+    """
+    focus = seeded["tmu"]
+
+    async def fake_stream(messages, **kw):
+        yield "好的。"
+
+    monkeypatch.setattr("app.services.llm.stream_chat", fake_stream)
+
+    # baseline：不帶 focus，提問「工程」不會撈到 tmu 標案。
+    base = await client.post(CHAT, json=_payload("工程"))
+    base_ids = {
+        s["tender_id"] for s in _by_type(_events(base.text), "meta")[0]["sources"]
+    }
+    assert focus not in base_ids, "前置條件：無 focus 時 tmu 不應出現"
+
+    # 帶 focus_tender_id：tmu 標案應被釘進 sources。
+    resp = await client.post(
+        CHAT, json=_payload("工程", context={"focus_tender_id": focus})
+    )
+    assert resp.status_code == 200
+    sources = _by_type(_events(resp.text), "meta")[0]["sources"]
+    focus_ids = {s["tender_id"] for s in sources}
+    assert focus in focus_ids, "帶 focus_tender_id 時當前標案須被納入檢索證據"
+
+
+async def test_focus_tender_id_injects_focus_note_into_system_prompt(
+    client, seeded, monkeypatch, quiet_retrieval
+):
+    """帶 focus_tender_id 時，grounding system prompt 須含「目前檢視情境」提示。
+
+    讓未帶編號的指代（「這案」「它」）預設對到眼前那一案；此測試鎖住 focus_note
+    的注入（消弭「視覺感知、對話卻不感知」的斷裂）。
+    """
+    focus = seeded["mid"]
+    captured: dict = {}
+
+    async def fake_stream(messages, **kw):
+        captured["messages"] = messages
+        yield "好的。"
+
+    monkeypatch.setattr("app.services.llm.stream_chat", fake_stream)
+
+    resp = await client.post(
+        CHAT, json=_payload("這案適合投嗎", context={"focus_tender_id": focus})
+    )
+    assert resp.status_code == 200
+    sys_content = captured["messages"][0]["content"]
+    assert "目前檢視情境" in sys_content
+    assert f"標案 #{focus}" in sys_content
+
+
+async def test_focus_tender_id_accepts_alias_and_string(
+    client, seeded, monkeypatch, quiet_retrieval
+):
+    """context 鍵 tender_id（別名）與字串數字皆應被接受（前端 route 值多為字串）。"""
+    focus = seeded["tmu"]
+
+    async def fake_stream(messages, **kw):
+        yield "好的。"
+
+    monkeypatch.setattr("app.services.llm.stream_chat", fake_stream)
+
+    resp = await client.post(
+        CHAT, json=_payload("工程", context={"tender_id": str(focus)})
+    )
+    assert resp.status_code == 200
+    focus_ids = {
+        s["tender_id"] for s in _by_type(_events(resp.text), "meta")[0]["sources"]
+    }
+    assert focus in focus_ids
+
+
+async def test_no_focus_tender_id_is_backward_compatible(
+    client, seeded, monkeypatch, quiet_retrieval
+):
+    """缺 context／非正整數 focus 時退回純文字檢索，不注入情境提示（向後相容）。"""
+    captured: dict = {}
+
+    async def fake_stream(messages, **kw):
+        captured["messages"] = messages
+        yield "好的。"
+
+    monkeypatch.setattr("app.services.llm.stream_chat", fake_stream)
+
+    resp = await client.post(
+        CHAT, json=_payload("台北", context={"focus_tender_id": "0"})
+    )
+    assert resp.status_code == 200
+    assert "目前檢視情境" not in captured["messages"][0]["content"]

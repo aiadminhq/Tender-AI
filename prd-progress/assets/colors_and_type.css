@@ -1,0 +1,400 @@
+/* ============================================================
+   HQ Interior & Space Design — Design Tokens v2.0
+   Brand: HQ Interior & Space Design (惠強室內裝修) · Since 1995
+   ------------------------------------------------------------
+   v2 — Standards influenced by Danelec brand system:
+   - Bold accent application (Vermillion used confidently, not timid)
+   - Disciplined neutral tiers (10-step scale, like material design)
+   - Single-family typography (Aeonik for display + body)
+   - 1920×1080 deck-first thinking
+   - 100%-line-height display headlines
+   - No serifs. Anywhere. Ever.
+   ============================================================ */
+
+/* ---------- Fonts ---------- */
+@font-face {
+  font-family: "Aeonik";
+  src: url("./fonts/Aeonik-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aeonik";
+  src: url("./fonts/Aeonik-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+/* Geist Mono (specs/numerals) + Noto Sans TC (Chinese) loaded via Google */
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap");
+
+:root {
+  /* ============================================================
+     COLOR — Brand Accent: HQ Vermillion
+     Used like Danelec uses orange: confidently, in large blocks,
+     for hero callouts, key data, primary CTAs. Not just borders.
+     ============================================================ */
+  --vermillion-50: #fdede5;
+  --vermillion-100: #facdb6;
+  --vermillion-200: #f49a78;
+  --vermillion-300: #ed6d45;
+  --vermillion-400: #d64518; /* PRIMARY — logo, CTAs, hero accents */
+  --vermillion-500: #ba3a12;
+  --vermillion-600: #8e2a09;
+  --vermillion-700: #6b1e05;
+
+  /* Legacy aliases (keep prototypes building) */
+  --hq-vermillion: var(--vermillion-400);
+  --hq-vermillion-hover: var(--vermillion-500);
+  --hq-vermillion-deep: var(--vermillion-600);
+  --hq-vermillion-tint: var(--vermillion-50);
+  --hq-vermillion-glow: rgba(214, 69, 24, 0.12);
+
+  /* ============================================================
+     COLOR — HQ Navy (secondary, deep & disciplined)
+     10-step slate-blue scale. 600 is the canonical "HQ Navy"
+     sampled from the marketing site. Pair with white paper.
+     ============================================================ */
+  --navy-50: #f1f5f9; /* sunken bg, faint wash */
+  --navy-100: #e1e8f0; /* hairline, divider */
+  --navy-200: #c3d0dd; /* border-strong, faint UI fill */
+  --navy-300: #95a6b8; /* concrete, disabled */
+  --navy-400: #5f7184; /* meta text, captions */
+  --navy-500: #3f4e60; /* body text alt */
+  --navy-600: #2a3744; /* HQ Navy — primary dark surface */
+  --navy-700: #1f2a36; /* ink — primary text & deeper surface */
+  --navy-800: #131b25; /* deepest — modal scrim, hero on dark */
+  --navy-900: #0a1118; /* densest */
+
+  /* Legacy aliases */
+  --hq-navy: var(--navy-600);
+  --hq-navy-2: var(--navy-700);
+  --hq-navy-deep: var(--navy-800);
+  --hq-navy-tint: var(--navy-50);
+
+  /* ============================================================
+     COLOR — Neutrals (warm-cool-balanced, NOT pure gray)
+     Slight cool tint to harmonize with navy.
+     ============================================================ */
+  --paper: #ffffff;
+  --paper-2: var(--navy-50); /* alt block bg, hairline contrast */
+  --bone: var(--navy-100); /* card divider, subtle fills */
+  --concrete: var(--navy-200); /* mid-tone, diagrams, dimensions */
+  --concrete-2: var(--navy-400); /* secondary text, captions */
+  --graphite: var(--navy-500); /* body text */
+  --ink: var(--navy-700); /* primary text, near-black */
+  --ink-2: var(--navy-800);
+  --white: #ffffff;
+  --black: #000000;
+
+  /* ============================================================
+     COLOR — Semantic (light theme, default)
+     ============================================================ */
+  --bg: var(--paper);
+  --bg-elevated: var(--white);
+  --bg-sunken: var(--navy-50);
+  --bg-inverse: var(--navy-700);
+
+  --fg1: var(--navy-700); /* headings */
+  --fg2: var(--navy-500); /* body */
+  --fg3: var(--navy-400); /* meta, captions */
+  --fg-disabled: var(--navy-300);
+  --fg-inverse: var(--paper);
+  --fg-accent: var(--vermillion-400);
+
+  --border: var(--navy-100);
+  --border-strong: var(--navy-200);
+  --border-ink: var(--navy-700);
+
+  /* Status — muted, never compete with vermillion */
+  --success: #2f855a;
+  --warning: #b7791f;
+  --danger: var(--vermillion-600);
+  --info: var(--navy-500);
+
+  /* ============================================================
+     TYPE — Families (NO SERIF, ANYWHERE)
+     ============================================================ */
+  /* Display + body: Aeonik (geometric grotesk, Danelec's choice).
+     Single family for the whole system — display, headings, body, UI.
+     Tight 100% line-height on display sizes. */
+  --font-display:
+    "Aeonik", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei",
+    -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-sans:
+    "Aeonik", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei",
+    -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+
+  /* Mono: Geist Mono — specs, dimensions, project codes, technical readouts. */
+  --font-mono:
+    "Geist Mono", "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* CJK forced face (when you want the Chinese face for mixed runs explicitly) */
+  --font-cjk-sans:
+    "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+
+  /* ============================================================
+     TYPE — Scale (Danelec-style bold scale)
+     Display steps go BIG. Body steps mostly land at 18–22.
+     ============================================================ */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-md: 18px;
+  --fs-lg: 20px; /* Danelec body */
+  --fs-xl: 22px; /* Danelec body alt */
+  --fs-2xl: 28px;
+  --fs-3xl: 36px; /* Optional headline */
+  --fs-4xl: 48px;
+  --fs-5xl: 56px; /* "Together, we shape the..." */
+  --fs-6xl: 60px; /* Welcome / Header title */
+  --fs-display: 72px;
+  --fs-display-lg: 96px;
+  --fs-display-xl: 120px; /* Slide title, page number */
+  --fs-display-2xl: clamp(80px, 11vw, 180px);
+
+  /* Line heights — tight on display, generous on body */
+  --lh-display: 1; /* Danelec: 100% on titles */
+  --lh-tight: 1.05;
+  --lh-snug: 1.18;
+  --lh-normal: 1.45;
+  --lh-relaxed: 1.65;
+
+  /* Letter-spacing — geometric sans wants tight headlines */
+  --ls-display: -0.025em;
+  --ls-tight: -0.012em;
+  --ls-normal: 0;
+  --ls-loose: 0.04em;
+  --ls-eyebrow: 0.14em;
+  --ls-mono: 0.02em;
+
+  /* Weights — Aeonik only ships 400 + 700 in this kit */
+  --fw-regular: 400;
+  --fw-bold: 700;
+
+  /* ============================================================
+     SPACING — 4px base
+     ============================================================ */
+  --sp-0: 0;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 96px;
+  --sp-10: 128px;
+  --sp-11: 192px;
+  --sp-12: 256px;
+
+  /* Layout */
+  --container: 1320px;
+  --container-wide: 1480px;
+  --container-deck: 1920px;
+  --gutter: 24px;
+  --section-y: clamp(64px, 9vw, 144px);
+
+  /* ============================================================
+     RADIUS — restrained. Architecture firms prefer hard edges.
+     Danelec uses 5px on photo cards; we follow.
+     ============================================================ */
+  --r-0: 0px;
+  --r-1: 2px;
+  --r-2: 4px;
+  --r-3: 5px; /* photo cards (Danelec convention) */
+  --r-4: 8px;
+  --r-5: 12px;
+  --r-pill: 999px;
+
+  /* ============================================================
+     SHADOWS — minimal. Use borders & contrast first.
+     Danelec deck shadow: 0px 40px 40px 0px rgba(0,0,0,0.05),
+                          0px 30px 40px 0px rgba(0,0,0,0.1)
+     ============================================================ */
+  --shadow-1: 0 1px 0 rgba(31, 42, 54, 0.06);
+  --shadow-2: 0 8px 24px -12px rgba(31, 42, 54, 0.18);
+  --shadow-3: 0 20px 48px -20px rgba(31, 42, 54, 0.28);
+  --shadow-deck:
+    0 40px 40px 0 rgba(0, 0, 0, 0.05), 0 30px 40px 0 rgba(0, 0, 0, 0.1);
+  --shadow-inset-hair: inset 0 0 0 1px var(--border);
+
+  /* ============================================================
+     MOTION — quiet, no bounce. Architectural restraint.
+     ============================================================ */
+  --ease-out: cubic-bezier(0.2, 0.6, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+}
+
+/* ============================================================
+   Dark surface — use for hero/footer/CTA blocks
+   ============================================================ */
+.surface-dark,
+[data-surface="dark"] {
+  --bg: var(--navy-700);
+  --bg-elevated: var(--navy-600);
+  --bg-sunken: var(--navy-800);
+  --fg1: var(--paper);
+  --fg2: var(--navy-200);
+  --fg3: var(--navy-300);
+  --border: var(--navy-600);
+  --border-strong: var(--navy-500);
+  background: var(--bg);
+  color: var(--fg1);
+}
+
+/* Vermillion surface — bold accent slides, hero callouts (Danelec-style) */
+.surface-vermillion,
+[data-surface="vermillion"] {
+  --bg: var(--vermillion-400);
+  --bg-elevated: var(--vermillion-500);
+  --fg1: var(--paper);
+  --fg2: rgba(255, 255, 255, 0.85);
+  --fg3: rgba(255, 255, 255, 0.65);
+  --border: rgba(255, 255, 255, 0.2);
+  background: var(--bg);
+  color: var(--fg1);
+}
+
+/* ============================================================
+   Element defaults
+   ============================================================ */
+html {
+  font-size: var(--fs-base);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: var(--lh-normal);
+  color: var(--fg1);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings — Aeonik throughout. Tight on display. */
+h1,
+.h1 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: clamp(56px, 8vw, 120px);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  color: var(--fg1);
+  text-wrap: balance;
+}
+h2,
+.h2 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: clamp(40px, 5vw, 60px);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  color: var(--fg1);
+  text-wrap: balance;
+}
+h3,
+.h3 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-3xl);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-tight);
+  color: var(--fg1);
+}
+h4,
+.h4 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-2xl);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-tight);
+  color: var(--fg1);
+}
+h5,
+.h5 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xl);
+  line-height: var(--lh-snug);
+}
+
+p,
+.p {
+  font-size: var(--fs-base);
+  line-height: var(--lh-relaxed);
+  color: var(--fg2);
+  text-wrap: pretty;
+}
+
+.lead {
+  font-size: var(--fs-xl);
+  line-height: var(--lh-relaxed);
+  color: var(--fg2);
+}
+
+/* Eyebrow — small uppercase mini-label */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+
+/* Bilingual gloss — Chinese subtitle directly under English headline.
+   ONLY for bilingual surfaces. Pure-EN and pure-ZH systems should not use. */
+.cjk-gloss {
+  font-family: var(--font-cjk-sans);
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-md);
+  line-height: var(--lh-relaxed);
+  color: var(--fg3);
+  letter-spacing: 0.03em;
+}
+
+/* Numeric display — big stats (Danelec: 120px on page numbers) */
+.stat-num {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: clamp(56px, 7vw, 120px);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  color: var(--fg1);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Mono — specs / dimensions / project codes / technical readouts */
+code,
+kbd,
+samp,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  letter-spacing: var(--ls-mono);
+}
+
+/* Links */
+a {
+  color: var(--fg-accent);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+a:hover {
+  color: var(--vermillion-500);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Selection */
+::selection {
+  background: var(--vermillion-400);
+  color: var(--paper);
+}

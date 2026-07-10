@@ -105,7 +105,7 @@ async def run_push(
 
     # 1) 候選池：以學習可行度排序，取較寬的前段（再於下方過濾／去重）
     q = TenderQuery(sort="feas", page=1, page_size=max(limit * 6, 30))
-    items, _ = await list_tenders(session, q)
+    items, _, _ = await list_tenders(session, q)
 
     # 2) 顯示可行度門檻
     pool = [it for it in items if (it.feasibility_score or 0) >= min_score]

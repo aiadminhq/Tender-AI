@@ -19,11 +19,29 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from typing import Any, Callable
 
-from sqlalchemy import and_, asc, case, desc, func, null, nulls_last, or_, select
+from sqlalchemy import (
+    and_,
+    asc,
+    case,
+    desc,
+    false,
+    func,
+    null,
+    nulls_last,
+    or_,
+    select,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import EntityNotFound
+from app.services.cursor import (
+    decode_cursor,
+    encode_cursor,
+    filters_fingerprint,
+)
 from app.models.behavior import TenderUserState
 from app.models.knowledge import KeywordWeight, TierThresholdRevision
 from app.models.revision import TenderRevision
@@ -230,23 +248,124 @@ def _build_filtered(q: TenderQuery, c_high: int, c_low: int):
     return stmt, latest, feas_raw, derived_tier
 
 
-def _order_by(q: TenderQuery, latest, feas_raw, derived_tier):
+@dataclass
+class _OrderSpec:
+    """單一排序鍵：SQL 運算式＋方向＋NULL 擺放＋從結果列取出鍵值的方式。
+
+    同一份 spec 同時餵給 ORDER BY、keyset WHERE、以及「把最後一列編進 cursor」，
+    確保三者用的是同一個排序語義（單一真相）。
+    """
+
+    expr: Any  # SQL 運算式（排序欄位／計算式）
+    descending: bool  # True＝DESC
+    nulls_last: bool  # True＝NULL 殿後（本專案排序皆 nulls_last）
+    extract: Callable[[Any], Any]  # 從結果列取出此鍵的 Python 值（供編 cursor 用）
+
+
+def _order_specs(q: TenderQuery, latest, feas_raw, derived_tier) -> list[_OrderSpec]:
+    """依 active sort 組出「排序鍵向量」；末位恆為 tender.id（一致 tiebreak，非 NULL）。
+
+    語義與舊 _order_by 完全一致，只是改以結構化 spec 表述，好讓 keyset 與 cursor 共用。
+    """
     days = latest.c.days_left
+    tier_rank = _tier_rank(derived_tier)
+
+    def _days_of(row):
+        return row.days_left
+
+    def _tier_rank_of(row):
+        # 與 _tier_rank 的 CASE 對齊（priority<high<mid<low<其他）。
+        return {"priority": 0, "high": 1, "mid": 2, "low": 3}.get(row.tier, 99)
+
+    def _budget_of(row):
+        return row[0].budget_wan
+
+    def _feas_of(row):
+        return row[0].feasibility_team
+
+    def _id_of(row):
+        return row[0].id
+
+    id_spec = _OrderSpec(Tender.id, descending=False, nulls_last=False, extract=_id_of)
+
     if q.sort == "days":
-        return [nulls_last(asc(days))]
-    if q.sort == "budget":
-        return [nulls_last(desc(Tender.budget_wan))]
-    if q.sort == "tier":
+        specs = [_OrderSpec(days, False, True, _days_of)]
+    elif q.sort == "budget":
+        specs = [_OrderSpec(Tender.budget_wan, True, True, _budget_of)]
+    elif q.sort == "tier":
         # 依最終潛力分級排序（priority<high<mid<low），同級以剩餘天數破題。
-        return [asc(_tier_rank(derived_tier)), nulls_last(asc(days))]
-    # feas／feasibility_score（預設）：以物化的團隊線可行性分數為主鍵（高→低、
-    # 未物化 NULL 殿後），再以潛力分級、剩餘天數破題。冷啟動（全 NULL）時退化為
-    # 純潛力分級排序，與舊行為相容。
-    return [
-        nulls_last(desc(Tender.feasibility_team)),
-        asc(_tier_rank(derived_tier)),
-        nulls_last(asc(days)),
-    ]
+        specs = [
+            _OrderSpec(tier_rank, False, False, _tier_rank_of),
+            _OrderSpec(days, False, True, _days_of),
+        ]
+    else:
+        # feas／feasibility_score（預設）：以物化的團隊線可行性分數為主鍵（高→低、
+        # 未物化 NULL 殿後），再以潛力分級、剩餘天數破題。冷啟動（全 NULL）時退化為
+        # 純潛力分級排序，與舊行為相容。
+        specs = [
+            _OrderSpec(Tender.feasibility_team, True, True, _feas_of),
+            _OrderSpec(tier_rank, False, False, _tier_rank_of),
+            _OrderSpec(days, False, True, _days_of),
+        ]
+    return specs + [id_spec]
+
+
+def _order_by_clauses(specs: list[_OrderSpec]):
+    """把 spec 轉成 SQLAlchemy ORDER BY 子句。"""
+    clauses = []
+    for s in specs:
+        direction = desc(s.expr) if s.descending else asc(s.expr)
+        clauses.append(nulls_last(direction) if s.nulls_last else direction)
+    return clauses
+
+
+def _keyset_after(specs: list[_OrderSpec], keys: list[Any]):
+    """組出「排序上嚴格落在最後一列之後」的 keyset 條件（lexicographic）。
+
+    對排序鍵向量 (c1..cn) 與最後一列的值 (v1..vn)，逐層展開：
+
+        after(c1,v1) OR (eq(c1,v1) AND (after(c2,v2) OR (eq(c2,v2) AND ...)))
+
+    每一層依該鍵的方向與 NULL 擺放決定 after／eq 的實際比較（見 _after_one/_eq_one）。
+    末位 id 非 NULL 且 ASC，最單純，保證整體嚴格遞進、不重不漏。
+    """
+    # 由最內層往外組。
+    predicate = None
+    for spec, val in reversed(list(zip(specs, keys))):
+        after = _after_one(spec, val)
+        if predicate is None:
+            predicate = after
+        else:
+            predicate = or_(after, and_(_eq_one(spec, val), predicate))
+    return predicate
+
+
+def _after_one(spec: _OrderSpec, val):
+    """單一鍵：值嚴格「在 val 之後」（依方向＋NULL 擺放）。"""
+    col = spec.expr
+    if val is None:
+        # nulls_last：NULL 是最大／最後，其後再無列 → 無條件為假。
+        # nulls_first（本專案未用）：NULL 之後是所有非 NULL 列。
+        if spec.nulls_last:
+            return false()
+        return col.is_not(None)
+    # val 非 NULL：
+    if spec.descending:
+        base = col < val
+    else:
+        base = col > val
+    if spec.nulls_last:
+        # NULL 排在所有非 NULL 之後 → NULL 也算「在 val 之後」。
+        return or_(base, col.is_(None))
+    return base
+
+
+def _eq_one(spec: _OrderSpec, val):
+    """單一鍵：值與 val「相等」（NULL 視為相等，以正確遞進到次要鍵）。"""
+    col = spec.expr
+    if val is None:
+        return col.is_(None)
+    return col == val
 
 
 def _row_to_item(row) -> TenderListItem:
@@ -282,8 +401,19 @@ def _row_to_item(row) -> TenderListItem:
 
 async def list_tenders(
     session: AsyncSession, q: TenderQuery
-) -> tuple[list[TenderListItem], int]:
-    """回傳 (分頁後清單, 符合條件總數)。"""
+) -> tuple[list[TenderListItem], int, str | None]:
+    """回傳 (分頁後清單, 符合條件總數, next_cursor)。
+
+    分頁模式擇一：
+
+    - **cursor（keyset，優先）**：帶 ``q.cursor`` 時，以 cursor 內編碼的排序鍵向量組
+      keyset WHERE，只掃「下一頁一側」的列，避免深分頁 offset 成本，且對每日新資料
+      插入穩定不跳號。cursor 與當前 sort＋filters 不一致時，由 decode_cursor 拋
+      CursorError（API 轉 400）。
+    - **page（offset，相容）**：未帶 cursor 時沿用舊 page/page_size offset 行為。
+
+    兩種模式皆多回一個 ``next_cursor``：尚有下一頁時為 opaque token，否則為 None。
+    """
     c_high, c_low = await _latest_tier_thresholds(session)
     stmt, latest, feas_raw, derived_tier = _build_filtered(q, c_high, c_low)
 
@@ -291,10 +421,34 @@ async def list_tenders(
         select(func.count()).select_from(stmt.order_by(None).subquery())
     )
 
-    stmt = stmt.order_by(*_order_by(q, latest, feas_raw, derived_tier), asc(Tender.id))
-    stmt = stmt.limit(q.page_size).offset((q.page - 1) * q.page_size)
-    rows = (await session.execute(stmt)).all()
-    return [_row_to_item(r) for r in rows], int(total or 0)
+    specs = _order_specs(q, latest, feas_raw, derived_tier)
+    stmt = stmt.order_by(*_order_by_clauses(specs))
+
+    fingerprint = filters_fingerprint(q)
+    use_cursor = q.cursor is not None
+
+    if use_cursor:
+        keys = decode_cursor(q.cursor, q.sort, fingerprint)
+        stmt = stmt.where(_keyset_after(specs, keys))
+        # 多抓一列判斷是否還有下一頁（keyset 免 offset 掃描）。
+        stmt = stmt.limit(q.page_size + 1)
+        rows = (await session.execute(stmt)).all()
+        has_more = len(rows) > q.page_size
+        rows = rows[: q.page_size]
+    else:
+        # 相容舊 offset 分頁：多抓一列判斷下一頁（不改 total 語義）。
+        stmt = stmt.limit(q.page_size + 1).offset((q.page - 1) * q.page_size)
+        rows = (await session.execute(stmt)).all()
+        has_more = len(rows) > q.page_size
+        rows = rows[: q.page_size]
+
+    next_cursor = None
+    if has_more and rows:
+        last = rows[-1]
+        keys_out = [spec.extract(last) for spec in specs]
+        next_cursor = encode_cursor(q.sort, fingerprint, keys_out)
+
+    return [_row_to_item(r) for r in rows], int(total or 0), next_cursor
 
 
 def _revision_to_detail(rev: TenderRevision) -> RevisionDetail:

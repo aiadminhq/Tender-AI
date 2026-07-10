@@ -74,6 +74,48 @@ interface TenderListResponse {
   count: number;
   page: number;
   page_size: number;
+  // cursor（keyset）真分頁：下一頁的不透明游標；無下一頁為 null。舊後端無此欄 → undefined。
+  next_cursor?: string | null;
+}
+
+/** 單頁抓取結果：已映射的 Tender[]、總數、下一頁游標（無則 null）。 */
+export interface TenderPage {
+  tenders: Tender[];
+  count: number;
+  nextCursor: string | null;
+}
+
+/** 下推到後端 cursor 分頁的「硬篩選」（精確集合比對，語意與前端一致、無單位歧義）。
+ *
+ * 僅這三欄下推：src/tier/cat 皆比對後端與前端共用的同一 API 欄位（source/derived tier/
+ * category），server 端過濾與前端 memo 完全等價 → 結果集不變，但分頁改在「篩選後的集合」
+ * 內連貫（載入更多才會續抓仍符合條件的列，而非沿 feas 抓未篩選頁再被前端濾掉）。
+ * budget（萬/TWD 單位歧義）、deadline/q（語意不同）、sort（前端以即時 feasOf 排序）
+ * 一律維持前端處理，不下推，以免 server 端多濾而誤刪前端本應保留的列。 */
+export interface TenderPageFilter {
+  sources?: string[];
+  tiers?: string[];
+  categories?: string[];
+}
+
+/** 把前端 filter 投影成「可安全下推」的三欄；皆空時回 undefined（等同不帶 server 篩選）。 */
+export function toServerFilter(f: {
+  sources?: string[];
+  tiers?: string[];
+  categories?: string[];
+}): TenderPageFilter | undefined {
+  const sf: TenderPageFilter = {};
+  if (f.sources?.length) sf.sources = f.sources;
+  if (f.tiers?.length) sf.tiers = f.tiers;
+  if (f.categories?.length) sf.categories = f.categories;
+  return Object.keys(sf).length ? sf : undefined;
+}
+
+/** server-filter 穩定指紋：三欄排序後串接，供偵測「篩選是否變動→需重取第一頁」。 */
+export function serverFilterKey(sf: TenderPageFilter | undefined): string {
+  if (!sf) return "";
+  const part = (xs?: string[]) => (xs ? [...xs].sort().join(",") : "");
+  return `t=${part(sf.tiers)}|c=${part(sf.categories)}|s=${part(sf.sources)}`;
 }
 
 // 後端 SnapshotItem / UserStateOut / TenderDetail（= 列表項 + 快照 + 使用者狀態）。
@@ -258,21 +300,49 @@ function adaptDetail(item: TenderDetailResponse): TenderDetail {
 
 const PAGE_SIZE = 200; // 後端 page_size 上限
 
-/** 抓取標案列表並映射為前端 Tender[]；逐頁抓到 count 為止。失敗時 throw。 */
+/** 抓取標案清單的「一頁」（cursor keyset 真分頁）。
+ *
+ * 傳入 cursor=null 取第一頁；後續把上一頁回傳的 nextCursor 再帶回即可續抓。
+ * 排序固定 feas；換排序/篩選時 cursor 會失效（後端回 400），呼叫端應以 null 重取第一頁。
+ * filter：可選的 server-filter（src/tier/cat），會下推到後端讓分頁在篩選集內連貫；
+ * 續抓同一游標時務必帶「相同」filter（否則游標與篩選集不一致）。失敗時 throw。 */
+export async function fetchTenderPage(
+  cursor: string | null = null,
+  signal?: AbortSignal,
+  filter?: TenderPageFilter,
+): Promise<TenderPage> {
+  const params = new URLSearchParams({
+    sort: "feas",
+    page_size: String(PAGE_SIZE),
+  });
+  if (cursor) params.set("cursor", cursor);
+  // 後端以多值 Query 接收（tier/cat/src）；逐一 append 成重複鍵。
+  for (const v of filter?.tiers ?? []) params.append("tier", v);
+  for (const v of filter?.categories ?? []) params.append("cat", v);
+  for (const v of filter?.sources ?? []) params.append("src", v);
+  const url = `${API_BASE}/tenders?${params.toString()}`;
+  const res = await fetch(url, { headers: authHeaders(), signal });
+  if (!res.ok) throw new Error(`tenders API ${res.status}`);
+  const data = (await res.json()) as TenderListResponse;
+  return {
+    tenders: data.items.map(adapt),
+    count: data.count,
+    nextCursor: data.next_cursor ?? null,
+  };
+}
+
+/** 抓取標案列表並映射為前端 Tender[]；沿 cursor 逐頁抓到底為止。失敗時 throw。 */
 export async function fetchTenders(signal?: AbortSignal): Promise<Tender[]> {
-  const items: TenderListItem[] = [];
-  let page = 1;
+  const all: Tender[] = [];
+  let cursor: string | null = null;
   for (;;) {
-    const url = `${API_BASE}/tenders?sort=feas&page=${page}&page_size=${PAGE_SIZE}`;
-    const res = await fetch(url, { headers: authHeaders(), signal });
-    if (!res.ok) throw new Error(`tenders API ${res.status}`);
-    const data = (await res.json()) as TenderListResponse;
-    items.push(...data.items);
-    // 取滿總數或遇到空頁即停（後者防呆，避免 count 與實際不一致時無限迴圈）。
-    if (items.length >= data.count || data.items.length === 0) break;
-    page += 1;
+    const page = await fetchTenderPage(cursor, signal);
+    all.push(...page.tenders);
+    // 無下一頁游標，或本頁為空（防呆）即停。
+    if (!page.nextCursor || page.tenders.length === 0) break;
+    cursor = page.nextCursor;
   }
-  return items.map(adapt);
+  return all;
 }
 
 /** 抓取單一標案完整詳情（含歷史快照）；找不到回 null，其餘錯誤 throw。 */
@@ -400,9 +470,21 @@ export interface SemanticSearchResult {
 }
 
 /**
+ * 語意檢索離線降級：向量後端（Ollama）不可用時後端回 503 + code=semantic_degraded。
+ * 呼叫端據此顯示「語意搜尋離線降級」狀態，而非與真實錯誤混淆（見 roadmap P2-6）。
+ */
+export class SemanticDegradedError extends Error {
+  constructor(detail?: string) {
+    super(detail ?? "semantic_degraded");
+    this.name = "SemanticDegradedError";
+  }
+}
+
+/**
  * 自然語言語意搜尋（Layer C 向量檢索）。後端 GET /search/semantic?q=&limit=。
  * 以查詢字串向量化後比對 tender_snapshots.embedding，回傳語意最相近的標案。
- * 失敗時 throw（需後端與 Ollama 向量庫），由呼叫端顯示錯誤。
+ * 向量後端不可用時 throw SemanticDegradedError（離線降級）；其餘錯誤 throw Error，
+ * 由呼叫端分別呈現。
  */
 export async function searchSemantic(
   q: string,
@@ -411,7 +493,15 @@ export async function searchSemantic(
 ): Promise<SemanticSearchResult> {
   const url = `${API_BASE}/search/semantic?q=${encodeURIComponent(q)}&limit=${limit}`;
   const res = await fetch(url, { headers: authHeaders(), signal });
-  if (!res.ok) throw new Error(`semantic search API ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 503) {
+      const body = await res.json().catch(() => null);
+      if (body?.code === "semantic_degraded") {
+        throw new SemanticDegradedError(body?.detail);
+      }
+    }
+    throw new Error(`semantic search API ${res.status}`);
+  }
   const data = (await res.json()) as {
     items: SemanticHit[];
     count: number;

@@ -8,6 +8,8 @@ const DEFAULT: FilterState = {
   tiers: [],
   minBudget: null,
   maxBudget: null,
+  minFeasibility: null,
+  maxFeasibility: null,
   focusOnly: false,
   hideExcluded: true,
   sort: "score",

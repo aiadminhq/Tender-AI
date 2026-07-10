@@ -30,23 +30,32 @@ function makeItem(id: number) {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("fetchTenders 分頁", () => {
-  it("逐頁抓取直到取得全部 count 筆", async () => {
+describe("fetchTenders 分頁（cursor keyset）", () => {
+  it("沿 next_cursor 逐頁抓取直到游標為 null", async () => {
     const total = 450; // 200 + 200 + 50 → 3 頁
+    const size = 200;
     const fetchMock = vi.fn(async (input: string) => {
       // API_BASE 在 dev 為相對路徑（/api/v1，區網分享走 vite proxy），故須給 base 才能解析。
-      const page = Number(
-        new URL(input, "http://localhost").searchParams.get("page"),
+      const cursor = new URL(input, "http://localhost").searchParams.get(
+        "cursor",
       );
-      const size = 200;
-      const start = (page - 1) * size;
+      // cursor 編碼為「已取回筆數」的字串（測試用簡化模型）；null=第一頁。
+      const start = cursor ? Number(cursor) : 0;
       const items = Array.from(
         { length: Math.max(0, Math.min(size, total - start)) },
         (_, i) => makeItem(start + i + 1),
       );
+      const nextStart = start + items.length;
+      const next_cursor = nextStart < total ? String(nextStart) : null;
       return {
         ok: true,
-        json: async () => ({ items, count: total, page, page_size: size }),
+        json: async () => ({
+          items,
+          count: total,
+          page: 1,
+          page_size: size,
+          next_cursor,
+        }),
       } as Response;
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -56,23 +65,24 @@ describe("fetchTenders 分頁", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it("空頁時中止，避免無限迴圈", async () => {
+  it("next_cursor 為 null 時單頁即止", async () => {
     const fetchMock = vi.fn(
       async () =>
         ({
           ok: true,
           json: async () => ({
-            items: [],
-            count: 999,
+            items: [makeItem(1)],
+            count: 1,
             page: 1,
             page_size: 200,
+            next_cursor: null,
           }),
         }) as Response,
     );
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await fetchTenders();
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
@@ -83,6 +93,8 @@ const FILTER: FilterState = {
   tiers: ["high"],
   minBudget: null,
   maxBudget: null,
+  minFeasibility: null,
+  maxFeasibility: null,
   focusOnly: false,
   hideExcluded: true,
   sort: "score",

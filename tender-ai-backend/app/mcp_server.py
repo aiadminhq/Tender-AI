@@ -118,7 +118,7 @@ async def search_tenders(
         page_size=page_size,
     )
     async with AsyncSessionLocal() as session:
-        items, total = await query.list_tenders(session, tq)
+        items, total, _ = await query.list_tenders(session, tq)
     return {
         "items": [it.model_dump(mode="json") for it in items],
         "count": total,

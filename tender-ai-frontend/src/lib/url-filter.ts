@@ -29,6 +29,10 @@ export function serializeFilter(filter: FilterState): string {
   if (filter.tiers.length) p.set("tier", filter.tiers.join(","));
   if (filter.minBudget != null) p.set("budgetMin", String(filter.minBudget));
   if (filter.maxBudget != null) p.set("budget", String(filter.maxBudget));
+  if (filter.minFeasibility != null)
+    p.set("feasMin", String(filter.minFeasibility));
+  if (filter.maxFeasibility != null)
+    p.set("feasMax", String(filter.maxFeasibility));
   if (filter.focusOnly) p.set("focus", "1");
   if (!filter.hideExcluded) p.set("showExcluded", "1");
   if (filter.sort !== "score") p.set("sort", filter.sort);
@@ -79,6 +83,16 @@ export function parseFilter(search: string, base: FilterState): FilterState {
   if (budgetMin != null) {
     const n = Number(budgetMin);
     if (Number.isFinite(n)) next.minBudget = n;
+  }
+  const feasMin = p.get("feasMin");
+  if (feasMin != null) {
+    const n = Number(feasMin);
+    if (Number.isFinite(n)) next.minFeasibility = Math.min(99, Math.max(0, n));
+  }
+  const feasMax = p.get("feasMax");
+  if (feasMax != null) {
+    const n = Number(feasMax);
+    if (Number.isFinite(n)) next.maxFeasibility = Math.min(99, Math.max(0, n));
   }
 
   if (p.get("focus") === "1") next.focusOnly = true;

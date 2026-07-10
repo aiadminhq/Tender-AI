@@ -18,6 +18,7 @@ from app.models.behavior import (
     TenderUserState,
     User,
 )
+from app.models.design_feedback import DesignFeedbackItem
 from app.models.knowledge import (
     DecisionVector,
     DocSummary,
@@ -58,6 +59,7 @@ __all__ = [
     "Evaluation",
     "Share",
     "SavedSearch",
+    "DesignFeedbackItem",
     "PushLog",
     # 小助手對話留存（Phase 4）
     "AssistantThread",

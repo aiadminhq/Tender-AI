@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tender AI Super List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-high": "#fce3d9",
+                      "on-surface-variant": "#584237",
+                      "on-primary": "#ffffff",
+                      "inverse-surface": "#3c2d26",
+                      "on-tertiary-container": "#00306e",
+                      "background": "#fff8f6",
+                      "secondary-container": "#6bff8f",
+                      "outline": "#8c7164",
+                      "inverse-primary": "#ffb690",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed": "#6bff8f",
+                      "on-primary-fixed-variant": "#783200",
+                      "tertiary-container": "#6399ff",
+                      "on-tertiary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "surface": "#fff8f6",
+                      "on-primary-container": "#582200",
+                      "error": "#ba1a1a",
+                      "surface-tint": "#9d4300",
+                      "primary-fixed": "#ffdbca",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed-dim": "#ffb690",
+                      "surface-bright": "#fff8f6",
+                      "on-tertiary-fixed": "#001a42",
+                      "error-container": "#ffdad6",
+                      "surface-container": "#ffeae0",
+                      "surface-container-low": "#fff1eb",
+                      "surface-container-highest": "#f6ded3",
+                      "on-secondary-fixed-variant": "#005321",
+                      "on-background": "#251913",
+                      "primary-container": "#f97316",
+                      "inverse-on-surface": "#ffede6",
+                      "outline-variant": "#e0c0b1",
+                      "tertiary-fixed": "#d8e2ff",
+                      "on-secondary-fixed": "#002109",
+                      "on-secondary-container": "#007432",
+                      "surface-variant": "#f6ded3",
+                      "on-primary-fixed": "#341100",
+                      "on-tertiary-fixed-variant": "#004395",
+                      "on-surface": "#251913",
+                      "surface-dim": "#edd5cb",
+                      "tertiary": "#005ac2",
+                      "tertiary-fixed-dim": "#adc6ff",
+                      "primary": "#9d4300",
+                      "secondary": "#006e2f",
+                      "on-error": "#ffffff",
+                      "secondary-fixed-dim": "#4ae176"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xs": "4px",
+                      "lg": "24px",
+                      "sm": "8px",
+                      "base": "4px",
+                      "margin-mobile": "16px",
+                      "gutter": "20px",
+                      "xl": "32px",
+                      "margin-desktop": "40px",
+                      "md": "16px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Noto Sans"
+                      ],
+                      "label-md": [
+                              "Noto Sans"
+                      ],
+                      "headline-lg": [
+                              "Noto Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Noto Sans"
+                      ],
+                      "display": [
+                              "Noto Sans"
+                      ],
+                      "body-md": [
+                              "Noto Sans"
+                      ],
+                      "label-sm": [
+                              "Noto Sans"
+                      ],
+                      "body-lg": [
+                              "Noto Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body { background-color: #FDFDFD; }
+        .bento-card {
+            background-color: #FFFFFF;
+            border-radius: 16px;
+            border: 1px solid #E4E4E7;
+            padding: 24px;
+            box-shadow: 0px 4px 12px rgba(24, 24, 27, 0.02);
+            transition: all 0.2s ease-in-out;
+        }
+        .bento-card:hover {
+            box-shadow: 0px 8px 24px rgba(24, 24, 27, 0.06);
+            transform: translateY(-2px);
+            border-color: #f9731633;
+        }
+        .circular-chart {
+            display: block;
+            margin: 0;
+            max-width: 80%;
+            max-height: 250px;
+        }
+        .circle-bg {
+            fill: none;
+            stroke: #f1f1f1;
+            stroke-width: 3.8;
+        }
+        .circle {
+            fill: none;
+            stroke-width: 2.8;
+            stroke-linecap: round;
+            animation: progress 1s ease-out forwards;
+        }
+        @keyframes progress {
+            0% {
+                stroke-dasharray: 0 100;
+            }
+        }
+        .percentage {
+            fill: #333;
+            font-family: 'Noto Sans', sans-serif;
+            font-weight: 600;
+            font-size: 0.5em;
+            text-anchor: middle;
+        }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #F97316;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #E4E4E7;
+            border-radius: 2px;
+        }
+        
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #F97316;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #F97316;
+        }
+        .toggle-checkbox {
+            right: 0;
+            z-index: 1;
+            border-color: #e2e8f0;
+            transition: all 0.3s;
+        }
+        .toggle-label {</style></head><body></body></html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tender AI - Tender List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;family=Noto+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#cdcbd4",
+                        "inverse-surface": "#e5e1e4",
+                        "secondary-fixed-dim": "#c6c6cf",
+                        "tertiary-fixed-dim": "#c7c5ce",
+                        "tertiary-container": "#b1b0b8",
+                        "surface-container-lowest": "#0e0e10",
+                        "primary-container": "#f59e0b",
+                        "tertiary-fixed": "#e3e1ea",
+                        "outline-variant": "#534434",
+                        "surface": "#131315",
+                        "error": "#ffb4ab",
+                        "surface-variant": "#353437",
+                        "surface-bright": "#39393b",
+                        "on-tertiary-container": "#43434a",
+                        "surface-tint": "#ffb95f",
+                        "on-tertiary-fixed": "#1b1b21",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#ffb95f",
+                        "on-error": "#690005",
+                        "inverse-primary": "#855300",
+                        "background": "#131315",
+                        "surface-container-high": "#2a2a2c",
+                        "on-surface": "#e5e1e4",
+                        "surface-container-highest": "#353437",
+                        "primary": "#ffc174",
+                        "inverse-on-surface": "#313032",
+                        "on-tertiary": "#303037",
+                        "surface-container-low": "#1c1b1d",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#2a1700",
+                        "on-tertiary-fixed-variant": "#46464d",
+                        "on-primary": "#472a00",
+                        "primary-fixed": "#ffddb8",
+                        "secondary": "#c6c6cf",
+                        "surface-dim": "#131315",
+                        "on-surface-variant": "#d8c3ad",
+                        "on-secondary-fixed": "#1a1b22",
+                        "on-primary-container": "#613b00",
+                        "outline": "#a08e7a",
+                        "on-secondary": "#2f3037",
+                        "on-secondary-fixed-variant": "#45464e",
+                        "on-primary-fixed-variant": "#653e00",
+                        "secondary-fixed": "#e2e1eb",
+                        "on-background": "#e5e1e4",
+                        "secondary-container": "#45464e",
+                        "on-secondary-container": "#b4b4bd",
+                        "surface-container": "#201f22"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-mobile": "20px",
+                        "container-padding-desktop": "40px",
+                        "gutter": "24px",
+                        "stack-gap-lg": "32px",
+                        "stack-gap-md": "16px",
+                        "base": "8px",
+                        "stack-gap-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Noto Sans"],
+                        "display-lg-mobile": ["Noto Sans"],
+                        "headline-md": ["Noto Sans"],
+                        "body-lg": ["Noto Sans"],
+                        "data-mono": ["JetBrains Mono"],
+                        "body-md": ["Noto Sans"],
+                        "label-caps": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "data-mono": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #09090B; color: #e5e1e4; }
+        .glass-panel { background: rgba(20, 20, 23, 0.6); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.06); }
+        .glass-row { background: rgba(19, 19, 21, 0.8); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.06); transition: all 0.3s ease; }
+        .glass-row:hover { background: rgba(255, 255, 255, 0.03); transform: translateY(-2px); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); border-color: rgba(245, 158, 11, 0.3); }
+        .glow-amber { box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+        .btn-primary { background-color: #F59E0B; color: #09090B; box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.1); }
+        .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
+        .btn-ghost { border: 1px solid rgba(255, 255, 255, 0.06); }
+        .btn-ghost:hover { border-color: #F59E0B; color: #F59E0B; }
+        
+        /* Custom range slider */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #F59E0B; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(245,158,</style></head><body></body></html>

@@ -1,0 +1,61 @@
+# -*- dockerfile -*-
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.cli-brain — 「CLI 大腦」內部開發專用映像（P2-7）
+#
+# ⚠️ 這不是正式環境映像。正式部署一律用根目錄的 `Dockerfile`（provider=byok，
+#    走 OpenRouter/Anthropic 相容端點，見 CLAUDE.md 與記憶 byok-openrouter-compat-endpoint）。
+#
+# 用途：讓「CLI 大腦」（provider=cli，見 app/services/brain.py / brain_cli_registry.py）
+#    能在 Railway 上跑——在 Python base 上再裝 Node LTS + `@anthropic-ai/claude-code`，
+#    使 `claude -p ... --output-format stream-json` 這條 headless agentic 路徑可用。
+#    僅供 Aaron 內部開發／實驗，預設不對外開放（BRAIN provider 由全域設定切換）。
+#
+# 為何是獨立檔：正式映像不該內含 Node/claude CLI（縮小攻擊面＋映像體積）。要用 CLI 大腦時，
+#    在 Railway 對應 service 的 [build] 指定 dockerfile = "Dockerfile.cli-brain"（或另開一個
+#    internal service），與正式 service 隔離。
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.12-slim
+
+# ── 系統相依（同正式映像）＋ Node 安裝所需 ─────────────────────────────────────
+RUN apt-get update && apt-get install -y \
+    libpq-dev gcc libxml2-dev libxslt-dev curl ca-certificates gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Node.js LTS（claude CLI 以 npm 全域安裝）─────────────────────────────────────
+# NodeSource 22.x（LTS）。claude CLI 需 Node ≥ 18。
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && node --version && npm --version
+
+# ── Claude Code CLI（headless 用；--output-format stream-json 供 brain.py 解析）──
+# 版本固定於 build，避免上游更新破壞 stream-json 格式；升級時手動 bump。
+RUN npm install -g @anthropic-ai/claude-code \
+    && claude --version
+
+# 從官方映像複製 uv（同正式映像）
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+# 先複製鎖定檔，讓相依層可被快取
+COPY pyproject.toml uv.lock ./
+
+# 安裝所有 production 相依套件到 .venv
+RUN uv sync --frozen --no-dev --no-install-project
+
+# 複製應用程式碼
+COPY . .
+
+# ── CLI 大腦執行前提（於 runtime 由環境變數提供，勿寫進映像）─────────────────────
+#  1. claude CLI 需認證：Railway service 設環境變數 CLAUDE_CODE_OAUTH_TOKEN
+#     （或 ANTHROPIC_API_KEY，視認證方式）；祕密只走 Railway 變數，不入映像/版控。
+#  2. tender-ai-brain MCP 需注入 claude 設定檔（~/.claude.json）。見 MCP_BRIDGE.md；
+#     可於此 COPY 一份預先產好的 .claude.json，或在 entrypoint 由環境變數生成。
+#  3. 紅線：CLI 路徑本身不碰 secret（安全邊界落在 MCP tool-output 層），
+#     但 CLI 認證 token 屬 runtime secret，務必只經 Railway 變數注入。
+
+EXPOSE 8000
+
+# 與正式映像一致：先 migration 再啟動 server
+CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "feedback:sync": "node scripts/design-feedback-sync.mjs",
     "shots": "node scripts/screenshot.mjs"
   },
   "dependencies": {

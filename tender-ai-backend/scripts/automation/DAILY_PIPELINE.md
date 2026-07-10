@@ -16,6 +16,7 @@
             │     （可切 TENDER_PIPELINE_MODE=claude）      │
             │                                               │
             │  Layer A  ingest_daily_reports  建索引(去重)  │  需 DB
+            │           backfill              每日視圖upsert │  需 DB（offline）
             │           enrich_details        抓 PCC 建檔   │  需 DB + PCC
             │           backfill_category     回填分類      │  需 DB
             │  Layer C  embed_tenders         灌 pgvector   │  需 DB + Ollama
@@ -33,6 +34,35 @@
 
 管線對連不到的步驟採 **fail-soft**：連線受阻就跳過該步並記錄，索引仍會照建，待能連線時補跑即可。
 
+## runner 執行副本（TCC 根因，重要）
+
+**症狀**：launchd 排程自 2026-06-26 起連續以 exit 126 失敗，`launchd.err.log` 反覆出現
+`/bin/bash: .../run_claude_daily.sh: Operation not permitted`，導致雲端資料落後多日。
+
+**根因**：macOS TCC 隱私保護會擋 **launchd 背景程序**讀取 `~/Desktop`／`~/Documents`／
+`~/Downloads` 下的任何檔案（互動 shell 不受影響，所以手動跑都正常）。本專案工作副本在
+Desktop 底下，plist 一指過去就會被擋。
+
+**解法（2026-07-06 落地）**：在 TCC 不保護的路徑放一份**執行專用副本（runner）**，
+launchd 只碰 runner，開發仍在 Desktop 工作副本進行：
+
+```bash
+# 1) 建 runner（從本機工作副本 clone，分支跟開發分支一致）
+git clone --branch claude/busy-sagan-gm197s \
+  "file:///Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI" \
+  ~/.local/share/tender-ai/runner
+
+# 2) 建 venv
+cd ~/.local/share/tender-ai/runner/tender-ai-backend && uv sync
+
+# 3) runner 專用 .env：只放雲端 DATABASE_URL（chmod 600；值取自 Railway service variables，
+#    形如 postgresql+psycopg://***@aws-0-<region>.pooler.supabase.com:5432/postgres，勿入版控）
+```
+
+**程式碼同步**：runner 是 git clone，工作副本改了管線相關程式後，需在 runner 內
+`git pull origin <分支>`（或 `git fetch file:///...工作副本 <分支> && git merge FETCH_HEAD`）
+再視需要 `uv sync`。管線腳本不常變動，一般只在改到 `scripts/` 或 `app/jobs/` 時需要同步。
+
 ## 檔案清單
 
 | 檔案                                                   | 作用                                                                             |
@@ -44,24 +74,32 @@
 
 ## 安裝（本機 macOS，一次性）
 
-```bash
-ROOT="/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI"
+> 前置：先依上節「runner 執行副本」建好 `~/.local/share/tender-ai/runner`（含 venv 與 .env）。
+> plist 範本已指向 runner 路徑；**不可改回 Desktop 路徑**（TCC 會擋，見上節）。
 
-# 1) 安裝 Claude Code slash command
+```bash
+RUNNER="$HOME/.local/share/tender-ai/runner"
+
+# 1) 賦予執行權限
+chmod +x "$RUNNER/tender-ai-backend/scripts/daily_pipeline.sh" \
+         "$RUNNER/tender-ai-backend/scripts/automation/run_claude_daily.sh"
+
+# 2) 安裝 launchd 排程（每日 10:15）
+cp "$RUNNER/tender-ai-backend/scripts/automation/com.hqdesign.tenderai.daily.plist" \
+   "$HOME/Library/LaunchAgents/"
+launchctl bootout   gui/$(id -u)/com.hqdesign.tenderai.daily 2>/dev/null
+launchctl bootstrap gui/$(id -u) "$HOME/Library/LaunchAgents/com.hqdesign.tenderai.daily.plist"
+launchctl list | grep tenderai      # 確認已載入
+
+# 3) 立即實測一次（真 launchd 情境，可驗證 TCC 已繞開）
+launchctl kickstart gui/$(id -u)/com.hqdesign.tenderai.daily
+tail -f "$RUNNER/tender-ai-backend/data/pipeline-logs/daily-$(date +%Y%m%d).log"
+
+# （可選）安裝 Claude Code slash command 到開發工作副本
+ROOT="/Users/christianwu/Desktop/HQdesign/tender-bot/Tender AI"
 mkdir -p "$ROOT/.claude/commands"
 cp "$ROOT/tender-ai-backend/scripts/automation/tender-daily.command.md" \
    "$ROOT/.claude/commands/tender-daily.md"
-
-# 2) 賦予執行權限
-chmod +x "$ROOT/tender-ai-backend/scripts/daily_pipeline.sh" \
-         "$ROOT/tender-ai-backend/scripts/automation/run_claude_daily.sh"
-
-# 3) 安裝 launchd 排程（每日 10:15）
-cp "$ROOT/tender-ai-backend/scripts/automation/com.hqdesign.tenderai.daily.plist" \
-   "$HOME/Library/LaunchAgents/"
-launchctl unload "$HOME/Library/LaunchAgents/com.hqdesign.tenderai.daily.plist" 2>/dev/null
-launchctl load   "$HOME/Library/LaunchAgents/com.hqdesign.tenderai.daily.plist"
-launchctl list | grep tenderai      # 確認已載入
 ```
 
 > GitHub Actions 發布時間**維持現狀**（約台灣 08:00），不需改動 —— 本機排程 10:15 在其後，必能抓到當日報表。若日後想更動發布時間，於 `aiadminhq/tender-reports` 既有 workflow 自行調整 `on.schedule.cron` 即可（依治理規範由本人於該 repo 提交）。
@@ -111,6 +149,6 @@ tail -f tender-ai-backend/data/pipeline-logs/daily-$(date +%Y%m%d).log
 ## 移除排程
 
 ```bash
-launchctl unload "$HOME/Library/LaunchAgents/com.hqdesign.tenderai.daily.plist"
+launchctl bootout gui/$(id -u)/com.hqdesign.tenderai.daily
 rm "$HOME/Library/LaunchAgents/com.hqdesign.tenderai.daily.plist"
 ```

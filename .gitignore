@@ -41,6 +41,13 @@ tender-ai-frontend/dist/
 !**/env.example
 !**/.env.example
 
+# 種子資料含真實成員 email 與 password hash（PII + 憑證）：永不入版控
+seed_members.sql
+**/seed_members.sql
+
+# Supabase CLI 本機狀態（project-ref／pooler-url 等機器相關檔）：不入版控
+**/supabase/.temp/
+
 # Layer B 行為資料（評價/註記/決策向量，合作範圍內共享但不入版控）與 DB 匯出：永不入 repo
 *.dump
 *.sql.gz

@@ -212,3 +212,57 @@ David 從標案列表點一列後，在同一個工作脈絡中看到完整詳�
   ]}
   submitLabel="提交計畫回覆"
 />
+
+## Post-Phase-1 開發策略與待辦（2026-07-08）
+
+<Callout id="strategy-2026-07-08" tone="decision">
+
+**本節為 2026-07-08 依 owner 七項決策擬定的開發策略，Phase 1 之後的近期執行基準。** 主軸：**低成本收尾半成品 → 補齊學習天花板 → 退役舊軌**。祕密紅線與 Layer B 治理不放寬——**byok/OpenRouter 維持正式大腦**，CLI 大腦降格為「內部開發專用」，不接進使用者請求路徑。
+
+</Callout>
+
+### 七項決策定案
+
+<Table
+  id="strategy-decisions"
+  columns={["#", "決策", "落地方式"]}
+  rows={[
+    ["1", "清單分頁走 cursor", "keyset 分頁（(sort_value, id) 複合游標，base64url 不透明編碼、含篩選指紋 fp）；避開 offset 深分頁掃描，對每日新資料插入穩定"],
+    ["2", "CLI 大腦留存為內部開發用 + Railway 裝 claude", "正式路徑仍 byok；CLI 僅供內部 debug/手動 job。Railway 用 Dockerfile builder：npm install -g @anthropic-ai/claude-code，headless claude -p，env 走 OpenRouter 相容端點。維持「CLI 不碰祕密」於使用者路徑"],
+    ["3", "語意搜尋不移除標記", "保留 UI 的 semantic/mock 標記；雲端無 Ollama 期間顯示「離線降級」狀態，不假裝正常"],
+    ["4", "評估 P0/P1 排序", "見下方排序表"],
+    ["5", "助手 Phase 3/4 優先序（owner 授權我決定）", "Phase 3 情境感知接線 先於 Phase 4 對話留存（3 已半完成、成本低、感知提升大；4 為新表+migration+同意流程，較大）"],
+    ["6", "白名單站不考慮外部人員", "鎖 @hqdesign.tw；不做外部邀請流程；標註「暫不開放外部註冊」"],
+    ["7", "退役本機 Windows 排程 + 舊個人 repo", "需先完成雲端雙軌驗證，走停用→觀察→移除；舊 repo 保留 301 轉址（out-of-repo ops，人工閘控）"],
+  ]}
+/>
+
+### 優先序與 spec/檔案落點
+
+<Table
+  id="strategy-backlog"
+  columns={["優先", "項目", "spec/計畫", "後端落點", "前端落點", "狀態"]}
+  rows={[
+    ["P0-1", "清單 cursor 真分頁", "本節 + 下方", "app/services/cursor.py（新）、query.py（_OrderSpec）、schemas/tender.py、api/v1/tenders.py、main.py（CursorError→400）", "lib/api.ts（fetchTenderPage）、store/app-data.tsx（loadMore/hasMore）、components/tenders/tender-table.tsx", "✅ 後端/API（3e7e9a0）＋前端增量載入（P1-6, 732a7da）皆完成"],
+    ["P0-2", "助手 Phase 3 情境感知接線", "plans/assistant-ui-integration/plan.mdx §③", "app/api/v1/assistant.py、app/services/assistant.py（_focus_tender_id→檢索並 pin focus 標案）", "components/assistant/assistant-context-panel.tsx、use-assistant-chat（focusTenderId 貫穿 launcher→runtime）", "✅ 完成；FE focusTenderId 全鏈接線＋BE focus 檢索 pin，26 assistant 測試綠"],
+    ["P1-3", "category 回填（79% NULL）", "CLAUDE.md §category 缺口", "app/jobs/backfill_category.py（冪等 offline；線上回填需連 PCC）", "—", "job 就緒；live 回填待可連 PCC 環境"],
+    ["P1-4", "助手 Phase 4 對話留存", "plans/assistant-ui-integration/plan.mdx §資料模型", "models/assistant.py（assistant_threads/messages）+ alembic a8f2c1e7b9d4 + assistant_store.py + api/v1/assistant.py", "use-assistant-chat（fetchAssistantThreads/loadThread API 持久化）", "✅ 程式碼完成（model＋migration＋store＋FE，26 測試綠）；對雲端 Supabase 實跑 migration 需 MCP 授權"],
+    ["P1-5", "Windows 排程 / 舊 repo 退役（W2）", "tender-bot/MIGRATION_STATUS.md", "ops（非本 repo，雙軌驗證後停用）", "—", "人工閘控，不自動執行"],
+    ["P1-6", "前端分頁下推 server-filter（src/tier/cat）", "本節（P0-1 後續）", "已支援：api/v1/tenders.py 收 tier/cat/src、cursor.py 綁篩選指紋", "lib/api.ts（TenderPageFilter/toServerFilter/serverFilterKey、fetchTenderPage filter 參數）、app-data.tsx（serverFilter memo＋sfKey 重取第一頁、loadMore 帶 serverFilterRef）", "✅ 完成（commit 732a7da）；三欄下推、篩選集內連貫捲動，餘欄維持 client-only"],
+    ["P2-6", "語意搜尋離線降級標記（留標記）", "CLAUDE.md §批次抓取先不向量化", "app/api/v1/search.py、main.py（EmbeddingError→503 code=semantic_degraded）", "lib/api.ts（SemanticDegradedError）、search-page.tsx（degraded 狀態）、index.css（--warning）、i18n", "✅ 完成（commit 60b46fa）；live Ollama 真驗收待可連線環境"],
+    ["P2-7", "CLI/Railway claude 內部工具", "本節決策 2", "Dockerfile + app/services/brain_cli_registry.py（內部路徑）", "—", "Dockerfile/docs 就緒；Railway 部署需授權"],
+  ]}
+/>
+
+### P0-1 cursor 分頁實作備忘（已落地）
+
+- **游標**：`base64url(JSON)`，含 `v`（schema 版本）、`sort`（active sort key）、`fp`（篩選指紋 sha256[:16]）、`keys`（末列排序鍵向量，末位恆為 `tender.id`）。分頁欄位不納入指紋。
+- **keyset WHERE**：`_OrderSpec` 統一 ORDER BY／WHERE／編碼；DESC 用 `expr < last OR (expr = last AND id > last_id)`，`asc(id)` 一致 tiebreak，各欄 `nulls_last`；四種排序（feas／days／budget／tier）共用。無 cursor 時走 legacy offset（相容）。
+- **失效策略**：token 損毀／版本不符／sort 或 fp 不一致 → `CursorError` → HTTP 400 → 前端重置回第一頁。
+- **驗證**：後端 cursor 13 passed、全量 497 passed；前端 build ✓、api 8 passed。
+
+<Callout id="strategy-env-limits" tone="warn">
+
+**環境受限項目（此雲端 session 無法完成、需人工/連線收尾）**：① P1-3 live PCC category 回填（連不到招標網）；② P1-4 Supabase migration 上雲（MCP 需授權）；③ P2-6 語意向量真驗收（無本機 Ollama）；④ P2-7 Railway 部署（需授權）；⑤ P1-5 Windows/舊 repo 退役（out-of-repo 破壞性 ops，人工閘控）。以上均做到「程式碼/文件就緒」後標記待收尾，不在此環境強行執行。
+
+</Callout>

@@ -249,20 +249,20 @@ export function TenderRow({
           excluded && "opacity-60",
         )}
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TierBadge tier={tender.tier} lang={lang} />
-            <CategoryIcon category={tender.category} />
-          </div>
+        {/* 標題獨佔首行、全寬，不再被右上角屬性擠壓 */}
+        <div className="line-clamp-2 text-[14px] font-medium leading-snug text-ink">
+          {tender.title}
+        </div>
+        {/* 屬性另起一行：分級 · 類別 · 機關 · 來源 · 預算 */}
+        <div className="mt-2 flex items-center gap-2">
+          <TierBadge tier={tender.tier} lang={lang} />
+          <CategoryIcon category={tender.category} />
+          <span className="min-w-0 flex-1 truncate text-[11px] text-ink-dim">
+            {tender.org} · {source}
+          </span>
           <span className="tnum shrink-0 text-[12px] text-ink-muted">
             {formatBudget(tender.budget, lang)}
           </span>
-        </div>
-        <div className="mt-1.5 line-clamp-2 text-[13px] font-medium text-ink">
-          {tender.title}
-        </div>
-        <div className="mt-0.5 truncate text-[11px] text-ink-dim">
-          {tender.org} · {source}
         </div>
         {excluded ? (
           <div className="mt-2 flex flex-wrap items-center gap-2">

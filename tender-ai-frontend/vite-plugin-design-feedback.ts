@@ -14,6 +14,12 @@ export interface DesignFeedbackOptions {
   outFile?: string;
 }
 
+interface FeedbackPayload {
+  markdown?: string;
+  annotations?: unknown[];
+  targetCli?: string | null;
+}
+
 function readBody(req: Connect.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -42,7 +48,7 @@ export function designFeedback(options: DesignFeedbackOptions = {}): Plugin {
         }
         try {
           const raw = await readBody(req);
-          const { markdown } = JSON.parse(raw || "{}") as { markdown?: string };
+          const { markdown, targetCli } = JSON.parse(raw || "{}") as FeedbackPayload;
           if (!markdown || typeof markdown !== "string") {
             res.statusCode = 400;
             res.setHeader("Content-Type", "application/json");
@@ -56,13 +62,17 @@ export function designFeedback(options: DesignFeedbackOptions = {}): Plugin {
             ? "\n\n---\n\n"
             : "# 設計回饋 inbox\n\n> 由前端標註工具自動寫入；Claude Code CLI 讀此檔取得介面優化指示。\n\n---\n\n";
           fs.appendFileSync(outFile, header + markdown, "utf8");
+          let cliPath: string | null = null;
+          if (targetCli && /^[a-z0-9_-]+$/i.test(targetCli)) {
+            cliPath = writeCliOutbox(root, targetCli, markdown);
+          }
 
           server.config.logger.info(
             `[design-feedback] 已寫入 ${path.relative(root, outFile)}`,
           );
           res.statusCode = 200;
           res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ ok: true, path: outFile }));
+          res.end(JSON.stringify({ ok: true, path: outFile, cliPath }));
         } catch (e) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
@@ -76,4 +86,42 @@ export function designFeedback(options: DesignFeedbackOptions = {}): Plugin {
       });
     },
   };
+}
+
+function writeCliOutbox(root: string, targetCli: string, markdown: string): string {
+  const dir = path.resolve(root, "..", "design-feedback", "outbox", targetCli);
+  fs.mkdirSync(dir, { recursive: true });
+  const latest = path.join(dir, "latest.md");
+  const prompt = renderCliPrompt(targetCli, markdown);
+  fs.writeFileSync(latest, prompt, "utf8");
+  fs.writeFileSync(path.join(dir, "run.command.md"), renderRunbook(targetCli, latest), "utf8");
+  return latest;
+}
+
+function renderCliPrompt(targetCli: string, markdown: string): string {
+  return `# Design Feedback Handoff → ${targetCli}
+
+PURPOSE: Use the collected UI/UX feedback to identify concrete implementation improvements in Tender AI; success = scoped, testable changes aligned with existing design system.
+TASK: Read each feedback item | map it to current frontend/backend files | propose or implement the smallest coherent fix | verify build/tests relevant to touched files
+MODE: write
+CONTEXT: @tender-ai-frontend/src/**/* @tender-ai-backend/app/**/* @design-feedback/inbox.md
+EXPECTED: concise implementation notes, changed files, verification commands and results
+CONSTRAINTS: preserve existing design language | do not touch unrelated WIP | only stage files from this task if committing
+
+${markdown}
+`;
+}
+
+function renderRunbook(targetCli: string, latest: string): string {
+  const rel = path.relative(path.resolve(path.dirname(latest), "..", "..", ".."), latest);
+  const ccwTools = new Set(["claude", "codex", "gemini", "opencode"]);
+  const command = ccwTools.has(targetCli)
+    ? `ccw cli --tool ${targetCli} --mode write --cd . -p "$(cat ${rel})"`
+    : `${targetCli} "$(cat ${rel})"`;
+  return `# Run ${targetCli} with the latest design feedback
+
+\`\`\`bash
+${command}
+\`\`\`
+`;
 }

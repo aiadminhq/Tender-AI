@@ -42,7 +42,9 @@ import {
   setWhitelist,
 } from "@/lib/auth-api";
 import {
-  fetchTenders,
+  fetchTenderPage,
+  serverFilterKey,
+  toServerFilter,
   postAccept,
   postEvaluate,
   postNote,
@@ -84,6 +86,8 @@ const DEFAULT_FILTER: FilterState = {
   tiers: [],
   minBudget: null,
   maxBudget: null,
+  minFeasibility: null,
+  maxFeasibility: null,
   focusOnly: false,
   hideExcluded: true,
   sort: "score",
@@ -205,6 +209,12 @@ interface AppDataValue {
   usingLiveData: boolean;
   // 初次抓取中：用於列表 skeleton（純 mock 模式恆為 false）
   tendersLoading: boolean;
+  // cursor 真分頁：是否還有下一頁可載入（後端 next_cursor 非 null）
+  hasMore: boolean;
+  // 續載入中：loadMore 進行中時為 true（供「載入更多」按鈕禁用/顯示 loading）
+  loadingMore: boolean;
+  // 載入下一頁並附加到 tenders（cursor keyset）；無下一頁或載入中則為 no-op
+  loadMore: () => void;
   // 星號
   isStarred: (tenderId: string) => boolean;
   toggleStar: (tenderId: string) => void;
@@ -361,25 +371,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [tendersLoading, setTendersLoading] = useState(
     import.meta.env.VITE_USE_API !== "false",
   );
-  useEffect(() => {
-    if (import.meta.env.VITE_USE_API === "false") return;
-    const ac = new AbortController();
-    fetchTenders(ac.signal)
-      .then((list) => {
-        if (list.length) {
-          setTenders(list);
-          setUsingLiveData(true);
-        }
-        // 列表載入完成送一次 view（不帶 tender_id）。
-        trackEvent("view", { payload: { count: list.length } });
-      })
-      .catch(() => {
-        /* 後端未啟動／錯誤：保留 mock 資料 */
-      })
-      .finally(() => setTendersLoading(false));
-    return () => ac.abort();
-  }, []);
-
+  // filter 需在分頁邏輯之前宣告：下推到後端 cursor 分頁的 server-filter 由它投影而來。
   const [filter, setFilterState] = useState<FilterState>(() => {
     const stored = { ...DEFAULT_FILTER, ...load("filter", DEFAULT_FILTER) };
     if (typeof window !== "undefined" && window.location.search) {
@@ -387,6 +379,80 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
     return stored;
   });
+  // 可安全下推的 server-filter（src/tier/cat 精確集合比對，與前端 memo 等價）。
+  // 只有這三欄下推；budget/deadline/q/sort/feasibility 語意不同或前端衍生，維持 client-only。
+  const serverFilter = useMemo(
+    () =>
+      toServerFilter({
+        sources: filter.sources,
+        tiers: filter.tiers,
+        categories: filter.categories,
+      }),
+    [filter.sources, filter.tiers, filter.categories],
+  );
+  const sfKey = serverFilterKey(serverFilter);
+  // loadMore 續抓時須帶「與當前游標一致」的 server-filter；用 ref 讀最新值避免閉包過期。
+  const serverFilterRef = useRef(serverFilter);
+  serverFilterRef.current = serverFilter;
+
+  // cursor 真分頁狀態：下一頁游標（null=無下一頁）＋續載入旗標。
+  const nextCursorRef = useRef<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  useEffect(() => {
+    if (import.meta.env.VITE_USE_API === "false") return;
+    const ac = new AbortController();
+    setTendersLoading(true);
+    // 初次載入＋server-filter 變動皆走此路徑：cursor 依篩選指紋失效，故重抓「第一頁」。
+    fetchTenderPage(null, ac.signal, serverFilter)
+      .then((page) => {
+        // 有下推篩選時整批替換為新篩選集第一頁（含空集＝真實 0 筆）；
+        // 無篩選且回空則保留 mock（後端未起／空庫時 UI 不空白）。
+        const hasFilter = Boolean(serverFilter);
+        if (page.tenders.length || hasFilter) {
+          setTenders(page.tenders);
+          setUsingLiveData(true);
+        }
+        nextCursorRef.current = page.nextCursor;
+        setHasMore(Boolean(page.nextCursor));
+        // 列表載入完成送一次 view（不帶 tender_id）。
+        trackEvent("view", { payload: { count: page.tenders.length } });
+      })
+      .catch(() => {
+        /* 後端未啟動／錯誤：保留現有資料 */
+      })
+      .finally(() => setTendersLoading(false));
+    return () => ac.abort();
+    // sfKey 為 server-filter 穩定指紋；變動即重取第一頁。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sfKey]);
+
+  // 載入下一頁並附加（cursor keyset）。以 id 去重防重疊；游標失效（後端 400）則停止。
+  // 續抓務必帶「與游標一致」的 server-filter（serverFilterRef），否則後端指紋不符回 400。
+  const loadMore = useCallback(() => {
+    if (loadingMore || !nextCursorRef.current) return;
+    const cursor = nextCursorRef.current;
+    setLoadingMore(true);
+    fetchTenderPage(cursor, undefined, serverFilterRef.current)
+      .then((page) => {
+        if (page.tenders.length) {
+          setTenders((prev) => {
+            const seen = new Set(prev.map((t) => t.id));
+            const fresh = page.tenders.filter((t) => !seen.has(t.id));
+            return fresh.length ? [...prev, ...fresh] : prev;
+          });
+          setUsingLiveData(true);
+        }
+        nextCursorRef.current = page.nextCursor;
+        setHasMore(Boolean(page.nextCursor));
+      })
+      .catch(() => {
+        // 游標失效或網路錯誤：停止續載入，維持已載入資料。
+        nextCursorRef.current = null;
+        setHasMore(false);
+      })
+      .finally(() => setLoadingMore(false));
+  }, [loadingMore]);
   const [comments, setComments] = useState<Comment[]>(() =>
     load<Comment[]>("comments", []),
   );
@@ -563,6 +629,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (filter.tiers.length && !filter.tiers.includes(t.tier)) return false;
       if (filter.minBudget != null && t.budget < filter.minBudget) return false;
       if (filter.maxBudget != null && t.budget > filter.maxBudget) return false;
+      // 可行性用原始欄位 t.feasibility 過濾（與畫面上的 FeasibilityMeter 一致）。
+      if (
+        filter.minFeasibility != null &&
+        t.feasibility < filter.minFeasibility
+      )
+        return false;
+      if (
+        filter.maxFeasibility != null &&
+        t.feasibility > filter.maxFeasibility
+      )
+        return false;
       if (filter.focusOnly && !hasFocus(t)) return false;
       if (filter.hideExcluded && isExcluded(t)) return false;
       if (filter.categories.length && !filter.categories.includes(t.category))
@@ -655,6 +732,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             tiers: next.tiers,
             minBudget: next.minBudget,
             maxBudget: next.maxBudget,
+            minFeasibility: next.minFeasibility,
+            maxFeasibility: next.maxFeasibility,
             focusOnly: next.focusOnly,
             hideExcluded: next.hideExcluded,
             categories: next.categories,
@@ -1719,6 +1798,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       hasFocus,
       usingLiveData,
       tendersLoading,
+      hasMore,
+      loadingMore,
+      loadMore,
       isStarred,
       toggleStar,
       accept,
@@ -1794,6 +1876,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       hasFocus,
       usingLiveData,
       tendersLoading,
+      hasMore,
+      loadingMore,
+      loadMore,
       isStarred,
       toggleStar,
       accept,

@@ -1,0 +1,330 @@
+---
+kind: "recap"
+localOnly: true
+title: "大腦 picker：多 CLI 代理＋每代理模型＋對話內切換＋測試鈕＋/settings/brain"
+brief: "把『小助手大腦』從固定三選 CLI 升級為註冊表驅動的多代理選擇，加入每代理可指定模型、一鍵煙測，並把設定獨立成 /settings/brain 工作室、composer 內可即時切換。後端新增 CLI 註冊表、煙測服務與兩支端點；前端以共享 store 同步設定頁與對話內 picker。"
+---
+
+## 改了什麼
+
+把「小助手大腦」的引擎選擇從寫死在 `brain.py` 的 `_CLI_COMMANDS` 三選（claude／codex／hermes），抽成後端**單一事實來源**的註冊表 `brain_cli_registry.py`。新增代理只要加一筆 `CliSpec`（啟動 argv、parser 種類、`model_flag`、候選模型清單、是否需本機驗證），`brain.py`（組 argv＋dispatch parser）、`schemas/settings.py`（驗證）、`api/v1/settings.py`（回前端）三處共用。模型旗標採**非破壞性**注入：僅當使用者設了 `cli_model` 且該代理支援時，才把 `[model_flag, model]` append 到 argv 尾端；沒設模型時 argv 與現況完全一致。
+
+UI 面，把原本擠在 `/settings` 的「大腦」卡升級成獨立寬版頁 `/settings/brain`（左欄複用既有 `BrainPicker` 全表單、右欄為唯讀的可用引擎總覽），並在對話 composer 左下角加一顆精簡 `BrainQuickPicker` 膠囊，可即時切換引擎而不離開對話。兩處透過 module-level 共享 store（`useSyncExternalStore`）同步「目前大腦」，任一處儲存成功，另一處立即反映。新增「測試」鈕：以**候選（未存）設定**對固定極短 prompt 做煙測，回報成功／耗時／極短樣本，HTTP 恆 200。**祕密紅線**：BYOK 金鑰本體只在後端 `.env`，前端與煙測 body 一律不帶；CLI 路徑完全不碰 secret。
+
+<DataModel
+  id="dm-brain-config"
+  entities={[
+    {
+      id: "assistant_brain_config",
+      name: "assistant_brain_config",
+      fields: [
+        { name: "id", type: "int", pk: true },
+        { name: "provider", type: "varchar  (ollama|cli|byok)" },
+        { name: "ollama_model", type: "varchar?" },
+        { name: "cli_agent", type: "varchar?  (註冊表 key)" },
+        { name: "cli_model", type: "varchar(64)?  ← 新增" },
+        { name: "byok_protocol", type: "varchar?" },
+        { name: "byok_base_url", type: "varchar?" },
+        { name: "byok_model", type: "varchar?" }
+      ]
+    }
+  ]}
+  relations={[]}
+/>
+
+新增欄位 `cli_model`（`alembic b7c2e9d4a8f1`，nullable-only、冪等）。BYOK 金鑰本體**不入 DB**，前端只讀派生布林 `byok_key_set`。
+
+### API 契約
+
+<Endpoint
+  id="ep-put-brain"
+  method="PUT"
+  path="/api/v1/settings/brain"
+  summary="更新目前大腦設定（新增 cli_model 欄位）"
+  params={[
+    { name: "provider", in: "body", type: "string", required: false },
+    { name: "cli_agent", in: "body", type: "string", required: false, description: "註冊表 key" },
+    { name: "cli_model", in: "body", type: "string", required: false, description: "新增；僅支援模型的代理有效" }
+  ]}
+  responses={[
+    { status: "200", description: "回傳 BrainConfigOut；byok_key_set 為派生布林，永不回金鑰本體" }
+  ]}
+>
+切換引擎只改 provider／cli_agent；模型細項走 cli_model。金鑰本體永不經此端點。
+</Endpoint>
+
+<Endpoint
+  id="ep-get-agents"
+  method="GET"
+  path="/api/v1/settings/brain/agents"
+  summary="回傳 CLI 代理註冊表，供前端動態建立 agent／model 選單"
+  responses={[
+    { status: "200", description: "BrainAgentsOut：每筆含 key／label_i18n／models／default_model／supports_model／needs_local_verify", example: "{\n  \"agents\": [\n    { \"key\": \"claude\", \"label_i18n\": \"brainCliClaude\", \"models\": [\"claude-opus-4-8\", \"claude-sonnet-4-6\", \"claude-haiku-4-5-20251001\"], \"supports_model\": true, \"needs_local_verify\": false },\n    { \"key\": \"opencode\", \"label_i18n\": \"brainCliOpencode\", \"models\": [], \"supports_model\": true, \"needs_local_verify\": true }\n  ]\n}" }
+  ]}
+>
+前端據此建選單；不再硬編封閉 union。新增代理只需在後端註冊表加一筆＋補 i18n label。
+</Endpoint>
+
+<Endpoint
+  id="ep-post-test"
+  method="POST"
+  path="/api/v1/settings/brain/test"
+  summary="對候選（未存）設定做煙測"
+  params={[
+    { name: "provider", in: "body", type: "string", required: true },
+    { name: "cli_agent", in: "body", type: "string", required: false },
+    { name: "cli_model", in: "body", type: "string", required: false },
+    { name: "ollama_model", in: "body", type: "string", required: false },
+    { name: "byok_model", in: "body", type: "string", required: false }
+  ]}
+  responses={[
+    { status: "200", description: "BrainTestResult：ok／provider／model／elapsed_ms／sample／error。HTTP 恆 200，以 ok 區分成功失敗。", example: "{ \"ok\": true, \"provider\": \"cli\", \"model\": \"claude-opus-4-8\", \"elapsed_ms\": 1840, \"sample\": \"OK\", \"error\": null }" }
+  ]}
+>
+固定無意義 prompt（不觸發 Layer B）、短 timeout、截斷樣本。BYOK 金鑰仍由 .env 取，body 不帶；永不回傳金鑰本體。
+</Endpoint>
+
+## UI 變化
+
+### 設定頁「大腦」卡：內嵌表單 → 獨立工作室入口
+
+<Columns id="cols-settings-card">
+  <Column id="col-before" label="Before">
+    <WireframeBlock id="wf-settings-before">
+      <Screen surface="browser" caption="/settings — 大腦卡內嵌整份 BrainPicker 表單" html={"<div style='padding:20px;max-width:560px'><div style='font-size:13px;color:var(--wf-muted);margin-bottom:10px'>設定 · 小助手</div><div class='wf-card' style='padding:16px'><div style='font-weight:600;margin-bottom:12px'>小助手大腦</div><div style='font-size:12px;color:var(--wf-muted);margin-bottom:6px'>引擎</div><div class='wf-box' style='padding:8px 10px;margin-bottom:12px'>CLI 代理 ▾</div><div style='font-size:12px;color:var(--wf-muted);margin-bottom:6px'>CLI 代理</div><div class='wf-box' style='padding:8px 10px;margin-bottom:12px'>claude ▾</div><button class='primary' style='padding:6px 14px'>儲存</button></div></div>"} />
+    </WireframeBlock>
+  </Column>
+  <Column id="col-after" label="After">
+    <WireframeBlock id="wf-settings-after">
+      <Screen surface="browser" caption="/settings — 大腦卡僅留提示＋前往工作室連結" html={"<div style='padding:20px;max-width:560px'><div style='font-size:13px;color:var(--wf-muted);margin-bottom:10px'>設定 · 小助手</div><div class='wf-card' style='padding:16px'><div style='font-weight:600;margin-bottom:8px'>小助手大腦</div><div style='font-size:12px;color:var(--wf-muted);margin-bottom:14px'>選擇對話要用哪個引擎與模型，並可一鍵測試。</div><a class='wf-pill accent' style='display:inline-block;padding:7px 14px;text-decoration:none'>前往 AI 大腦工作室 →</a></div></div>"} />
+    </WireframeBlock>
+  </Column>
+</Columns>
+
+### 新頁 /settings/brain：AI 大腦工作室（after-only）
+
+<WireframeBlock id="wf-studio">
+  <Screen surface="browser" caption="/settings/brain — 左欄複用 BrainPicker 全表單；右欄唯讀引擎總覽（自註冊表卡片化）" html={"<div style='padding:20px'><div style='font-size:18px;font-weight:700;margin-bottom:4px'>AI 大腦工作室</div><div style='font-size:12px;color:var(--wf-muted);margin-bottom:16px'>選擇引擎與模型，並測試是否能正常回話。</div><div style='display:grid;grid-template-columns:380px 1fr;gap:16px'><div class='wf-card' style='padding:16px'><div style='font-weight:600;margin-bottom:12px'>引擎設定</div><div class='wf-box' style='padding:6px 10px;margin-bottom:8px;font-size:12px'>目前大腦：CLI · claude · opus-4-8</div><div style='font-size:12px;color:var(--wf-muted);margin:8px 0 4px'>引擎</div><div class='wf-box' style='padding:7px 10px;margin-bottom:8px'>CLI 代理 ▾</div><div style='font-size:12px;color:var(--wf-muted);margin:0 0 4px'>CLI 代理</div><div class='wf-box' style='padding:7px 10px;margin-bottom:8px'>claude ▾</div><div style='font-size:12px;color:var(--wf-muted);margin:0 0 4px'>模型</div><div class='wf-box' style='padding:7px 10px;margin-bottom:12px'>claude-opus-4-8 ▾</div><div style='display:flex;gap:8px'><button class='primary' style='padding:6px 14px'>儲存</button><button style='padding:6px 14px;border:1px solid var(--wf-line);background:var(--wf-card);border-radius:8px'>測試</button></div></div><div class='wf-card' style='padding:16px'><div style='font-weight:600;margin-bottom:12px'>可用引擎</div><div style='display:grid;grid-template-columns:1fr 1fr;gap:10px'><div class='wf-box' style='padding:10px'><div style='font-weight:600;font-size:13px'>Claude <span class='wf-chip accent' style='font-size:10px'>可指定模型</span></div><div style='font-size:10px;color:var(--wf-muted);margin-top:6px'>opus-4-8 · sonnet-4-6 · haiku-4-5</div></div><div class='wf-box' style='padding:10px'><div style='font-weight:600;font-size:13px'>Codex <span class='wf-chip accent' style='font-size:10px'>可指定模型</span></div><div style='font-size:10px;color:var(--wf-muted);margin-top:6px'>gpt-5-codex · gpt-5 · o3</div></div><div class='wf-box' style='padding:10px'><div style='font-weight:600;font-size:13px'>Hermes</div><div style='font-size:10px;color:var(--wf-muted);margin-top:6px'>未開放指定模型</div></div><div class='wf-box' style='padding:10px'><div style='font-weight:600;font-size:13px'>OpenCode <span class='wf-chip' style='font-size:10px'>需本機驗證</span></div><div style='font-size:10px;color:var(--wf-muted);margin-top:6px'>自由填模型</div></div></div></div></div></div>"} />
+</WireframeBlock>
+
+### Composer 內快速切換 + 測試結果 chip（after-only）
+
+<WireframeBlock id="wf-composer">
+  <Screen surface="panel" caption="對話 composer 左下角：BrainQuickPicker 膠囊（切換只改引擎，不動模型）＋細項連結" html={"<div style='padding:16px;max-width:620px'><div class='wf-box' style='padding:12px;border-radius:12px;margin-bottom:10px'><div style='color:var(--wf-muted);font-size:13px'>輸入訊息給小助手…</div></div><div style='display:flex;align-items:center;justify-content:space-between'><span style='display:inline-flex;align-items:center;gap:8px'><span class='wf-pill' style='font-size:11px;padding:4px 8px'><span style='color:var(--wf-muted)'>大腦</span> <b>CLI · claude ▾</b></span><a style='font-size:11px;color:var(--wf-muted);text-decoration:underline'>細項</a></span><button class='primary' style='padding:6px 16px'>送出</button></div></div>"} />
+</WireframeBlock>
+
+<WireframeBlock id="wf-test-chip">
+  <Screen surface="panel" caption="測試鈕煙測結果：成功（綠 chip ＋ 模型 ＋ 耗時 ＋ 樣本）／失敗（紅 chip ＋ 淨化錯誤）" html={"<div style='padding:16px;max-width:420px;display:grid;gap:10px'><div class='wf-box' style='padding:10px;border-color:var(--wf-ok);background:var(--wf-accent-soft)'><div style='display:flex;align-items:center;gap:8px'><span class='wf-chip' style='background:var(--wf-ok);color:var(--wf-accent-fg);font-size:11px'>測試成功</span><span style='font-size:11px;color:var(--wf-muted)'>claude-opus-4-8</span><span style='font-size:11px;color:var(--wf-muted)'>1840ms</span></div><div style='font-size:11px;margin-top:6px'>OK</div></div><div class='wf-box' style='padding:10px;border-color:var(--wf-warn)'><div style='display:flex;align-items:center;gap:8px'><span class='wf-chip' style='background:var(--wf-warn);color:var(--wf-accent-fg);font-size:11px'>測試失敗</span><span style='font-size:11px;color:var(--wf-muted)'>30000ms</span></div><div style='font-size:11px;margin-top:6px;color:var(--wf-warn)'>測試逾時（30s）</div></div></div>"} />
+</WireframeBlock>
+
+<FileTree
+  id="ft-brain-picker"
+  title="本次大腦 picker 相關變更"
+  entries={[
+    { path: "tender-ai-backend/app/services/brain_cli_registry.py", change: "added", note: "CLI 代理註冊表（單一事實來源）" },
+    { path: "tender-ai-backend/app/services/brain_test.py", change: "added", note: "候選設定煙測服務" },
+    { path: "tender-ai-backend/app/services/brain.py", change: "modified", note: "改用註冊表組 argv＋dispatch parser；非破壞性 model flag" },
+    { path: "tender-ai-backend/app/api/v1/settings.py", change: "modified", note: "新增 GET /brain/agents、POST /brain/test" },
+    { path: "tender-ai-backend/app/schemas/settings.py", change: "modified", note: "BrainAgentSpec／BrainAgentsOut／BrainTestRequest／BrainTestResult＋cli_model" },
+    { path: "tender-ai-backend/app/models/assistant.py", change: "modified", note: "新增 cli_model 欄位" },
+    { path: "tender-ai-backend/alembic/versions/b7c2e9d4a8f1_brain_config_cli_model.py", change: "added", note: "新增 cli_model 欄位（nullable）" },
+    { path: "tender-ai-backend/tests/test_brain.py", change: "modified", note: "註冊表／model flag 測試" },
+    { path: "tender-ai-backend/tests/test_settings_api.py", change: "modified", note: "/brain/agents、/brain/test 測試" },
+    { path: "tender-ai-frontend/src/lib/brain.ts", change: "modified", note: "新型別＋fetchBrainAgents／testBrainConfig；cliModel 串接" },
+    { path: "tender-ai-frontend/src/hooks/use-brain-config.ts", change: "added", note: "共享大腦狀態 store" },
+    { path: "tender-ai-frontend/src/components/settings/brain-picker.tsx", change: "modified", note: "每代理模型選單＋測試鈕＋結果 chip" },
+    { path: "tender-ai-frontend/src/components/assistant/brain-quick-picker.tsx", change: "added", note: "composer 內快速切換膠囊" },
+    { path: "tender-ai-frontend/src/pages/brain-studio-page.tsx", change: "added", note: "/settings/brain 工作室頁" },
+    { path: "tender-ai-frontend/src/components/assistant/assistant-ui-thread.tsx", change: "modified", note: "composer 掛載 BrainQuickPicker" },
+    { path: "tender-ai-frontend/src/pages/settings-page.tsx", change: "modified", note: "大腦卡改為提示＋前往工作室連結" },
+    { path: "tender-ai-frontend/src/App.tsx", change: "modified", note: "新增 settings/brain route" },
+    { path: "tender-ai-frontend/src/components/layout/nav-items.ts", change: "modified", note: "側欄新增 AI 大腦工作室入口" },
+    { path: "tender-ai-frontend/src/i18n/strings.ts", change: "modified", note: "大腦 picker／工作室 zh／en 文案" }
+  ]}
+/>
+
+> 同一批 commit 另含與「標案來源連結」相關的 `rich-text*`／`tender-drawer.tsx` 與 `charts-page.tsx` 排版調整，與大腦 picker 主題無關，已排除於本 recap 範圍。
+
+## Key changes
+
+<Tabs
+  id="tabs-key-changes"
+  tabs={[
+    {
+      id: "tab-registry",
+      label: "brain_cli_registry.py",
+      blocks: [
+        {
+          id: "d-registry",
+          type: "diff",
+          data: {
+            filename: "tender-ai-backend/app/services/brain_cli_registry.py",
+            language: "python",
+            mode: "split",
+            summary: "新檔：CLI 代理註冊表為單一事實來源；新增代理只需加一筆 CliSpec。",
+            before: "",
+            after: "@dataclass(frozen=True)\nclass CliSpec:\n    key: str                          # claude / codex / hermes / opencode / antigravity\n    label_i18n: str                   # 前端 i18n key\n    argv: list[str]                   # 含 {prompt} 佔位\n    parser: str                       # \"claude\" | \"codex\" | \"hermes\" | \"text\"\n    model_flag: str | None = None     # 注入模型的 flag；None=該 CLI 不支援指定模型\n    default_model: str | None = None\n    models: list[str] = field(default_factory=list)  # UI 候選模型（空=自由填）\n    needs_local_verify: bool = False  # opencode/antigravity=True（模板未在本機驗證）\n\n\nCLI_REGISTRY: dict[str, CliSpec] = {\n    \"claude\": CliSpec(\n        key=\"claude\", label_i18n=\"brainCliClaude\",\n        argv=[\"claude\", \"-p\", \"{prompt}\", \"--allowedTools\",\n              \"mcp__tender-ai-brain\", \"--output-format\",\n              \"stream-json\", \"--verbose\"],\n        parser=\"claude\", model_flag=\"--model\",\n        models=[\"claude-opus-4-8\", \"claude-sonnet-4-6\", \"claude-haiku-4-5-20251001\"],\n    ),\n    \"codex\": CliSpec(\n        key=\"codex\", label_i18n=\"brainCliCodex\",\n        argv=[\"codex\", \"exec\", \"--json\", \"--skip-git-repo-check\", \"{prompt}\"],\n        parser=\"codex\", model_flag=\"--model\",\n        models=[\"gpt-5-codex\", \"gpt-5\", \"o3\"],\n    ),\n    \"hermes\": CliSpec(\n        key=\"hermes\", label_i18n=\"brainCliHermes\",\n        argv=[\"hermes\", \"-z\", \"{prompt}\", \"--yolo\"],\n        parser=\"hermes\", model_flag=None, models=[],  # 暫不開放指定模型\n    ),\n    \"opencode\": CliSpec(\n        key=\"opencode\", label_i18n=\"brainCliOpencode\",\n        argv=[\"opencode\", \"run\", \"{prompt}\"],\n        parser=\"text\", model_flag=\"--model\", models=[], needs_local_verify=True,\n    ),\n    \"antigravity\": CliSpec(\n        key=\"antigravity\", label_i18n=\"brainCliAntigravity\",\n        argv=[\"antigravity\", \"{prompt}\"],\n        parser=\"text\", model_flag=\"--model\", models=[], needs_local_verify=True,\n    ),\n}\n\n\ndef cli_agent_keys() -> tuple[str, ...]:\n    return tuple(CLI_REGISTRY.keys())\n\n\ndef get_spec(agent: str) -> CliSpec | None:\n    return CLI_REGISTRY.get(agent)",
+            annotations: [
+              { side: "after", lines: "5", label: "model_flag", note: "None 表示該 CLI 不支援指定模型（hermes）。" },
+              { side: "after", lines: "8", label: "needs_local_verify", note: "opencode/antigravity 為模板、UI 顯示『需本機驗證』徽章。" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "tab-brain",
+      label: "brain.py",
+      blocks: [
+        {
+          id: "d-brain",
+          type: "diff",
+          data: {
+            filename: "tender-ai-backend/app/services/brain.py",
+            language: "python",
+            mode: "split",
+            summary: "移除寫死的 _CLI_COMMANDS；改用 get_spec 組 argv 並依 parser 種類 dispatch；model flag 非破壞性 append。",
+            before: "_CLI_COMMANDS: dict[str, list[str]] = {\n    \"claude\": [\n        \"claude\", \"-p\", \"{prompt}\",\n        \"--allowedTools\", \"mcp__tender-ai-brain\",\n        \"--output-format\", \"stream-json\", \"--verbose\",\n    ],\n    \"codex\": [\"codex\", \"exec\", \"--json\", \"--skip-git-repo-check\", \"{prompt}\"],\n    \"hermes\": [\"hermes\", \"-z\", \"{prompt}\", \"--yolo\"],\n}\n\n\ndef _cli_argv(agent: str, prompt: str) -> list[str]:\n    template = _CLI_COMMANDS.get(agent)\n    if template is None:\n        raise BrainError(f\"CLI 大腦暫不支援：{agent}\")\n    return [prompt if tok == \"{prompt}\" else tok for tok in template]\n\n\n# ...\n    agent = getattr(config, \"cli_agent\", None) or \"claude\"\n    full_prompt = _build_cli_prompt(prompt, focus_note)\n    argv = _cli_argv(agent, full_prompt)\n\n\ndef _parse_cli_line(agent, line, answer_parts):\n    if agent == \"codex\":\n        return _parse_codex_line(line, answer_parts)\n    if agent == \"hermes\":\n        return _parse_hermes_line(line, answer_parts)\n    return _parse_claude_line(line, answer_parts)",
+            after: "from app.services.brain_cli_registry import get_spec\n\n# CLI 代理的啟動樣板、parser 種類、模型旗標集中於 brain_cli_registry（單一事實來源）。\n\n\ndef _cli_argv(agent: str, prompt: str, model: str | None = None) -> list[str]:\n    spec = get_spec(agent)\n    if spec is None:\n        raise BrainError(f\"CLI 大腦暫不支援：{agent}\")\n    argv = [prompt if tok == \"{prompt}\" else tok for tok in spec.argv]\n    # 僅當設了模型且該代理支援指定模型時，把 model flag append 到尾端（非破壞性）。\n    if model and spec.model_flag:\n        argv.extend([spec.model_flag, model])\n    return argv\n\n\n# ...\n    agent = getattr(config, \"cli_agent\", None) or \"claude\"\n    model = getattr(config, \"cli_model\", None) or None\n    full_prompt = _build_cli_prompt(prompt, focus_note)\n    argv = _cli_argv(agent, full_prompt, model)\n\n\ndef _parse_cli_line(agent, line, answer_parts):\n    spec = get_spec(agent)\n    parser = spec.parser if spec is not None else \"claude\"\n    if parser == \"codex\":\n        return _parse_codex_line(line, answer_parts)\n    if parser in (\"hermes\", \"text\"):\n        # text 與 hermes 同為純文字逐行 delta（opencode/antigravity 走此路）。\n        return _parse_hermes_line(line, answer_parts)\n    return _parse_claude_line(line, answer_parts)",
+            annotations: [
+              { side: "after", lines: "11-12", label: "非破壞性", note: "沒設 model 時 argv 與舊版完全一致。" },
+              { side: "after", lines: "25-30", label: "parser dispatch", note: "由 spec.parser 決定，不再用 agent 名稱硬判。" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "tab-brain-test",
+      label: "brain_test.py",
+      blocks: [
+        {
+          id: "d-brain-test",
+          type: "diff",
+          data: {
+            filename: "tender-ai-backend/app/services/brain_test.py",
+            language: "python",
+            mode: "split",
+            summary: "新檔：候選設定煙測。固定無意義 prompt、短 timeout、截斷樣本、永不回金鑰。",
+            before: "",
+            after: "_PROBE_PROMPT = \"請只回覆：OK\"   # 固定、無意義（不觸發 Layer B）\n_SAMPLE_CAP = 200\n_CLI_TIMEOUT = 30.0\n_OTHER_TIMEOUT = 15.0\n\n\nasync def _collect(candidate: SimpleNamespace) -> str:\n    parts: list[str] = []\n    messages = [{\"role\": \"user\", \"content\": _PROBE_PROMPT}]\n    async for chunk in brain.stream(\n        config=candidate, messages=messages, prompt=_PROBE_PROMPT,\n        history=None, focus_note=\"\",\n    ):\n        if chunk.kind == \"delta\":\n            parts.append(chunk.text)\n            if sum(len(p) for p in parts) >= _SAMPLE_CAP:\n                break\n    return \"\".join(parts).strip()[:_SAMPLE_CAP]\n\n\nasync def smoke_test(candidate: SimpleNamespace):\n    from app.schemas.settings import BrainTestResult\n    provider = getattr(candidate, \"provider\", \"ollama\") or \"ollama\"\n    model = _candidate_model(provider, candidate)\n    timeout = _CLI_TIMEOUT if provider == \"cli\" else _OTHER_TIMEOUT\n    started = time.perf_counter()\n    try:\n        sample = await asyncio.wait_for(_collect(candidate), timeout=timeout)\n    except asyncio.TimeoutError:\n        return BrainTestResult(ok=False, provider=provider, model=model,\n            elapsed_ms=_ms(started), error=f\"測試逾時（{int(timeout)}s）\")\n    except brain.BrainError as e:\n        return BrainTestResult(ok=False, provider=provider, model=model,\n            elapsed_ms=_ms(started), error=str(e)[:200])\n    except Exception as e:  # noqa: BLE001\n        return BrainTestResult(ok=False, provider=provider, model=model,\n            elapsed_ms=_ms(started), error=f\"測試失敗：{str(e)[:160]}\")\n    if not sample:\n        return BrainTestResult(ok=False, provider=provider, model=model,\n            elapsed_ms=_ms(started), error=\"未產出任何內容\")\n    return BrainTestResult(ok=True, provider=provider, model=model,\n        elapsed_ms=_ms(started), sample=sample)",
+            annotations: [
+              { side: "after", lines: "1", label: "Layer B 安全", note: "固定無意義 prompt，不帶任何使用者資料。" },
+              { side: "after", lines: "23", label: "BYOK", note: "model 字串不含祕密；金鑰仍只從 .env。" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "tab-settings-api",
+      label: "settings.py",
+      blocks: [
+        {
+          id: "d-settings-api",
+          type: "diff",
+          data: {
+            filename: "tender-ai-backend/app/api/v1/settings.py",
+            language: "python",
+            mode: "split",
+            summary: "新增兩支端點：GET /brain/agents（回註冊表）、POST /brain/test（候選煙測、不落地）。",
+            before: "",
+            after: "@router.get(\"/brain/agents\", response_model=BrainAgentsOut)\nasync def get_brain_agents() -> BrainAgentsOut:\n    agents = [\n        BrainAgentSpec(\n            key=spec.key, label_i18n=spec.label_i18n,\n            models=list(spec.models), default_model=spec.default_model,\n            supports_model=bool(spec.model_flag),\n            needs_local_verify=spec.needs_local_verify,\n        )\n        for spec in CLI_REGISTRY.values()\n    ]\n    return BrainAgentsOut(agents=agents)\n\n\n@router.post(\"/brain/test\", response_model=BrainTestResult)\nasync def post_brain_test(body: BrainTestRequest) -> BrainTestResult:\n    from types import SimpleNamespace\n    candidate = SimpleNamespace(\n        provider=body.provider, ollama_model=body.ollama_model,\n        cli_agent=body.cli_agent, cli_model=body.cli_model,\n        byok_protocol=body.byok_protocol, byok_base_url=body.byok_base_url,\n        byok_model=body.byok_model,\n    )\n    return await brain_test_svc.smoke_test(candidate)",
+            annotations: [
+              { side: "after", lines: "7", label: "supports_model", note: "由 model_flag 是否存在派生。" },
+              { side: "after", lines: "17-23", label: "不落地", note: "用 SimpleNamespace 組候選；body 不帶 BYOK 金鑰。" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "tab-lib-brain",
+      label: "lib/brain.ts",
+      blocks: [
+        {
+          id: "d-lib-brain",
+          type: "diff",
+          data: {
+            filename: "tender-ai-frontend/src/lib/brain.ts",
+            language: "typescript",
+            mode: "split",
+            summary: "CliAgent 改 string（註冊表驅動）；新增 BrainAgentSpec／BrainTestResult 型別與 fetchBrainAgents／testBrainConfig。",
+            before: "export type CliAgent = \"claude\" | \"codex\" | \"hermes\";\n\nexport interface BrainConfig {\n  provider: BrainProvider;\n  ollamaModel: string | null;\n  cliAgent: string | null;\n  byokProtocol: string | null;\n  byokBaseUrl: string | null;\n  byokModel: string | null;\n}\n\n// （無 agents／test 端點）",
+            after: "// CLI 代理 key 改為註冊表驅動（後端單一事實來源），不再是封閉 union。\nexport type CliAgent = string;\n\nexport interface BrainConfig {\n  provider: BrainProvider;\n  ollamaModel: string | null;\n  cliAgent: string | null;\n  cliModel: string | null;            // 新增\n  byokProtocol: string | null;\n  byokBaseUrl: string | null;\n  byokModel: string | null;\n}\n\nexport interface BrainAgentSpec {\n  key: string; labelI18n: string; models: string[];\n  defaultModel: string | null; supportsModel: boolean; needsLocalVerify: boolean;\n}\n\nexport interface BrainTestResult {\n  ok: boolean; provider: string; model: string | null;\n  elapsedMs: number; sample: string; error: string | null;\n}\n\nexport async function fetchBrainAgents(signal?: AbortSignal): Promise<BrainAgentSpec[]> {\n  const res = await fetch(`${API_BASE}/settings/brain/agents`, { headers: authHeaders(), signal });\n  if (!res.ok) throw new Error(`brain agents API ${res.status}`);\n  const data = (await res.json()) as { agents: BrainAgentSpecDto[] };\n  return data.agents.map((a) => ({ key: a.key, labelI18n: a.label_i18n,\n    models: a.models, defaultModel: a.default_model,\n    supportsModel: a.supports_model, needsLocalVerify: a.needs_local_verify }));\n}\n\nexport async function testBrainConfig(\n  candidate: BrainConfigUpdate & { provider: BrainProvider },\n  signal?: AbortSignal,\n): Promise<BrainTestResult> {\n  const body: Record<string, unknown> = { provider: candidate.provider };\n  if (candidate.cliAgent != null) body.cli_agent = candidate.cliAgent;\n  if (candidate.cliModel != null) body.cli_model = candidate.cliModel;\n  // ...byok_model 等僅帶非空欄位；body 不含金鑰本體\n  const res = await fetch(`${API_BASE}/settings/brain/test`, {\n    method: \"POST\", headers: { \"Content-Type\": \"application/json\", ...authHeaders() },\n    body: JSON.stringify(body), signal,\n  });\n  if (!res.ok) throw new Error(`brain test API ${res.status}`);\n  const dto = (await res.json()) as BrainTestResultDto;\n  return { ok: dto.ok, provider: dto.provider, model: dto.model,\n    elapsedMs: dto.elapsed_ms, sample: dto.sample, error: dto.error };\n}",
+            annotations: [
+              { side: "after", lines: "2", label: "註冊表驅動", note: "合法值由 fetchBrainAgents 動態取得。" },
+              { side: "after", lines: "39", label: "祕密紅線", note: "body 只帶非空欄位，永不含金鑰本體。" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "tab-store",
+      label: "use-brain-config.ts",
+      blocks: [
+        {
+          id: "d-store",
+          type: "diff",
+          data: {
+            filename: "tender-ai-frontend/src/hooks/use-brain-config.ts",
+            language: "typescript",
+            mode: "split",
+            summary: "新檔：module-level 共享 store；設定頁與 composer picker 共用同一份『目前大腦』，任一處儲存即時同步。",
+            before: "",
+            after: "import { useSyncExternalStore } from \"react\";\n\ninterface BrainStore {\n  config: BrainConfig | null;\n  agents: BrainAgentSpec[];\n  loaded: boolean;\n  error: boolean;\n}\n\nlet state: BrainStore = { config: null, agents: [], loaded: false, error: false };\nconst listeners = new Set<() => void>();\nlet loadPromise: Promise<void> | null = null;\n\n/** 載入一次設定＋代理清單（多元件共用同一次請求）。失敗不拋，置 error。 */\nexport function ensureBrainLoaded(): Promise<void> {\n  if (loadPromise) return loadPromise;\n  loadPromise = (async () => {\n    try {\n      const [config, agents] = await Promise.all([fetchBrainConfig(), fetchBrainAgents()]);\n      setState({ config, agents, loaded: true, error: false });\n    } catch {\n      setState({ loaded: true, error: true });\n    }\n  })();\n  return loadPromise;\n}\n\n/** 套用新設定（任一 picker 儲存成功後呼叫，全域同步）。 */\nexport function applyBrainUpdate(config: BrainConfig) {\n  setState({ config, loaded: true, error: false });\n}\n\nexport function useBrainStore(): BrainStore {\n  const snap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);\n  if (!snap.loaded && !loadPromise) void ensureBrainLoaded();\n  return snap;\n}",
+            annotations: [
+              { side: "after", lines: "18", label: "單次請求", note: "config 與 agents 一次 Promise.all 取回，多元件共用。" },
+              { side: "after", lines: "29-30", label: "全域同步", note: "切換／儲存成功呼叫此函式，兩處 picker 同步反映。" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "tab-brain-picker",
+      label: "brain-picker.tsx",
+      blocks: [
+        {
+          id: "d-brain-picker",
+          type: "diff",
+          data: {
+            filename: "tender-ai-frontend/src/components/settings/brain-picker.tsx",
+            language: "tsx",
+            mode: "split",
+            summary: "CLI 代理改由 agents 動態建；新增每代理模型選單（下拉／自由填／不支援）＋測試鈕＋結果 chip。",
+            before: "{config.provider === \"cli\" && (\n  <label className=\"block\">\n    <span>{t(\"brainCliAgent\")}</span>\n    <Select\n      value={config.cliAgent ?? \"claude\"}\n      onValueChange={(v) => patch({ cliAgent: v })}\n      options={CLI_AGENTS.map((a) => ({ value: a, label: t(CLI_AGENT_LABEL[a]) }))}\n      disabled={busy}\n    />\n  </label>\n)}\n\n<Button type=\"submit\" variant=\"primary\" size=\"sm\" disabled={busy}>\n  {busy ? t(\"brainSaving\") : t(\"brainSave\")}\n</Button>",
+            after: "async function onTest() {\n  if (testing || !config) return;\n  setTesting(true); setTestResult(null);\n  try {\n    const result = await testBrainConfig({\n      provider: config.provider, ollamaModel: config.ollamaModel || null,\n      cliAgent: config.cliAgent || null, cliModel: config.cliModel || null,\n      byokProtocol: \"anthropic\", byokBaseUrl: config.byokBaseUrl || null,\n      byokModel: config.byokModel || null,\n    });\n    setTestResult(result);\n  } catch { setTestResult({ ok: false, /* ...淨化錯誤 */ } as BrainTestResult); }\n  finally { setTesting(false); }\n}\n\n{config.provider === \"cli\" && (\n  <div className=\"space-y-4\">\n    <label className=\"block\">\n      <span>{t(\"brainCliAgent\")}\n        {selectedAgent?.needsLocalVerify && <Badge variant=\"muted\">{t(\"brainNeedsLocalVerify\")}</Badge>}\n      </span>\n      <Select value={config.cliAgent ?? \"claude\"} onValueChange={onPickAgent}\n        options={agents.map((a) => ({ value: a.key, label: t(a.labelI18n as TextKey) }))} />\n    </label>\n    {selectedAgent && (\n      <label className=\"block\">\n        <span>{t(\"brainCliModel\")}</span>\n        {!selectedAgent.supportsModel ? (\n          <p>{t(\"brainCliModelUnsupported\")}</p>\n        ) : cliModelOptions ? (\n          <Select value={config.cliModel ?? \"\"} onValueChange={(v) => patch({ cliModel: v || null })} options={cliModelOptions} />\n        ) : (\n          <Input value={config.cliModel ?? \"\"} onChange={(e) => patch({ cliModel: e.target.value })} />\n        )}\n      </label>\n    )}\n  </div>\n)}\n\n<div className=\"flex items-center gap-2\">\n  <Button type=\"submit\" variant=\"primary\" size=\"sm\" disabled={busy}>\n    {busy ? t(\"brainSaving\") : t(\"brainSave\")}\n  </Button>\n  <Button type=\"button\" variant=\"ghost\" size=\"sm\" disabled={busy || testing} onClick={onTest}>\n    {testing ? t(\"brainTesting\") : t(\"brainTest\")}\n  </Button>\n</div>",
+            annotations: [
+              { side: "after", lines: "22", label: "動態選單", note: "agents 來自註冊表，不再硬編 CLI_AGENTS。" },
+              { side: "after", lines: "28-34", label: "三態模型輸入", note: "不支援／下拉候選／自由填，依 supportsModel 與 models 長度決定。" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      id: "tab-quick-picker",
+      label: "brain-quick-picker.tsx",
+      blocks: [
+        {
+          id: "d-quick-picker",
+          type: "diff",
+          data: {
+            filename: "tender-ai-frontend/src/components/assistant/brain-quick-picker.tsx",
+            language: "tsx",
+            mode: "split",
+            summary: "新檔：composer 左下角快速切換膠囊。切換只改引擎／CLI 代理（不動模型），樂觀更新＋失敗回滾。",
+            before: "",
+            after: "function encode(config: BrainConfig): string {\n  if (config.provider === \"cli\") return `cli:${config.cliAgent ?? \"claude\"}`;\n  return config.provider;\n}\n\nexport function BrainQuickPicker({ className }: { className?: string }) {\n  const { t } = useApp();\n  const { config, agents, loaded, error } = useBrainStore();\n  const [busy, setBusy] = useState(false);\n\n  const options = useMemo(() => [\n    { value: \"ollama\", label: t(\"brainProviderOllama\") },\n    ...agents.map((a) => ({ value: `cli:${a.key}`, label: t(a.labelI18n as TextKey) })),\n    { value: \"byok\", label: t(\"brainProviderByok\") },\n  ], [agents, t]);\n\n  if (error || !loaded || !config) return null;\n  const value = encode(config);\n\n  async function onChange(next: string) {\n    if (busy || !config || next === value) return;\n    const changes = next.startsWith(\"cli:\")\n      ? { provider: \"cli\", cliAgent: next.slice(4) }\n      : { provider: next as BrainProvider };\n    const optimistic = { ...config, ...changes };\n    applyBrainUpdate(optimistic);                 // 樂觀更新，手感即時\n    setBusy(true);\n    try {\n      const saved = await updateBrainConfig({ provider: optimistic.provider, cliAgent: optimistic.cliAgent });\n      applyBrainUpdate(saved);\n    } catch { applyBrainUpdate(config); }          // 失敗回滾\n    finally { setBusy(false); }\n  }\n  // 渲染：膠囊 label + <select options> + <Link to=\"/settings/brain\">細項</Link>\n}",
+            annotations: [
+              { side: "after", lines: "21-23", label: "只改引擎", note: "切換只動 provider／cliAgent，模型細項仍在設定頁。" },
+              { side: "after", lines: "25-31", label: "樂觀＋回滾", note: "先 applyBrainUpdate 即時切換，PUT 失敗回滾不阻斷對話。" }
+            ]
+          }
+        }
+      ]
+    }
+  ]}
+/>

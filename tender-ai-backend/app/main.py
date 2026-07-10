@@ -18,6 +18,8 @@ from app.core.errors import (
     PermissionDenied,
 )
 from app.core.security import require_api_key
+from app.services.cursor import CursorError
+from app.services.embedding import EmbeddingError
 
 logger = logging.getLogger("tender_ai")
 
@@ -61,6 +63,13 @@ async def _permission_denied_handler(
     return JSONResponse(status_code=403, content={"detail": exc.detail})
 
 
+@app.exception_handler(CursorError)
+async def _cursor_error_handler(
+    request: Request, exc: CursorError
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.detail})
+
+
 @app.exception_handler(DomainValidationError)
 async def _domain_validation_handler(
     request: Request, exc: DomainValidationError
@@ -73,6 +82,23 @@ async def _auth_not_configured_handler(
     request: Request, exc: AuthNotConfigured
 ) -> JSONResponse:
     return JSONResponse(status_code=503, content={"detail": exc.detail})
+
+
+@app.exception_handler(EmbeddingError)
+async def _embedding_error_handler(
+    request: Request, exc: EmbeddingError
+) -> JSONResponse:
+    # 語意檢索依賴的 embedding 後端（Ollama）不可用時，回可辨識的「離線降級」503，
+    # 而非不透明 500。前端據 code=semantic_degraded 顯示「語意搜尋離線降級」狀態，
+    # 不與真實錯誤混淆、也不假裝結果正常（見 roadmap P2-6、CLAUDE.md 雲端無 Ollama）。
+    logger.warning("語意檢索離線降級：embedding 後端不可用（%s）", exc)
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "語意檢索暫時無法使用：向量後端（Ollama）目前不可連線。",
+            "code": "semantic_degraded",
+        },
+    )
 
 
 @app.get("/health")
