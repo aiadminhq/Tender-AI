@@ -1,85 +1,115 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* 暗／亮主題以 [data-theme] 屬性切換（與 prototype 一致）。
-   dark: 變體在 [data-theme="dark"] 子樹生效。 */
+/* 暗／亮主題以 [data-theme] 屬性切換。亮色為預設（對齊 HQ Site Log 的
+   紙面美感）；dark: 變體在 [data-theme="dark"] 子樹生效。 */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* =========================================================================
-   設計 token —— 改編自 tender-ai-design-system.md（暗色為主）
+   設計 token —— 移植自 HQ Site Log（惠強）設計系統
+   - 亮色為主：紙白卡面 + navy 冷暖中性灰 + 柔和擴散陰影（HQ shadow-2/3）
+   - 品牌 accent：HQ Vermillion（朱紅）；互動訊號：藍
+   - 語意色更豐富但克制：success / warning / danger / info + 推薦(brand) / 最優先(priority)
    primitive token 在主題區塊覆寫；shadcn 語意名只定義一次，靠 var() 在
-   使用時逐元素重新解析（[data-theme="light"] 覆寫 primitive 即整體跟著變）。
+   使用時逐元素重新解析（切 [data-theme] 即整體跟著變）。
    ========================================================================= */
-:root,
-[data-theme="dark"] {
-  /* surface */
-  --canvas: #090909;
-  --surface-1: #141414;
-  --surface-2: #1c1c1c;
-  --hairline: #262626;
-  --hairline-soft: #1a1a1a;
-  /* ink */
-  --ink: #ffffff;
-  --ink-muted: #9b9b9b;
-  --ink-dim: #6b6b6b;
-  /* signal accent（只用於連結 / focus / selected） */
-  --signal: #0099ff;
-  --signal-ring: rgba(0, 153, 255, 0.3);
-  /* 語意：潛力分級 / 狀態（克制使用） */
-  --tier-high: #22c55e;
-  --tier-mid: #f5a623;
-  --tier-low: #ff5577;
-  --priority: #7c6bff;
-  --success: #22c55e;
-  --danger: #ff5577;
-  /* 可行性漸層（唯一允許漸層用途之一） */
-  --feasibility-from: #22c55e;
-  --feasibility-to: #0099ff;
-  --on-primary: #000000;
 
-  /* ---- shadcn 語意映射（白 pill 主行動 = primary） ---- */
+/* ---- 亮色（預設，紙面）---- */
+:root,
+[data-theme="light"] {
+  /* surface —— 紙白卡面浮於極淺 navy 冷底 */
+  --canvas: #eef2f7;
+  --surface-1: #ffffff;
+  --surface-2: #e7edf4;
+  --hairline: #e1e8f0;
+  --hairline-soft: #eef2f6;
+  /* ink —— navy 冷暖中性（非純灰） */
+  --ink: #1f2a36;
+  --ink-muted: #4a5a6b;
+  --ink-dim: #8494a4;
+  /* 品牌 accent（HQ Vermillion）—— 品牌標記 / 推薦 / hero 強調 */
+  --brand: #d64518;
+  --brand-hover: #ba3a12;
+  --brand-ring: rgba(214, 69, 24, 0.22);
+  /* signal accent（互動：連結 / focus / selected） */
+  --signal: #2563eb;
+  --signal-ring: rgba(37, 99, 235, 0.24);
+  /* 語意：潛力分級 / 狀態（克制、面積小） */
+  --tier-high: #2f855a; /* 🟢 高潛力 */
+  --tier-mid: #b7791f; /* 🟡 中潛力 */
+  --tier-low: #dc2626; /* 🔴 低潛力 */
+  --priority: #6d4aff; /* ⭐ 期間最優先 */
+  --recommend: #d64518; /* 🤖 AI 推薦（= 品牌朱紅） */
+  --success: #2f855a;
+  --warning: #b7791f;
+  --danger: #dc2626;
+  --info: #2563eb;
+  /* 可行性漸層（唯一允許漸層用途之一） */
+  --feasibility-from: #2f855a;
+  --feasibility-to: #2563eb;
+  --on-primary: #ffffff;
+
+  /* 陰影 —— HQ 柔和擴散風（navy 染色，非純黑），強調景深 */
+  --shadow-soft: 0 1px 2px rgba(31, 42, 54, 0.06);
+  --shadow-card: 0 8px 24px -12px rgba(31, 42, 54, 0.18);
+  --shadow-float: 0 20px 48px -20px rgba(31, 42, 54, 0.28);
+  --shadow-inset-hair: inset 0 0 0 1px var(--hairline);
+
+  /* ---- shadcn 語意映射（ink pill 主行動 = primary） ---- */
   --background: var(--canvas);
   --foreground: var(--ink);
   --card: var(--surface-1);
   --card-foreground: var(--ink);
-  --popover: var(--surface-2);
+  --popover: var(--surface-1);
   --popover-foreground: var(--ink);
-  --primary: var(--ink); /* 白 pill */
-  --primary-foreground: var(--on-primary); /* 黑字 */
+  --primary: var(--ink); /* 深色 pill（HQ .btn.primary = ink） */
+  --primary-foreground: var(--on-primary);
   --secondary: var(--surface-1);
   --secondary-foreground: var(--ink);
   --muted: var(--surface-2);
   --muted-foreground: var(--ink-muted);
-  --accent: var(--surface-2); /* shadcn accent = hover 抬升面，非品牌色 */
+  --accent: var(--surface-2); /* hover 抬升面，非品牌色 */
   --accent-foreground: var(--ink);
   --destructive: var(--danger);
   --destructive-foreground: #ffffff;
   --border: var(--hairline);
   --input: var(--hairline);
   --ring: var(--signal);
-  --radius: 10px;
+  --radius: 12px;
 }
 
-[data-theme="light"] {
-  --canvas: #f7f8fa;
-  --surface-1: #ffffff;
-  --surface-2: #eef1f5;
-  --hairline: #e2e6ec;
-  --hairline-soft: #eef1f5;
-  --ink: #161b22;
-  --ink-muted: #5b6573;
-  --ink-dim: #8a93a3;
-  --signal: #0a6cff;
-  --signal-ring: rgba(10, 108, 255, 0.25);
-  --tier-high: #16a34a;
-  --tier-mid: #c77700;
-  --tier-low: #dc2626;
-  --priority: #5b46e0;
-  --success: #16a34a;
-  --danger: #dc2626;
-  --feasibility-from: #16a34a;
-  --feasibility-to: #0a6cff;
-  --on-primary: #ffffff;
+/* ---- 暗色（對齊 HQ navy 深面，非純黑）---- */
+[data-theme="dark"] {
+  --canvas: #0f1720;
+  --surface-1: #18232f;
+  --surface-2: #222f3c;
+  --hairline: #2b3a48;
+  --hairline-soft: #1d2833;
+  --ink: #f1f5f9;
+  --ink-muted: #a9b7c6;
+  --ink-dim: #6f8091;
+  --brand: #ed6d45;
+  --brand-hover: #f49a78;
+  --brand-ring: rgba(237, 109, 69, 0.3);
+  --signal: #5b93ff;
+  --signal-ring: rgba(91, 147, 255, 0.32);
+  --tier-high: #34d07f;
+  --tier-mid: #e0a83b;
+  --tier-low: #ff6b6b;
+  --priority: #8c7bff;
+  --recommend: #ed6d45;
+  --success: #34d07f;
+  --warning: #e0a83b;
+  --danger: #ff6b6b;
+  --info: #5b93ff;
+  --feasibility-from: #34d07f;
+  --feasibility-to: #5b93ff;
+  --on-primary: #0f1720;
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 8px 24px -12px rgba(0, 0, 0, 0.55);
+  --shadow-float: 0 24px 56px -20px rgba(0, 0, 0, 0.7);
+  --shadow-inset-hair: inset 0 0 0 1px var(--hairline);
 }
 
 /* =========================================================================
@@ -116,18 +146,28 @@
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
   --color-ink-dim: var(--ink-dim);
+  --color-brand: var(--brand);
   --color-signal: var(--signal);
   --color-tier-high: var(--tier-high);
   --color-tier-mid: var(--tier-mid);
   --color-tier-low: var(--tier-low);
   --color-priority: var(--priority);
+  --color-recommend: var(--recommend);
   --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-info: var(--info);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --radius-xl: calc(var(--radius) + 10px);
+  /* 陰影工具類：shadow-soft / shadow-card / shadow-float */
+  --shadow-soft: var(--shadow-soft);
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
+
+  --radius-sm: calc(var(--radius) - 5px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
 
   --font-sans:
     "Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui,
@@ -158,10 +198,10 @@ html[lang="en"] {
   }
 
   html {
-    color-scheme: dark;
-  }
-  html[data-theme="light"] {
     color-scheme: light;
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
   }
 
   body {

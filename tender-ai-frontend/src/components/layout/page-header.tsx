@@ -12,17 +12,17 @@ export function PageHeader({
 }) {
   const { t } = useApp();
   return (
-    <div className="mb-7 flex items-end justify-between gap-4 rounded-xl bg-gradient-to-r from-primary/5 via-transparent to-signal/5 px-5 py-5">
+    <div className="mb-7 flex items-end justify-between gap-4">
       <div className="min-w-0">
         <nav
           className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-ink-dim"
           aria-label="breadcrumb"
         >
           <span className="text-ink-muted">HQdesign</span>
-          <span className="text-border/60">/</span>
+          <span className="text-hairline">/</span>
           <span className="truncate text-ink-dim">{t("crumbSection")}</span>
         </nav>
-        <h1 className="text-[21px] font-bold tracking-tight bg-gradient-to-r from-ink via-ink to-ink/80 bg-clip-text text-transparent">
+        <h1 className="text-[22px] font-bold tracking-tight text-ink">
           {title}
         </h1>
         {subtitle && (

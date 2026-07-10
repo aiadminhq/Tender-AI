@@ -4,7 +4,11 @@ import { cn } from "@/lib/utils";
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("rounded-lg border border-border bg-card", className)}
+      className={cn(
+        // HQ 紙面卡：hairline 細框 + 柔和擴散陰影，hover 微抬升。
+        "rounded-xl border border-hairline bg-card shadow-card transition-shadow duration-200 hover:shadow-float",
+        className,
+      )}
       {...props}
     />
   );

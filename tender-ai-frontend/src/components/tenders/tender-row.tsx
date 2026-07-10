@@ -126,7 +126,7 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "hidden cursor-pointer items-center gap-3 px-4 py-3 transition-all duration-200 hover:bg-gradient-to-r hover:from-accent/50 hover:via-accent/30 hover:to-transparent focus-visible:bg-accent/40 focus-visible:outline-none lg:grid",
+          "hidden cursor-pointer items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-2/70 focus-visible:bg-surface-2/70 focus-visible:outline-none lg:grid",
           ROW_GRID,
           excluded && "opacity-50 hover:opacity-60",
         )}
@@ -166,7 +166,7 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "group cursor-pointer rounded-lg p-4 transition-all duration-200 hover:bg-gradient-to-br hover:from-accent/40 hover:via-transparent hover:to-accent/20 focus-visible:bg-accent/30 focus-visible:outline-none lg:hidden",
+          "group cursor-pointer rounded-xl border border-hairline bg-card p-4 shadow-soft transition-shadow duration-150 hover:shadow-card focus-visible:shadow-card focus-visible:outline-none lg:hidden",
           excluded && "opacity-50 hover:opacity-60",
         )}
       >

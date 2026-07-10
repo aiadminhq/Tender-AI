@@ -36,12 +36,13 @@ export function TierBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm transition-all duration-150 hover:shadow-md",
+        // HQ 風潛力 pill：柔和 tint 底 + 語意色點，克制不喧賓奪主。
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
         m.cls,
         className,
       )}
     >
-      <span className={cn("h-2 w-2 rounded-full shadow-sm", m.dot)} />
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", m.dot)} />
       {STRINGS[lang][m.key]}
     </span>
   );

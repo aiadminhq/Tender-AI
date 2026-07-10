@@ -4,8 +4,9 @@ import { cn } from "@/lib/utils";
 // KPI 強調色（克制：圖示底色帶 12% alpha，數字維持 ink）。
 const accentMap = {
   signal: "bg-signal/12 text-signal",
+  brand: "bg-brand/12 text-brand",
   high: "bg-tier-high/12 text-tier-high",
-  mid: "bg-tier-mid/12 text-tier-mid",
+  mid: "bg-tier-mid/14 text-tier-mid",
   low: "bg-tier-low/12 text-tier-low",
   priority: "bg-priority/12 text-priority",
   neutral: "bg-surface-2 text-ink-muted",
@@ -27,26 +28,25 @@ export function KpiCard({
   hint?: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-card/95 via-card to-card/80 p-6 shadow-md transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-1">
-      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 transition-all duration-300 group-hover:bg-primary/10" />
-      <div className="relative flex items-center justify-between gap-3">
-        <span className="truncate text-[13px] font-semibold text-ink-muted transition-colors duration-200 group-hover:text-ink">
+    <div className="group rounded-xl border border-hairline bg-card p-5 shadow-card transition-shadow duration-200 hover:shadow-float">
+      <div className="flex items-center justify-between gap-3">
+        <span className="truncate text-[13px] font-semibold text-ink-muted">
           {label}
         </span>
         <span
           className={cn(
-            "grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-md transition-all duration-200 group-hover:scale-120 group-hover:shadow-lg",
+            "grid h-9 w-9 shrink-0 place-items-center rounded-lg transition-transform duration-200 group-hover:scale-105",
             accentMap[accent],
           )}
         >
-          <Icon size={18} strokeWidth={2.3} />
+          <Icon size={17} strokeWidth={2.2} />
         </span>
       </div>
-      <div className="tnum relative mt-4 text-4xl font-bold leading-tight text-ink transition-colors duration-200 group-hover:text-primary">
+      <div className="tnum mt-4 text-[32px] font-bold leading-none text-ink">
         {value.toLocaleString()}
       </div>
       {hint && (
-        <div className="mt-3 text-[12px] font-medium text-ink-dim/70 transition-colors duration-200 group-hover:text-ink-dim">
+        <div className="mt-2.5 text-[12px] font-medium text-ink-dim">
           {hint}
         </div>
       )}

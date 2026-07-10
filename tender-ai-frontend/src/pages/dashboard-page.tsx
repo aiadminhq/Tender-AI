@@ -19,11 +19,7 @@ export function DashboardPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-7">
       <PageHeader title={t("navOverview")} subtitle={t("overviewSub")} />
-      <div className="group rounded-2xl bg-gradient-to-r from-primary/8 via-transparent to-signal/8 px-0.5 py-0.5 shadow-sm transition-all duration-300 hover:shadow-md">
-        <div className="rounded-xl bg-gradient-to-br from-card/40 to-transparent backdrop-blur-sm px-6 py-5">
-          <KpiRow />
-        </div>
-      </div>
+      <KpiRow />
       <div className="grid grid-cols-1 gap-7 xl:grid-cols-[minmax(0,1fr)_350px]">
         <div className="min-w-0 space-y-7">
           <MaximizableCard title={t("categoryDist")}>

@@ -4,21 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="light dark" />
     <title>政府標案投標作戰台 · Tender AI</title>
 
-    <!-- 主題 pre-paint：避免 FOUC。暗色為主（DESIGN.md）；
-         未指定時預設 dark，改「跟隨系統」可換成 matchMedia。 -->
+    <!-- 主題 pre-paint：避免 FOUC。亮色為主（對齊 HQ Site Log 紙面美感）；
+         未指定時預設 light。 -->
     <script>
       (function () {
         try {
           var t = localStorage.getItem("tender-theme");
-          if (t !== "light" && t !== "dark") t = "dark";
+          if (t !== "light" && t !== "dark") t = "light";
           document.documentElement.setAttribute("data-theme", t);
           var l = localStorage.getItem("tender-lang");
           document.documentElement.lang = l === "en" ? "en" : "zh-Hant-TW";
         } catch (e) {
-          document.documentElement.setAttribute("data-theme", "dark");
+          document.documentElement.setAttribute("data-theme", "light");
         }
       })();
     </script>

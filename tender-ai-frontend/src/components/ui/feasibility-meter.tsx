@@ -13,9 +13,9 @@ export function FeasibilityMeter({
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <div className="h-1.5 w-full min-w-12 overflow-hidden rounded-full bg-surface-1 shadow-sm">
+      <div className="h-1.5 w-full min-w-12 overflow-hidden rounded-full bg-surface-2">
         <div
-          className="h-full rounded-full transition-[width] duration-500 shadow-sm"
+          className="h-full rounded-full transition-[width] duration-500"
           style={{
             width: `${pct}%`,
             background:

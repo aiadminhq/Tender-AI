@@ -1,4 +1,4 @@
-import { Brain, Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { Brain, Minus, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import type { Lang, TextKey } from "@/i18n/strings";
 import type {
   ReasonCode,
@@ -102,6 +102,13 @@ export function ReasoningPanel({
       : profile.confidence === "medium"
         ? "confMedium"
         : "confLow";
+  // 信心程度以語意色標示：高→success、中→warning、低→中性。
+  const confVariant =
+    profile.confidence === "high"
+      ? "success"
+      : profile.confidence === "medium"
+        ? "warning"
+        : "muted";
 
   const budgetRange =
     profile.budgetFeasibleMin != null && profile.budgetFeasibleMax != null
@@ -113,6 +120,12 @@ export function ReasoningPanel({
       <div className="mb-3 flex items-center gap-1.5">
         <Brain size={14} className="text-signal" />
         <SectionLabel>{t("reasoningTitle")}</SectionLabel>
+        {verdict === "strong" && (
+          <Badge variant="recommend" className="ml-auto">
+            <Sparkles size={11} />
+            {t("aiRecommend")}
+          </Badge>
+        )}
       </div>
 
       {/* fit 分數 + 結論 + 一句話標題 */}
@@ -164,7 +177,7 @@ export function ReasoningPanel({
           <span className="text-[11px] font-medium text-ink-muted">
             {t("reasoningProfile")}
           </span>
-          <Badge variant="outline" className={cn(VERDICT_TONE.consider)}>
+          <Badge variant={confVariant} dot>
             {t(confKey)}
           </Badge>
         </div>

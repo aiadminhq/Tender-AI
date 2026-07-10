@@ -6,14 +6,18 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+        primary:
+          "bg-primary text-primary-foreground shadow-soft hover:bg-primary/90",
+        // 品牌主行動（HQ 朱紅）：hero CTA / 關鍵動作。
+        brand:
+          "bg-brand text-white shadow-soft hover:bg-[var(--brand-hover)]",
         secondary:
-          "border border-border bg-secondary text-secondary-foreground hover:bg-accent",
+          "border border-hairline bg-secondary text-secondary-foreground shadow-soft hover:bg-accent",
         outline:
-          "border border-border bg-transparent text-foreground hover:bg-accent",
+          "border border-hairline bg-transparent text-foreground hover:bg-accent",
         ghost: "text-ink-muted hover:bg-accent hover:text-foreground",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-soft hover:bg-destructive/90",
       },
       size: {
         sm: "h-8 px-3 text-[12px]",

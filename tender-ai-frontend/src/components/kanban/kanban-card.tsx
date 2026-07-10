@@ -5,6 +5,7 @@ import { useApp } from "@/store/app-context";
 import { userById } from "@/data/users";
 import { formatDate } from "@/lib/format";
 import { TierBadge } from "@/components/ui/tier-badge";
+import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -41,17 +42,17 @@ export function KanbanCardView({
         }
       }}
       className={cn(
-        "cursor-grab rounded-md border border-border bg-surface-1 p-3 transition-[box-shadow,opacity,border-color] hover:border-hairline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 active:cursor-grabbing",
+        "cursor-grab rounded-lg border border-hairline bg-card p-3 shadow-soft transition-[box-shadow,opacity] hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 active:cursor-grabbing",
         dragging && "opacity-50",
       )}
     >
       <div className="flex min-h-5 items-start justify-between gap-2">
         {card.tier ? <TierBadge tier={card.tier} lang={lang} /> : <span />}
         {card.blocked && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-danger/12 px-2 py-0.5 text-[11px] font-medium text-danger">
+          <Badge variant="warning" className="shrink-0">
             <AlertTriangle size={11} />
             {t("blocked")}
-          </span>
+          </Badge>
         )}
       </div>
       <div className="mt-2 line-clamp-2 text-[12px] font-medium leading-snug text-ink">

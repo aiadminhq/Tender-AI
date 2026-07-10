@@ -51,11 +51,8 @@ export function CategoryChart() {
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
-      <div className="relative h-40 w-40 shrink-0 rounded-2xl bg-gradient-to-br from-surface-1/60 to-transparent p-3">
-        <svg
-          viewBox="0 0 120 120"
-          className="h-full w-full -rotate-90 drop-shadow-sm"
-        >
+      <div className="relative h-40 w-40 shrink-0 p-3">
+        <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
           {/* 底環 */}
           <circle
             cx="60"
@@ -101,10 +98,10 @@ export function CategoryChart() {
           return (
             <li
               key={s.key}
-              className="group flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-surface-1/30"
+              className="group flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-surface-2/60"
             >
               <span
-                className="h-3 w-3 shrink-0 rounded-full shadow-sm transition-transform duration-150 group-hover:scale-125"
+                className="h-3 w-3 shrink-0 rounded-full transition-transform duration-150 group-hover:scale-125"
                 style={{ background: s.color }}
                 aria-hidden
               />
