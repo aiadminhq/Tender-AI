@@ -81,7 +81,7 @@ function RowActions({ tender }: { tender: Tender }) {
         <X size={15} className="text-ink-muted" />
       </Button>
       <Button
-        variant="primary"
+        variant="brand"
         size="icon-sm"
         aria-label={t("accept")}
         title={t("accept")}

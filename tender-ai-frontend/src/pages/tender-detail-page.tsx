@@ -270,7 +270,7 @@ export function TenderDetailPage() {
         {/* 主要動作列 */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button
-            variant="primary"
+            variant="brand"
             onClick={() => {
               accept(view.id);
               navigate("/tenders");

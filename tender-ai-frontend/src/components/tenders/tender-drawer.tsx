@@ -272,7 +272,7 @@ export function TenderDrawer({
               {/* 承接 / 略過 */}
               <div className="flex flex-col gap-2">
                 <Button
-                  variant="primary"
+                  variant="brand"
                   onClick={() => {
                     accept(tender.id);
                     onClose();

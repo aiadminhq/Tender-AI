@@ -79,8 +79,9 @@ Tailwind v4 以 `@theme inline` 暴露為工具類：`bg-brand`、`text-recommen
 ## 4. 元件規格（落在上面的 token）
 
 - **card / stat-card**：`bg-card` 紙白＋`border-hairline`＋`shadow-card`，hover→`shadow-float`；`rounded-xl`。
-- **button**：主行動 = ink 深色 pill（`shadow-soft`）；`brand` = 朱紅 pill（hero CTA）；
-  secondary = 白底 hairline pill；ghost = 透明。一律 `rounded-full`、pressed `scale(.97)`。
+- **button**：一般主行動 = ink 深色 pill（`shadow-soft`）；**招牌動作「承接標案」= `brand` 朱紅 pill**
+  （唯一的品牌 CTA moment，對齊 HQ 自信用朱紅的作風，不氾濫）；secondary = 白底 hairline pill；
+  ghost = 透明。一律 `rounded-full`、pressed `scale(.97)`。
 - **badge（pill）**：柔和 tint 底（色 `/12`）＋同色文字＋可選語意色點（`dot`）。
   變體：`signal / success / warning / danger / info / recommend / priority / muted / solid`。
 - **tier-badge**：潛力 pill，語意色點 + 8~12% tint 底，克制。
