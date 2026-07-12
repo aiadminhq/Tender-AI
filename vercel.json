@@ -7,9 +7,17 @@
       "config": {
         "distDir": "tender-ai-frontend/dist"
       }
+    },
+    {
+      "src": "tender-ai-backend/api/index.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "tender-ai-backend/api/index.py"
+    },
     {
       "src": "/(.*)",
       "dest": "tender-ai-frontend/dist/index.html"
