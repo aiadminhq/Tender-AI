@@ -4,7 +4,7 @@
 對應 claude-code-handoff-backend.md 附錄 C 的行為端點：
   save / accept / rate / note / share、events、saved-searches。
 列舉值在此以 Literal 驗證（DB 端不落 enum，保留學習迴圈擴充彈性）。
-user_id 皆可省略；省略時由服務層落到「預設使用者」（單一團隊）。
+user_id 一律由登入 JWT（見 app/core/auth.py）解析，不接受前端帶入，避免冒用他人身分。
 """
 from __future__ import annotations
 
@@ -24,39 +24,32 @@ EventType = Literal[
 # requests
 # --------------------------------------------------------------------------- #
 class SaveRequest(BaseModel):
-    user_id: int | None = None
     saved: bool = True  # 預設收藏；傳 false 取消收藏
 
 
 class AcceptRequest(BaseModel):
-    user_id: int | None = None
     status: TenderStatus = "備標中"  # accept＝納入備標
 
 
 class RateRequest(BaseModel):
-    user_id: int | None = None
     star: int = Field(ge=1, le=5)
 
 
 class NoteRequest(BaseModel):
-    user_id: int | None = None
     note: str = Field(min_length=1)
 
 
 class ShareRequest(BaseModel):
-    user_id: int | None = None
     channel: str | None = None  # email / line / link …
 
 
 class EventRequest(BaseModel):
-    user_id: int | None = None
     type: EventType
     tender_id: int | None = None
     payload: dict | None = None
 
 
 class SavedSearchCreate(BaseModel):
-    user_id: int | None = None
     name: str = Field(min_length=1)
     query_text: str | None = None
     filter_json: dict | None = None

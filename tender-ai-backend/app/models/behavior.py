@@ -48,6 +48,18 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # 白名單登入（@hqdesign.tw）：管理者開通後 whitelist_active 才為 true；
+    # consent_shared/consent_at 記錄 Layer B 合作範圍共享同意（見 CLAUDE.md）。
+    whitelist_active: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    consent_shared: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 class Event(Base):

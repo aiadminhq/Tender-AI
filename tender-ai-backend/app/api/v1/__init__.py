@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.assistant import router as assistant_router
+from app.api.v1.auth import router as auth_router
 from app.api.v1.behavior import router as behavior_router
 from app.api.v1.learning import router as learning_router
 from app.api.v1.push import router as push_router
@@ -11,6 +12,7 @@ from app.api.v1.search import router as search_router
 from app.api.v1.tenders import router as tenders_router
 
 api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(auth_router)
 api_router.include_router(tenders_router)
 api_router.include_router(behavior_router)
 api_router.include_router(search_router)

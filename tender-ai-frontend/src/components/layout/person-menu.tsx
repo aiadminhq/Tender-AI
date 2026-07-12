@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import { useApp } from "@/store/app-context";
+import { useAuth } from "@/store/auth-context";
 import { Avatar } from "@/components/ui/avatar";
 
-// 登入身分切換（自製下拉，無 radix）。點外側 / Esc 關閉。
+// 目前登入者 + 登出（白名單登入取代舊的 demo 身分切換下拉）。點外側 / Esc 關閉。
 export function PersonMenu() {
-  const { person, users, setPerson, t } = useApp();
+  const { person, t } = useApp();
+  const { logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -39,32 +41,27 @@ export function PersonMenu() {
 
       {open && (
         <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150">
-          <div className="px-2.5 py-1.5 text-[11px] text-ink-dim">
-            {t("loginAs")}
-          </div>
-          {users.map((u) => (
-            <button
-              key={u.id}
-              onClick={() => {
-                setPerson(u.id);
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left transition-colors hover:bg-accent"
-            >
-              <Avatar user={u} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[12px] font-medium text-ink">
-                  {u.name}
-                </div>
-                <div className="truncate text-[11px] text-ink-dim">
-                  {u.role}
-                </div>
+          <div className="flex items-center gap-2.5 px-2.5 py-1.5">
+            <Avatar user={person} size="sm" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12px] font-medium text-ink">
+                {person.name}
               </div>
-              {u.id === person.id && (
-                <Check size={14} className="shrink-0 text-signal" />
-              )}
-            </button>
-          ))}
+              <div className="truncate text-[11px] text-ink-dim">
+                {person.role}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setOpen(false);
+              logout();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-ink transition-colors hover:bg-accent"
+          >
+            <LogOut size={14} className="text-ink-dim" />
+            {t("logout")}
+          </button>
         </div>
       )}
     </div>

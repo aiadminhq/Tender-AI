@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     # 簡易後端保護
     app_api_key: str = ""
 
+    # 白名單登入（@hqdesign.tw）：app 自簽 JWT（HS256）。secret 留空時登入端點直接拒絕，
+    # 避免正式環境誤用預設密鑰簽發可偽造的 token。
+    jwt_secret: str = ""
+    jwt_expire_minutes: int = 720  # 12 小時
+    company_domain: str = "@hqdesign.tw"
+
     # 前端跨源呼叫允許來源（逗號分隔字串）；預設本機 Vite 開發埠（5173／5174）
     cors_origins: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"

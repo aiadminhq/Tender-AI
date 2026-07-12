@@ -65,6 +65,7 @@ export const STRINGS = {
     theme: "主題",
     language: "語言",
     loginAs: "登入身分",
+    logout: "登出",
     // kpi
     kpiNew: "今日新案",
     kpiHigh: "高潛力",
@@ -294,6 +295,7 @@ export const STRINGS = {
     theme: "Theme",
     language: "Language",
     loginAs: "Signed in as",
+    logout: "Log out",
     kpiNew: "New today",
     kpiHigh: "High potential",
     kpiClosing: "Closing soon",

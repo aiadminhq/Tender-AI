@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import CurrentUser, get_current_user
 from app.db.session import get_session
 from app.schemas.behavior import (
     AcceptRequest,
@@ -29,9 +30,10 @@ router = APIRouter(tags=["behavior"])
 async def save_tender(
     tender_id: int,
     body: SaveRequest,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> StateOut:
-    st = await bsvc.set_saved(session, body.user_id, tender_id, body.saved)
+    st = await bsvc.set_saved(session, current.id, tender_id, body.saved)
     await session.commit()
     return StateOut.model_validate(st)
 
@@ -40,9 +42,10 @@ async def save_tender(
 async def accept_tender(
     tender_id: int,
     body: AcceptRequest,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> StateOut:
-    st = await bsvc.set_status(session, body.user_id, tender_id, body.status)
+    st = await bsvc.set_status(session, current.id, tender_id, body.status)
     await session.commit()
     return StateOut.model_validate(st)
 
@@ -51,9 +54,10 @@ async def accept_tender(
 async def rate_tender(
     tender_id: int,
     body: RateRequest,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> StateOut:
-    st = await bsvc.set_star(session, body.user_id, tender_id, body.star)
+    st = await bsvc.set_star(session, current.id, tender_id, body.star)
     await session.commit()
     return StateOut.model_validate(st)
 
@@ -62,9 +66,10 @@ async def rate_tender(
 async def note_tender(
     tender_id: int,
     body: NoteRequest,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> AnnotationOut:
-    row = await bsvc.add_note(session, body.user_id, tender_id, body.note)
+    row = await bsvc.add_note(session, current.id, tender_id, body.note)
     await session.commit()
     return AnnotationOut.model_validate(row)
 
@@ -73,9 +78,10 @@ async def note_tender(
 async def share_tender(
     tender_id: int,
     body: ShareRequest,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> ShareOut:
-    row = await bsvc.add_share(session, body.user_id, tender_id, body.channel)
+    row = await bsvc.add_share(session, current.id, tender_id, body.channel)
     await session.commit()
     return ShareOut.model_validate(row)
 
@@ -83,10 +89,11 @@ async def share_tender(
 @router.post("/events", response_model=EventOut)
 async def post_event(
     body: EventRequest,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> EventOut:
     row = await bsvc.add_event(
-        session, body.user_id, body.type, body.tender_id, body.payload
+        session, current.id, body.type, body.tender_id, body.payload
     )
     await session.commit()
     return EventOut.model_validate(row)
@@ -94,20 +101,21 @@ async def post_event(
 
 @router.get("/saved-searches", response_model=list[SavedSearchOut])
 async def get_saved_searches(
-    user_id: int | None = None,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[SavedSearchOut]:
-    rows = await bsvc.list_saved_searches(session, user_id)
+    rows = await bsvc.list_saved_searches(session, current.id)
     return [SavedSearchOut.model_validate(r) for r in rows]
 
 
 @router.post("/saved-searches", response_model=SavedSearchOut)
 async def post_saved_search(
     body: SavedSearchCreate,
+    current: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SavedSearchOut:
     row = await bsvc.create_saved_search(
-        session, body.user_id, body.name, body.query_text, body.filter_json
+        session, current.id, body.name, body.query_text, body.filter_json
     )
     await session.commit()
     return SavedSearchOut.model_validate(row)

@@ -13,16 +13,22 @@ import type {
   TenderReasoning,
   Tier,
 } from "@/types/domain";
+import { loadAuthSession } from "@/lib/auth-token";
 
-const API_BASE =
+export const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
   "http://localhost:8000/api/v1";
 
 // 選用 API 金鑰：設定 VITE_API_KEY 時帶上 X-API-Key（dev/staging 可不設）。
-// 金鑰僅由環境注入，永不寫入版控。
+// 金鑰僅由環境注入，永不寫入版控。白名單登入後另帶 Authorization: Bearer
+// （見 auth-token.ts），後端 Layer B 行為端點依此解析真實使用者身分。
 function authHeaders(): Record<string, string> {
   const key = import.meta.env.VITE_API_KEY as string | undefined;
-  return key ? { "X-API-Key": key } : {};
+  const session = loadAuthSession();
+  return {
+    ...(key ? { "X-API-Key": key } : {}),
+    ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
+  };
 }
 
 // 後端 TenderListItem（app/schemas/tender.py）對應欄位。

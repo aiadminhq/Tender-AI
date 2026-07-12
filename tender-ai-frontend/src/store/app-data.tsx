@@ -378,8 +378,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return seen > mx ? seen : mx;
     }, "");
     const kpiNew = latest
-      ? visible.filter((t) => (t.publishedAt ?? "").slice(0, 10) === latest)
-          .length
+      ? visible.filter(
+          (t) => (t.lastSeen ?? t.publishedAt ?? "").slice(0, 10) === latest,
+        ).length
       : 0;
     return {
       kpiNew,
