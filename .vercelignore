@@ -14,7 +14,8 @@ docs
 codex
 supabase
 *.md
-*.svg
+Schema Visualizer*.svg
+**/.venv
 tender-ai-backend/tests
 tender-ai-backend/scripts
 tender-ai-backend/data

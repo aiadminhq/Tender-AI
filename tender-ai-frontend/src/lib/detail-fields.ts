@@ -12,8 +12,7 @@ import type { TextKey } from "@/i18n/strings";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  // 區網分享：dev 走相對 /api/v1（由 vite proxy 轉本機後端），靜態 build 維持絕對 localhost。
-  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
+  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 function authHeaders(): Record<string, string> {
   const key = import.meta.env.VITE_API_KEY as string | undefined;
