@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm i -g pnpm@10 && pnpm --dir tender-ai-frontend install --frozen-lockfile",
+  "buildCommand": "pnpm --dir tender-ai-frontend build",
+  "outputDirectory": "tender-ai-frontend/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

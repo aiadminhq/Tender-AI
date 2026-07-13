@@ -20,8 +20,10 @@ import type {
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  // 區網分享：dev 走相對 /api/v1（由 vite proxy 轉本機後端），靜態 build 維持絕對 localhost。
-  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
+  // 同源部署預設：/api/v1 在 dev 由 vite proxy 轉本機後端、在 Vercel 由同站
+  // Python function（/api/*）服務，任何部署網域都自動對齊，免設環境變數。
+  // 要打外部後端（如 Railway）時以 VITE_API_BASE 覆寫。
+  "/api/v1";
 
 // 選用 API 金鑰：設定 VITE_API_KEY 時帶上 X-API-Key（dev/staging 可不設）。
 // Phase 2：有 Bearer token 時一併帶上 Authorization header。
