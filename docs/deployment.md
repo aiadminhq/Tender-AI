@@ -1,7 +1,8 @@
-# App 正式部署參數（前端 + 後端）
+# App 正式部署參數（Vercel 同源前端 + Python function + Supabase）
 
 > 這是「把 app 真的跑起來對外」的部署設定，與 `codex/environment.md`（Codex agent 環境）**不同層**。
-> 前端：Vercel 靜態站；後端：FastAPI + Postgres/pgvector（公司伺服器）。
+> Production 使用 Vercel 同源靜態前端與 `api/index.py` Python function；資料庫使用 Supabase Postgres/pgvector。
+> 歷史 Railway／公司伺服器 API 只供特定本機或舊環境，不是 production 預設路徑。
 
 ---
 
@@ -12,7 +13,7 @@
 | 項目 | 值 |
 | --- | --- |
 | Framework preset | Other（用 repo 內 `vercel.json`） |
-| Root directory | repo 根（`vercel.json` 內已指向 `tender-ai-frontend/`） |
+| Root directory | repo 根（不可設成 `tender-ai-frontend`） |
 | Build command | `pnpm --dir tender-ai-frontend run build` |
 | Output directory | `tender-ai-frontend/dist` |
 | Install command | `pnpm install --frozen-lockfile` |
@@ -22,14 +23,14 @@
 
 | Key | Production 值 | 說明 |
 | --- | --- | --- |
-| `VITE_API_BASE` | `https://<後端網域>/api/v1` | 後端 API base；未設時預設 `http://localhost:8000/api/v1` |
+| `VITE_API_BASE` | 開發／非 production 使用 | Production 由 `src/lib/api.ts` 強制使用同源 `/api/v1`，避免殘留舊 API |
 | `VITE_API_KEY` | （放後端 `APP_API_KEY` 相同值） | 帶 `X-API-Key`；dev/staging 可不設 |
 | `VITE_USE_API` | `true` | 設 `false` 進純 mock 模式（不外連） |
 | `VITE_TRACK` | `true` | 埋點開關；設 `false` 關閉行為追蹤 |
 
 ---
 
-## 2. 後端（FastAPI + Postgres/pgvector，公司伺服器）
+## 2. 後端（FastAPI + Postgres/pgvector）
 
 啟動：`uv run uvicorn app.main:app --host 0.0.0.0 --port 8000`
 DB：`docker compose up -d`（`pgvector/pgvector:pg16`，帳密庫名對齊預設 `DATABASE_URL`）。
@@ -48,7 +49,13 @@ DB：`docker compose up -d`（`pgvector/pgvector:pg16`，帳密庫名對齊預�
 | `CORS_ORIGINS` | `https://<前端網域>` | 逗號分隔白名單；正式填前端網域 |
 | `PCC_SCRAPER_PATH` | `../tender-bot/tender_daily.py` | 抓 PCC 用；僅能連線環境跑 |
 
-### DB compose 覆寫（正式）
+### Supabase production 連線
+
+- Supabase project ref：`ajltwjkegmbzethwgbje`。
+- 使用 pooler 連線字串，正式值只放 Vercel env／secret store，不寫入 repo。
+- 詳細故障排查與 smoke test 見 [`docs/governance/08-本地雲端後台串接Lessons.md`](governance/08-本地雲端後台串接Lessons.md)。
+
+### DB compose 覆寫（本機／自架環境）
 
 | Key | 值 |
 | --- | --- |
