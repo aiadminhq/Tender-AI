@@ -63,7 +63,7 @@ export function KanbanCardView({
         }
       }}
       className={cn(
-        "cursor-grab rounded-md border border-border bg-surface-1 p-3 transition-[box-shadow,opacity,border-color] hover:border-hairline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 active:cursor-grabbing",
+        "cursor-grab rounded-md border border-border bg-card p-3 shadow-xs transition-[box-shadow,opacity,border-color] hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45 active:cursor-grabbing",
         dragging && "opacity-50",
       )}
     >

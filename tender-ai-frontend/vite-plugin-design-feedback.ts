@@ -5,9 +5,15 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { spawn } from "node:child_process";
+import type { ServerResponse } from "node:http";
 import type { Connect, Plugin, ViteDevServer } from "vite";
 
 const ENDPOINT = "/__design-feedback";
+const DISPATCH_ENDPOINT = "/__design-feedback/dispatch";
+const JOBS_ENDPOINT = "/__design-feedback/jobs/";
+const DIRECT_CLI_TARGETS = new Set(["claude", "codex", "gemini", "opencode"]);
+const MAX_MARKDOWN_BYTES = 120_000;
 
 export interface DesignFeedbackOptions {
   /** inbox.md 的絕對或相對（相對 vite root）路徑。預設：monorepo 根/design-feedback/inbox.md */
@@ -20,6 +26,19 @@ interface FeedbackPayload {
   targetCli?: string | null;
 }
 
+type DispatchStatus = "queued" | "running" | "completed" | "failed";
+
+interface DispatchJob {
+  id: string;
+  targetCli: string;
+  status: DispatchStatus;
+  createdAt: string;
+  completedAt?: string;
+  error?: string;
+}
+
+const jobs = new Map<string, DispatchJob>();
+
 function readBody(req: Connect.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -27,6 +46,25 @@ function readBody(req: Connect.IncomingMessage): Promise<string> {
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
+}
+
+function sendJson(res: ServerResponse, statusCode: number, body: unknown) {
+  res.statusCode = statusCode;
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(body));
+}
+
+function isLocalRequest(req: Connect.IncomingMessage): boolean {
+  const address = req.socket.remoteAddress;
+  return (
+    address === "127.0.0.1" ||
+    address === "::1" ||
+    address === "::ffff:127.0.0.1"
+  );
+}
+
+function createJobId(): string {
+  return `df-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function designFeedback(options: DesignFeedbackOptions = {}): Plugin {
@@ -39,6 +77,89 @@ export function designFeedback(options: DesignFeedbackOptions = {}): Plugin {
       const outFile = options.outFile
         ? path.resolve(root, options.outFile)
         : path.resolve(root, "..", "design-feedback", "inbox.md");
+      const repoRoot = path.resolve(root, "..");
+
+      server.middlewares.use(DISPATCH_ENDPOINT, async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { ok: false, error: "Method Not Allowed" });
+          return;
+        }
+        // Vite dev server may be shared on LAN. Only a browser on this machine may start a local CLI process.
+        if (!isLocalRequest(req)) {
+          sendJson(res, 403, { ok: false, error: "local development only" });
+          return;
+        }
+
+        try {
+          const raw = await readBody(req);
+          const { markdown, targetCli } = JSON.parse(raw || "{}") as FeedbackPayload;
+          if (!markdown || typeof markdown !== "string") {
+            sendJson(res, 400, { ok: false, error: "missing markdown" });
+            return;
+          }
+          if (Buffer.byteLength(markdown, "utf8") > MAX_MARKDOWN_BYTES) {
+            sendJson(res, 413, { ok: false, error: "feedback payload too large" });
+            return;
+          }
+          if (!targetCli || !DIRECT_CLI_TARGETS.has(targetCli)) {
+            sendJson(res, 400, { ok: false, error: "unsupported local CLI target" });
+            return;
+          }
+
+          const id = createJobId();
+          const job: DispatchJob = {
+            id,
+            targetCli,
+            status: "queued",
+            createdAt: new Date().toISOString(),
+          };
+          jobs.set(id, job);
+
+          const prompt = renderCliPrompt(targetCli, markdown);
+          const child = spawn(
+            process.env.CCW_BIN || "ccw",
+            ["cli", "--tool", targetCli, "--mode", "write", "--cd", repoRoot, "-p", prompt],
+            { cwd: repoRoot, stdio: "ignore", windowsHide: true },
+          );
+          job.status = "running";
+
+          child.once("error", () => {
+            job.status = "failed";
+            job.error = "本機 CLI 無法啟動";
+            job.completedAt = new Date().toISOString();
+          });
+          child.once("close", (code) => {
+            job.status = code === 0 ? "completed" : "failed";
+            job.error = code === 0 ? undefined : "本機 CLI 執行未完成";
+            job.completedAt = new Date().toISOString();
+          });
+
+          server.config.logger.info(
+            `[design-feedback] 已直接送至 ${targetCli} CLI（${id}）`,
+          );
+          sendJson(res, 202, { ok: true, job: { id, targetCli, status: job.status } });
+        } catch {
+          sendJson(res, 500, { ok: false, error: "local CLI dispatch failed" });
+        }
+      });
+
+      server.middlewares.use(JOBS_ENDPOINT, (req, res) => {
+        if (req.method !== "GET") {
+          sendJson(res, 405, { ok: false, error: "Method Not Allowed" });
+          return;
+        }
+        if (!isLocalRequest(req)) {
+          sendJson(res, 403, { ok: false, error: "local development only" });
+          return;
+        }
+        const id = req.url?.replace(/^\//, "").split("?")[0] ?? "";
+        const job = jobs.get(id);
+        if (!job) {
+          sendJson(res, 404, { ok: false, error: "job not found" });
+          return;
+        }
+        sendJson(res, 200, { ok: true, job });
+      });
 
       server.middlewares.use(ENDPOINT, async (req, res) => {
         if (req.method !== "POST") {

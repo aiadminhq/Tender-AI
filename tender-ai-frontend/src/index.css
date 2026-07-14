@@ -1,131 +1,119 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* 暗／亮主題以 [data-theme] 屬性切換（與 prototype 一致）。
-   dark: 變體在 [data-theme="dark"] 子樹生效。 */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* =========================================================================
-   設計 token —— 改編自 tender-ai-design-system.md（暗色為主）
-   primitive token 在主題區塊覆寫；shadcn 語意名只定義一次，靠 var() 在
-   使用時逐元素重新解析（[data-theme="light"] 覆寫 primitive 即整體跟著變）。
-   ========================================================================= */
-:root,
-[data-theme="dark"] {
-  /* surface（tweakcn 暗色：紫調深底、紫卡面） */
-  --canvas: oklch(0.1649 0.0352 281.8285);
-  --surface-1: oklch(0.2542 0.0611 281.1423);
-  --surface-2: oklch(0.3015 0.0654 281.1423);
-  --hairline: oklch(0.3279 0.0832 280.789);
-  --hairline-soft: oklch(0.27 0.07 281.1423);
-  /* ink（紫調中性層級；tweakcn 自身 muted-foreground 無層級差，這裡補出 muted/dim） */
-  --ink: oklch(0.9513 0.0074 260.7315);
-  --ink-muted: oklch(0.6245 0.05 278.1046);
-  --ink-dim: oklch(0.52 0.045 278.1046);
-  /* signal accent（連結 / focus / selected / 主行動）＝ tweakcn 橙 primary */
-  --signal: oklch(0.6677 0.2235 36.9862);
-  --signal-ring: oklch(0.6677 0.2235 36.9862 / 0.35);
-  /* 語意：潛力分級 / 狀態（克制使用） */
-  --tier-high: oklch(0.8 0.16 171.269);
-  --tier-mid: oklch(0.8 0.15 95);
-  --tier-low: oklch(0.6535 0.2348 34.037);
-  --priority: oklch(0.5488 0.2944 299.0954);
-  --success: oklch(0.8 0.16 171.269);
-  --danger: oklch(0.6535 0.2348 34.037);
-  --warning: oklch(0.78 0.15 75);
-  /* chart 分類色盤（tweakcn 暗色：洋紅／紫／青／薄荷／黃） */
-  --chart-1: oklch(0.6726 0.2904 341.4084);
-  --chart-2: oklch(0.5488 0.2944 299.0954);
-  --chart-3: oklch(0.8442 0.1457 209.2851);
-  --chart-4: oklch(0.8903 0.1739 171.269);
-  --chart-5: oklch(0.9168 0.1915 101.407);
-  /* 可行性漸層（綠 → 橙；唯一允許漸層用途之一） */
-  --feasibility-from: oklch(0.8442 0.1457 171.269);
-  --feasibility-to: oklch(0.6677 0.2235 36.9862);
-  --on-primary: oklch(1 0 0);
+/*
+ * Tender AI 共用設計系統：白底、橘色主操作、淺灰側欄。
+ * 保留現有元件使用的語意別名，讓各頁面能隨主題一致切換。
+ */
+:root {
+  --card: #ffffff;
+  --ring: #f59e0b;
+  --input: #e5e7eb;
+  --muted: #f9fafb;
+  --accent: #475569;
+  --border: #e5e7eb;
+  --radius: 0.375rem;
+  --chart-1: #f59e0b;
+  --chart-2: #06db54;
+  --chart-3: #097db3;
+  --chart-4: #650d91;
+  --chart-5: #bf67b9;
+  --popover: #ffffff;
+  --primary: #f97316;
+  --sidebar: #f9fafb;
+  --secondary: #f3f4f6;
+  --background: #ffffff;
+  --foreground: #262626;
+  --destructive: #ef4444;
+  --sidebar-ring: #f59e0b;
+  --sidebar-accent: #fffbeb;
+  --sidebar-border: #e5e7eb;
+  --card-foreground: #262626;
+  --sidebar-primary: #f59e0b;
+  --muted-foreground: #6b7280;
+  --accent-foreground: #cbd5e1;
+  --popover-foreground: #262626;
+  --primary-foreground: #000000;
+  --sidebar-foreground: #262626;
+  --secondary-foreground: #4b5563;
+  --destructive-foreground: #ffffff;
+  --sidebar-accent-foreground: #92400e;
+  --sidebar-primary-foreground: #ffffff;
 
-  /* 陰影（tweakcn 造型族；暗色另靠卡面 / border 提供分層） */
-  --shadow-2xs: 0px 4px 8px -2px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0px 4px 8px -2px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 1px 2px -3px hsl(0 0% 0% / 0.1);
-  --shadow:
-    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 1px 2px -3px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 2px 4px -3px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 4px 6px -3px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0px 4px 8px -2px hsl(0 0% 0% / 0.1), 0px 8px 10px -3px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0px 4px 8px -2px hsl(0 0% 0% / 0.25);
-  /* 領域分層別名（沿用既有元件用的名稱，改吃 tweakcn 陰影族） */
-  --card-shadow: var(--shadow-sm);
+  --canvas: var(--background);
+  --surface-1: var(--card);
+  --surface-2: var(--secondary);
+  --hairline: var(--border);
+  --hairline-soft: var(--border);
+  --ink: var(--foreground);
+  --ink-muted: var(--muted-foreground);
+  --ink-dim: #9ca3af;
+  --signal: var(--primary);
+  --signal-ring: rgb(245 158 11 / 0.3);
+  --tier-high: var(--chart-2);
+  --tier-mid: var(--chart-1);
+  --tier-low: var(--destructive);
+  --priority: var(--chart-4);
+  --success: var(--chart-2);
+  --danger: var(--destructive);
+  --warning: var(--chart-1);
+  --on-primary: var(--primary-foreground);
+
+  --shadow-2xs: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-xs: 0 1px 3px rgb(0 0 0 / 0.06);
+  --shadow-sm: 0 4px 16px rgb(0 0 0 / 0.08);
+  --shadow: 0 4px 16px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.12);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 0.14);
+  --shadow-xl: 0 12px 32px rgb(0 0 0 / 0.16);
+  --shadow-2xl: 0 16px 40px rgb(0 0 0 / 0.18);
+  --card-shadow: var(--shadow-xs);
   --elev-rest: var(--shadow-xs);
-  --elev-hover: var(--shadow-lg);
-  --elev-overlay: var(--shadow-2xl);
-
-  /* ---- shadcn 語意映射（tweakcn 橙 primary，亮暗一致） ---- */
-  --background: var(--canvas);
-  --foreground: var(--ink);
-  --card: var(--surface-1);
-  --card-foreground: var(--ink);
-  --popover: var(--surface-2);
-  --popover-foreground: var(--ink);
-  --primary: var(--signal); /* tweakcn 橙 pill */
-  --primary-foreground: var(--on-primary); /* 白字 */
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--ink);
-  --muted: var(--surface-2);
-  --muted-foreground: var(--ink-muted);
-  --accent: var(
-    --surface-2
-  ); /* shadcn accent = hover 抬升面，非品牌色（房規保留） */
-  --accent-foreground: var(--ink);
-  --destructive: var(--danger);
-  --destructive-foreground: oklch(1 0 0);
-  --border: var(--hairline);
-  --input: var(--hairline);
-  --ring: var(--signal);
-  --radius: 0.5rem; /* tweakcn 8px */
+  --elev-hover: var(--shadow-md);
+  --elev-overlay: var(--shadow-xl);
+  --font-sans: "Noto Sans TC", "Noto Sans", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, monospace;
 }
 
-/* 淺色 = tweakcn 淺色語彙（近白底、白卡、橙 primary、薄荷 / 洋紅點綴）。
-   為產品預設主題（loadTheme() 預設回傳 light）；暗色經切換鈕保留。
-   造型（圓角 / 陰影）與 shadcn 語意映射沿用 base（:root），此處僅覆寫色彩原語。 */
-[data-theme="light"] {
-  --canvas: oklch(0.9816 0.0017 247.839);
-  --surface-1: oklch(1 0 0);
-  --surface-2: oklch(0.9595 0.02 286.0164);
-  --hairline: oklch(0.9205 0.0086 225.0878);
-  --hairline-soft: oklch(0.95 0.0086 225.0878);
-  --ink: oklch(0.1649 0.0352 281.8285);
-  --ink-muted: oklch(0.44 0.03 281.8285);
-  --ink-dim: oklch(0.6 0.025 281.8285);
-  /* signal accent = tweakcn 橙（連結 / focus / selected / 主行動） */
-  --signal: oklch(0.6958 0.2043 43.491);
-  --signal-ring: oklch(0.6958 0.2043 43.491 / 0.3);
-  --tier-high: oklch(0.72 0.15 171.269);
-  --tier-mid: oklch(0.7 0.14 95);
-  --tier-low: oklch(0.6535 0.2348 34.037);
-  --priority: oklch(0.625 0.2583 305.8714);
-  --success: oklch(0.72 0.15 171.269);
-  --danger: oklch(0.6535 0.2348 34.037);
-  --warning: oklch(0.72 0.15 70);
-  /* chart 分類色盤（tweakcn 淺色：紅／紫／青／薄荷／黃綠） */
-  --chart-1: oklch(0.6539 0.2322 24.3251);
-  --chart-2: oklch(0.625 0.2583 305.8714);
-  --chart-3: oklch(0.8964 0.1094 204.8017);
-  --chart-4: oklch(0.9136 0.131 177.7414);
-  --chart-5: oklch(0.9453 0.1453 102.8937);
-  --feasibility-from: oklch(0.72 0.15 171.269);
-  --feasibility-to: oklch(0.6958 0.2043 43.491);
-  --on-primary: oklch(1 0 0);
+[data-theme="dark"] {
+  --card: #262626;
+  --ring: #f59e0b;
+  --input: #404040;
+  --muted: #1f1f1f;
+  --accent: #92400e;
+  --border: #404040;
+  --chart-1: #fbbf24;
+  --chart-2: #d97706;
+  --chart-3: #92400e;
+  --chart-4: #b45309;
+  --chart-5: #92400e;
+  --popover: #262626;
+  --primary: #f59e0b;
+  --sidebar: #0f0f0f;
+  --secondary: #262626;
+  --background: #171717;
+  --foreground: #e5e5e5;
+  --destructive: #ef4444;
+  --sidebar-ring: #f59e0b;
+  --sidebar-accent: #92400e;
+  --sidebar-border: #404040;
+  --card-foreground: #e5e5e5;
+  --sidebar-primary: #f59e0b;
+  --muted-foreground: #a3a3a3;
+  --accent-foreground: #fde68a;
+  --popover-foreground: #e5e5e5;
+  --primary-foreground: #000000;
+  --sidebar-foreground: #e5e5e5;
+  --secondary-foreground: #e5e5e5;
+  --destructive-foreground: #ffffff;
+  --sidebar-accent-foreground: #fde68a;
+  --sidebar-primary-foreground: #ffffff;
+  --ink-dim: #737373;
+  --signal-ring: rgb(245 158 11 / 0.35);
 }
 
-/* =========================================================================
-   @theme inline —— 把 token 暴露成 Tailwind 工具類（inline 保留 var()，
-   讓主題可在執行期切換）。
-   ========================================================================= */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -146,8 +134,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-
-  /* 領域 token */
   --color-canvas: var(--canvas);
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
@@ -164,20 +150,23 @@
   --color-success: var(--success);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
-
-  /* chart 分類色盤暴露成 Tailwind 工具類（bg-chart-1 等），亦供 recharts var() 取用 */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
-
-  /* tweakcn 陰影族（暴露成 shadow-xs / shadow-sm / shadow-md … 工具類） */
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
   --shadow-sm: var(--shadow-sm);
@@ -186,60 +175,22 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
-
-  /* 動效曲線：ease-out 指數族（房規：無 bounce／elastic）。
-     暴露成 Tailwind ease-* 工具類（ease-out-quart / ease-out-quint）。 */
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-
-  --font-sans:
-    "Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui,
-    -apple-system, "Segoe UI", sans-serif;
-  --font-num:
-    "JetBrains Mono", "SF Mono", "SFMono-Regular", ui-monospace, monospace;
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-num);
 }
 
-/* =========================================================================
-   字體依語系綁定（房規）—— 繁中 UI 僅用 Noto Sans TC；英文用 Inter／SF Pro Text。
-   置於 @theme 之外（unlayered）以蓋過 Tailwind 產生的 --font-sans 預設；
-   數字／程式碼一律走 --font-num（mono）。lang 由 <html lang> 驅動。
-   ========================================================================= */
-html[lang^="zh"] {
-  --font-sans:
-    "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-}
-html[lang="en"] {
-  --font-sans: "Inter", "SF Pro Text", -apple-system, system-ui, sans-serif;
-}
-
-/* =========================================================================
-   base layer
-   ========================================================================= */
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  /* 動效可及性（房規必備）：使用者要求減少動態時，抬升／浮層仍即時切換，
-     僅關閉位移／縮放與過場時長，避免暈眩。 */
+  * { @apply border-border outline-ring/50; }
   @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
   }
-
-  html {
-    color-scheme: dark;
-  }
-  html[data-theme="light"] {
-    color-scheme: light;
-  }
-
+  html { color-scheme: light; }
+  html[data-theme="dark"] { color-scheme: dark; }
   body {
     @apply bg-background text-foreground;
     margin: 0;
@@ -251,32 +202,9 @@ html[lang="en"] {
     text-rendering: optimizeLegibility;
     font-synthesis: none;
   }
-
-  /* 數字一律 tabular（預算 / 天數 / 分數對齊） */
-  .tnum {
-    font-family: var(--font-num);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* 程式碼／等寬一律 mono（房規：數字與程式碼用 Mono） */
-  code,
-  kbd,
-  samp,
-  pre {
-    font-family: var(--font-num);
-  }
-
-  /* 細捲軸 */
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--hairline);
-    border-radius: 999px;
-    border: 2px solid var(--canvas);
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--ink-dim);
-  }
+  .tnum { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+  code, kbd, samp, pre { font-family: var(--font-num); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; border: 2px solid var(--background); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 }

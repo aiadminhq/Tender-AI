@@ -7,7 +7,7 @@ export function KanbanPage() {
   const { t } = useApp();
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="mx-auto max-w-[1440px] space-y-5">
       <PageHeader title={t("navKanban")} subtitle={t("kanbanSub")} />
       <KanbanToolbar />
       <BidBoard />

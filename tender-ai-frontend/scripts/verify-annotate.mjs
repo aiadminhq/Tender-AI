@@ -107,7 +107,11 @@ try {
 
   await page.screenshot({ path: path.join(OUT, "annotate-after-submit__dark.png"), fullPage: true });
 
-  // 3) 匯出 → 應寫入 monorepo 根 design-feedback/inbox.md（Vite middleware）
+  // 3) 預設目標為 Codex 直接派送；為避免驗證時真的啟動 CLI，切回手動 inbox，
+  //    並驗證保留的檔案備援流程。
+  const targetSelect = page.locator("#annotation-export-target");
+  if (await targetSelect.count()) await targetSelect.selectOption("local");
+  // 匯出 → 應寫入 monorepo 根 design-feedback/inbox.md（Vite middleware）
   const exportBtn = page.getByRole("button", { name: /匯出/ });
   if (await exportBtn.count()) {
     await exportBtn.first().click();

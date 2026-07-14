@@ -1,13 +1,12 @@
-// SL5 主動推播：topbar 通知鈴鐺 + 右側推播面板（願景第 4 點「重自動推播」）。
-// 串接 lib/push.ts：GET /push/digest（開啟時抓）、POST /push/run（空狀態手動產生）、
-// POST /push/read（標記已讀）。每張卡為 Layer A 安全內容（標案公開欄位 + 可解釋分數/理由），
-// 不含人名／email。行為埋點（lib/events.ts）：開啟=view(scope=push_open)、點卡=click_link(scope=push)。
-import { useCallback, useEffect, useState } from "react";
-import { Bell, Loader2, Sparkles } from "lucide-react";
+// 主動推播：Topbar 鈴鐺 + 右側推播面板。資料皆為 Layer A 公開欄位與可解釋分數／理由。
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, CheckCheck, Loader2, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useApp } from "@/store/app-context";
 import { trackEvent } from "@/lib/events";
+import { cn } from "@/lib/utils";
 import {
   fetchPushDigest,
   markPushRead,
@@ -15,6 +14,8 @@ import {
   type PushItem,
 } from "@/lib/push";
 import { PushCard } from "./push-card";
+
+type PushFilter = "all" | "unread";
 
 export function PushBell() {
   const { t, lang } = useApp();
@@ -24,8 +25,9 @@ export function PushBell() {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(false);
+  const [filter, setFilter] = useState<PushFilter>("all");
+  const [query, setQuery] = useState("");
 
-  // 載入推播資料（開啟面板時 / 產生後）。後端未啟動時靜默 fallback。
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
@@ -40,17 +42,28 @@ export function PushBell() {
     }
   }, []);
 
-  // 啟動時先抓一次未讀數（不開面板也顯示紅點）。
   useEffect(() => {
     void load();
   }, [load]);
 
-  // 開啟面板：記 view 事件 + 重新載入最新批次。
   useEffect(() => {
     if (!open) return;
     trackEvent("view", { payload: { scope: "push_open" } });
     void load();
   }, [open, load]);
+
+  const visibleItems = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return items.filter((item) => {
+      if (filter === "unread" && item.status !== "pending") return false;
+      if (!normalized) return true;
+      return [item.name, item.org, item.category, item.city, item.source]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalized);
+    });
+  }, [filter, items, query]);
 
   const onGenerate = useCallback(async () => {
     if (generating) return;
@@ -60,6 +73,7 @@ export function PushBell() {
       const result = await runPush();
       setItems(result.items);
       setUnread(result.unread);
+      setFilter("all");
     } catch {
       setError(true);
     } finally {
@@ -71,21 +85,18 @@ export function PushBell() {
     try {
       await markPushRead();
       setUnread(0);
-      setItems((prev) => prev.map((it) => ({ ...it, status: "read" })));
+      setItems((prev) => prev.map((item) => ({ ...item, status: "read" })));
     } catch {
-      /* 靜默：標記失敗不阻斷瀏覽 */
+      // 標記失敗不阻斷使用者閱讀既有推播。
     }
   }, []);
 
-  const onItemClick = useCallback((it: PushItem) => {
+  const onItemClick = useCallback((item: PushItem) => {
     trackEvent("click_link", {
-      ...(it.tenderId != null ? { tenderId: String(it.tenderId) } : {}),
-      payload: { scope: "push", source: it.source ?? undefined },
+      ...(item.tenderId != null ? { tenderId: String(item.tenderId) } : {}),
+      payload: { scope: "push", source: item.source ?? undefined },
     });
-    if (it.tenderId != null) {
-      // BrowserRouter SPA 導頁需整段 href（非 client-side push）。
-      window.location.href = `/tenders/${it.tenderId}`;
-    }
+    if (item.tenderId != null) window.location.href = `/tenders/${item.tenderId}`;
   }, []);
 
   return (
@@ -96,11 +107,11 @@ export function PushBell() {
         onClick={() => setOpen(true)}
         aria-label={t("pushOpen")}
         title={t("pushOpen")}
-        className="relative text-primary"
+        className="relative rounded-lg border border-transparent text-primary transition-all hover:border-primary/20 hover:bg-primary/8 hover:shadow-sm"
       >
         <Bell size={16} />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-danger px-1 text-[9px] font-semibold leading-none text-white">
+          <span className="absolute -right-1 -top-1 grid h-4 min-w-[16px] place-items-center rounded-full bg-danger px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-card">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -112,7 +123,9 @@ export function PushBell() {
         width="sm:max-w-lg"
         title={
           <span className="flex items-center gap-2">
-            <Bell size={15} className="text-primary" />
+            <span className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Bell size={15} />
+            </span>
             {t("pushTitle")}
             {unread > 0 && (
               <span className="rounded-full bg-danger/15 px-1.5 py-0.5 text-[10px] font-medium text-danger">
@@ -123,16 +136,17 @@ export function PushBell() {
         }
         footer={
           items.length > 0 ? (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-ink-dim">
-                {items.length}
+                {visibleItems.length}/{items.length}
                 {t("pushUnit")}
               </span>
               <button
                 onClick={() => void onMarkAllRead()}
                 disabled={unread === 0}
-                className="text-[12px] font-medium text-primary transition-colors hover:text-primary/80 disabled:cursor-default disabled:text-ink-dim"
+                className="inline-flex items-center gap-1.5 text-[12px] font-medium text-primary transition-colors hover:text-primary/80 disabled:cursor-default disabled:text-ink-dim"
               >
+                <CheckCheck size={14} />
                 {unread === 0 ? t("pushAllRead") : t("pushMarkAllRead")}
               </button>
             </div>
@@ -144,6 +158,49 @@ export function PushBell() {
             {t("pushSubtitle")}
           </p>
 
+          <div className="rounded-xl border border-border bg-surface-1/70 p-2.5">
+            <div className="flex items-center gap-1 rounded-lg bg-surface-2/75 p-1">
+              {(["all", "unread"] as const).map((option) => {
+                const active = filter === option;
+                const label = option === "all" ? t("pushFilterAll") : t("pushFilterUnread");
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFilter(option)}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-medium transition-all",
+                      active
+                        ? "bg-card text-ink shadow-sm"
+                        : "text-ink-dim hover:text-ink-muted",
+                    )}
+                  >
+                    {option === "unread" && <SlidersHorizontal size={12} />}
+                    {label}
+                    {option === "unread" && unread > 0 && (
+                      <span className="rounded-full bg-danger/15 px-1 text-[9px] text-danger">
+                        {unread}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="relative mt-2.5">
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-dim"
+              />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("pushFilterSearch")}
+                className="h-8 border-transparent bg-card pl-8 text-[12px] shadow-none focus-visible:border-primary/30 focus-visible:ring-primary/15"
+              />
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-[13px] text-ink-muted">
               <Loader2 size={15} className="animate-spin" />
@@ -154,11 +211,7 @@ export function PushBell() {
               <p className="px-2 text-[13px] leading-relaxed text-ink-muted">
                 {error ? t("pushError") : t("pushEmpty")}
               </p>
-              <Button
-                onClick={() => void onGenerate()}
-                disabled={generating}
-                className="mx-auto"
-              >
+              <Button onClick={() => void onGenerate()} disabled={generating} className="mx-auto">
                 {generating ? (
                   <>
                     <Loader2 size={15} className="mr-1.5 animate-spin" />
@@ -172,14 +225,18 @@ export function PushBell() {
                 )}
               </Button>
             </div>
+          ) : visibleItems.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-[12px] text-ink-muted">
+              {t("pushNoResults")}
+            </div>
           ) : (
             <div className="flex flex-col gap-2.5">
-              {items.map((it) => (
+              {visibleItems.map((item) => (
                 <PushCard
-                  key={it.id}
-                  item={it}
+                  key={item.id}
+                  item={item}
                   lang={lang}
-                  onClick={() => onItemClick(it)}
+                  onClick={() => onItemClick(item)}
                 />
               ))}
             </div>

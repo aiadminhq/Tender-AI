@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Building2,
+  CalendarDays,
   Check,
+  ChevronDown,
   ExternalLink,
+  FileText,
   Eye,
   KanbanSquare,
+  MapPin,
   Maximize2,
   Minimize2,
   RotateCcw,
@@ -60,10 +65,12 @@ function usePrefersReducedMotion(): boolean {
 function SwipeCardFace({
   tender,
   expanded = false,
+  onToggle,
   onViewFull,
 }: {
   tender: Tender;
   expanded?: boolean;
+  onToggle?: () => void;
   onViewFull?: () => void;
 }) {
   const { t, lang } = useApp();
@@ -86,12 +93,42 @@ function SwipeCardFace({
           ? "text-tier-mid"
           : "text-ink-muted";
 
+  const toggleLabel =
+    lang === "zh"
+      ? expanded
+        ? "收合標案摘要"
+        : "展開標案摘要"
+      : expanded
+        ? "Collapse tender summary"
+        : "Expand tender summary";
+
   return (
     <div
-      className={cn("flex h-full flex-col p-5", expanded && "overflow-y-auto")}
+      role="button"
+      tabIndex={0}
+      aria-label={toggleLabel}
+      aria-expanded={expanded}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggle?.();
+        }
+      }}
+      className={cn(
+        "group flex h-full cursor-pointer flex-col p-5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/55",
+        expanded && "overflow-y-auto",
+      )}
     >
       <div className="flex items-start justify-between gap-3">
-        <TierBadge tier={tender.tier} lang={lang} />
+        <div className="flex min-w-0 items-center gap-2">
+          <TierBadge tier={tender.tier} lang={lang} />
+          <span className="inline-flex items-center gap-1 text-[11px] text-ink-dim">
+            <FileText size={12} aria-hidden />
+            <span className="tnum">{tender.caseNo ?? "—"}</span>
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           {starred && (
             <Star
@@ -100,50 +137,57 @@ function SwipeCardFace({
               aria-hidden
             />
           )}
-          <span className="tnum text-[15px] font-medium text-ink">
+          <span className="tnum text-[16px] font-semibold text-ink">
             {formatBudget(tender.budget, lang)}
           </span>
         </div>
       </div>
 
-      <h2 className="mt-4 line-clamp-3 text-[19px] font-semibold leading-snug tracking-[-0.01em] text-ink">
+      <h2 className="mt-5 max-h-[5.25rem] overflow-hidden text-[20px] font-semibold leading-snug tracking-[-0.02em] text-ink">
         {tender.title}
       </h2>
-      <p className="mt-2 line-clamp-2 text-[13px] text-ink-muted">
-        {tender.org} · {source}
-      </p>
+      <div className="mt-3 flex items-start gap-2 text-[13px] text-ink-muted">
+        <Building2 size={15} className="mt-0.5 shrink-0 text-primary" aria-hidden />
+        <p className="line-clamp-2">{tender.org}</p>
+      </div>
+      <p className="mt-1.5 pl-6 text-[11px] text-ink-dim">{source}</p>
 
-      {hits.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {hits.map((w) => (
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {hits.length > 0 ? (
+          hits.slice(0, 3).map((w) => (
             <Badge key={w} variant="signal">
               {w}
             </Badge>
-          ))}
-        </div>
-      )}
+          ))
+        ) : (
+          tender.tags.slice(0, 3).map((tag) => (
+            <Badge key={tag} variant="outline">
+              {tag}
+            </Badge>
+          ))
+        )}
+      </div>
 
-      {/* 中段事實格：填補卡片中央留白並輔助滑卡決策。category／公告日／供應商覆蓋
-          皆為 Tender 必填欄位（mock 與 live 皆有值），沿用詳情頁的 Fact 語彙。
-          招標方式／縣市／案號為選填，有值才補上，讓未展開卡片就盡量多帶決策資訊。 */}
-      <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3.5 border-t border-border pt-4">
-        <Fact label={t("category")}>{t(CAT_KEY[tender.category])}</Fact>
-        <Fact label={t("publishedAt")} num>
-          {formatDate(tender.publishedAt, lang)}
-        </Fact>
-        {tender.tenderMethod && (
-          <Fact label={t("tenderMethod")}>{tender.tenderMethod}</Fact>
-        )}
-        {tender.city && <Fact label={t("city")}>{tender.city}</Fact>}
-        {tender.caseNo && (
-          <Fact label={t("caseNo")} num>
-            {tender.caseNo}
-          </Fact>
-        )}
-        <Fact label={t("supplierCoverage")} num>
-          {tender.supplierCoverage}
-        </Fact>
-      </dl>
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border">
+        <div className="bg-card px-3 py-2.5">
+          <div className="flex items-center gap-1 text-[10px] text-ink-dim">
+            <CalendarDays size={12} aria-hidden />
+            {t("publishedAt")}
+          </div>
+          <div className="tnum mt-1 text-[13px] font-medium text-ink">
+            {formatDate(tender.publishedAt, lang)}
+          </div>
+        </div>
+        <div className="bg-card px-3 py-2.5">
+          <div className="flex items-center gap-1 text-[10px] text-ink-dim">
+            <MapPin size={12} aria-hidden />
+            {t("city")}
+          </div>
+          <div className="mt-1 truncate text-[13px] font-medium text-ink">
+            {tender.city || "—"}
+          </div>
+        </div>
+      </div>
 
       <div className={cn("space-y-2.5 pt-5", !expanded && "mt-auto")}>
         <FeasibilityMeter value={feasOf(tender).score} showLabel />
@@ -161,10 +205,28 @@ function SwipeCardFace({
         </div>
       </div>
 
+      <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-[11px] text-ink-dim">
+        <span>{expanded ? toggleLabel : lang === "zh" ? "點擊卡片查看完整摘要" : "Click card for full summary"}</span>
+        <ChevronDown
+          size={16}
+          className={cn(
+            "text-primary transition-transform duration-200 motion-reduce:transition-none",
+            expanded && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </div>
+
       {/* 就地展開：仍維持直條視窗，只是補上更多事實／下一步／完整關鍵字，
           並提供「查看完整詳情」導往詳情頁。內容區隨卡片內部捲動。 */}
       {expanded && (
-        <div className="mt-5 space-y-5 border-t border-border pt-5">
+        <div className="mt-4 space-y-5 border-t border-border pt-5">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5">
+            <Fact label={t("category")}>{t(CAT_KEY[tender.category])}</Fact>
+            <Fact label={t("supplierCoverage")} num>
+              {tender.supplierCoverage}
+            </Fact>
+          </dl>
           {(tender.caseNo || tender.tenderMethod || tender.city) && (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5">
               {tender.caseNo && (
@@ -316,6 +378,7 @@ export function SwipePage() {
   );
 
   const [cursor, setCursor] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const [drag, setDrag] = useState({ dx: 0, dy: 0 });
   const [dragging, setDragging] = useState(false);
   const [exit, setExit] = useState<{ transform: string } | null>(null);
@@ -336,6 +399,10 @@ export function SwipePage() {
   const hasCard = cursor < total;
   const ended = total > 0 && cursor >= total;
   const current = hasCard ? deck[cursor] : null;
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [current?.id]);
 
   // 給 stable callback 讀取最新值的鏡像 ref（避免閉包過期）。
   const cursorRef = useRef(cursor);
@@ -553,9 +620,8 @@ export function SwipePage() {
     const { dx, dy } = deltaRef.current;
     startRef.current = null;
     if (!movedRef.current) {
-      // 沒位移＝點擊 → 看詳情
+      // 沒位移＝交由卡片本身的 click 處理；中心點擊展開摘要，避免與滑動衝突。
       setDrag({ dx: 0, dy: 0 });
-      peek();
       return;
     }
     if (dy < -SWIPE_THRESHOLD && Math.abs(dy) >= Math.abs(dx))
@@ -579,6 +645,7 @@ export function SwipePage() {
   function topStyle(): React.CSSProperties {
     if (exit) {
       return {
+        zIndex: 30,
         transform: exit.transform,
         opacity: 0,
         transition: `transform ${EXIT_MS}ms cubic-bezier(0.22,0.61,0.36,1), opacity ${EXIT_MS}ms ease-out`,
@@ -587,11 +654,13 @@ export function SwipePage() {
     if (dragging) {
       const rot = Math.max(-14, Math.min(14, drag.dx * 0.05));
       return {
+        zIndex: 30,
         transform: `translate3d(${drag.dx}px, ${drag.dy}px, 0) rotate(${rot}deg)`,
         transition: "none",
       };
     }
     return {
+      zIndex: 30,
       transform: "translate3d(0,0,0) rotate(0deg)",
       transition: reduce
         ? "none"
@@ -706,7 +775,16 @@ export function SwipePage() {
             {isTop && stampDir && (
               <Stamp kind={stampDir} opacity={stampOpacity} />
             )}
-            <SwipeCardFace tender={tender} />
+            <SwipeCardFace
+              tender={tender}
+              expanded={isTop && expanded}
+              onToggle={
+                isTop
+                  ? () => setExpanded((value) => !value)
+                  : undefined
+              }
+              onViewFull={isTop ? peek : undefined}
+            />
           </Card>
         </div>,
       );

@@ -8,7 +8,11 @@ import { Avatar } from "@/components/ui/avatar";
 
 // 登入身分選單（取代示範用的切換器）。顯示已登入帳號 + 帳號設定 / 登出。
 // 示範模式則標示「示範模式」並提供「前往登入」。自製下拉，點外側 / Esc 關閉。
-export function AccountMenu() {
+export function AccountMenu({
+  variant = "compact",
+}: {
+  variant?: "compact" | "sidebar";
+}) {
   const { t } = useApp();
   const { user, isMock, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
@@ -53,14 +57,34 @@ export function AccountMenu() {
         aria-label={display.name}
         aria-haspopup="true"
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-full p-0.5 pr-1.5 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
+        className={
+          variant === "sidebar"
+            ? "mt-3 flex w-full items-center gap-2.5 rounded-md border border-sidebar-border bg-card px-2.5 py-2.5 text-left shadow-xs transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/45"
+            : "flex items-center gap-1.5 rounded-full p-0.5 pr-1.5 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
+        }
       >
         <Avatar user={display} size="sm" />
+        {variant === "sidebar" && (
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[12px] font-medium text-sidebar-foreground">
+              {display.name}
+            </span>
+            <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+              {roleLabel}
+            </span>
+          </span>
+        )}
         <ChevronDown size={14} className="text-ink-dim" />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-60 overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-[var(--elev-overlay)] animate-in fade-in slide-in-from-top-1 duration-150">
+        <div
+          className={
+            variant === "sidebar"
+              ? "absolute bottom-[calc(100%+6px)] left-0 z-50 w-60 overflow-hidden rounded-md border border-border bg-popover p-1 shadow-[var(--elev-overlay)] animate-in fade-in slide-in-from-bottom-1 duration-150"
+              : "absolute right-0 top-[calc(100%+6px)] z-50 w-60 overflow-hidden rounded-md border border-border bg-popover p-1 shadow-[var(--elev-overlay)] animate-in fade-in slide-in-from-top-1 duration-150"
+          }
+        >
           <div className="flex items-center gap-2.5 px-2.5 py-2">
             <Avatar user={display} size="md" />
             <div className="min-w-0 flex-1">

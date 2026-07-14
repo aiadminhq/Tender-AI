@@ -8,7 +8,16 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { Eye, EyeOff, Target, X, Link2, Save } from "lucide-react";
+import {
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Filter,
+  Link2,
+  Save,
+  Target,
+  X,
+} from "lucide-react";
 import type { Category, SortKey, SourceKey } from "@/types/domain";
 import type { TextKey } from "@/i18n/strings";
 import { useApp } from "@/store/app-context";
@@ -305,6 +314,7 @@ export function FilterBar() {
     saveCurrentSearch,
     applySavedSearch,
   } = useAppData();
+  const [expanded, setExpanded] = useState(false);
 
   const toggleSource = (k: SourceKey) =>
     setFilter({
@@ -393,10 +403,67 @@ export function FilterBar() {
     filter.northOnly ||
     filter.newToday;
 
+  const activeCount = [
+    !!filter.query,
+    filter.sources.length > 0,
+    filter.tiers.length > 0,
+    filter.minBudget != null || filter.maxBudget != null,
+    filter.minFeasibility != null || filter.maxFeasibility != null,
+    filter.focusOnly,
+    !filter.hideExcluded,
+    filter.categories.length > 0,
+    filter.orgKeyword.trim().length > 0,
+    filter.deadlineFrom != null || filter.deadlineTo != null,
+    filter.tagFilter.length > 0,
+    filter.sort !== "score",
+    filter.northOnly,
+    filter.newToday,
+  ].filter(Boolean).length;
+
   return (
-    <div className="flex flex-wrap items-start gap-x-5 gap-y-3 rounded-lg border border-border bg-card px-3 py-3">
+    <div className="rounded-xl border border-border bg-card shadow-[var(--elev-rest)]">
+      {/* 窄視窗先收斂為摘要列；完整篩選按需展開，保留所有既有控制與鍵盤可及性。 */}
+      <div className="flex items-center justify-between gap-3 px-3 py-2.5 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          className="flex min-w-0 items-center gap-2 rounded-lg text-left text-[13px] font-medium text-ink transition-colors hover:text-primary"
+        >
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Filter size={15} />
+          </span>
+          <span>{t("filters")}</span>
+          {activeCount > 0 && (
+            <span className="rounded-full bg-signal/12 px-1.5 py-0.5 text-[10px] font-semibold text-signal">
+              {activeCount}
+            </span>
+          )}
+          <ChevronDown
+            size={15}
+            className={cn(
+              "ml-0.5 text-ink-dim transition-transform duration-200",
+              expanded && "rotate-180",
+            )}
+          />
+        </button>
+        {active && (
+          <Button variant="ghost" size="sm" onClick={resetFilter}>
+            <X size={14} />
+            {t("clear")}
+          </Button>
+        )}
+      </div>
+
+      <div
+        className={cn(
+          "flex flex-wrap items-start gap-x-5 gap-y-3 px-3 py-3",
+          !expanded && "max-lg:hidden",
+          expanded && "border-t border-border lg:border-t-0",
+        )}
+      >
       {/* 資料源 */}
-      <FilterGroup label={t("fgSources")}>
+      <FilterGroup label={t("fgSources")} className="max-lg:w-full">
         {SOURCES.map((s) => (
           <Chip
             key={s.key}
@@ -410,7 +477,7 @@ export function FilterBar() {
       </FilterGroup>
 
       {/* 採購類別 */}
-      <FilterGroup label={t("fgCategory")}>
+      <FilterGroup label={t("fgCategory")} className="max-lg:w-full">
         {CATEGORIES.map((cat) => (
           <Chip
             key={cat.key}
@@ -423,9 +490,9 @@ export function FilterBar() {
       </FilterGroup>
 
       {/* 可行性（0–99，雙握把；細軌、低高度） */}
-      <FilterGroup label={t("feasibilityRange")}>
+      <FilterGroup label={t("feasibilityRange")} className="max-lg:w-full">
         <RangeSlider
-          className="w-44 max-w-full"
+          className="w-44 max-w-full max-lg:w-full"
           trackClassName="h-5"
           min={FEAS_MIN}
           max={FEAS_MAX}
@@ -458,9 +525,9 @@ export function FilterBar() {
       </FilterGroup>
 
       {/* 預算區間（直方圖，雙握把；壓低高度） */}
-      <FilterGroup label={t("budgetRange")}>
+      <FilterGroup label={t("budgetRange")} className="max-lg:w-full">
         <RangeSlider
-          className="w-60 max-w-full"
+          className="w-60 max-w-full max-lg:w-full"
           trackClassName="h-8"
           min={BUDGET_MIN}
           max={BUDGET_MAX}
@@ -512,7 +579,7 @@ export function FilterBar() {
       </FilterGroup>
 
       {/* 截止日區間 */}
-      <FilterGroup label={t("fgDeadline")}>
+      <FilterGroup label={t("fgDeadline")} className="max-lg:w-full">
         <input
           type="date"
           value={filter.deadlineFrom ?? ""}
@@ -533,19 +600,19 @@ export function FilterBar() {
       </FilterGroup>
 
       {/* 機關關鍵字 */}
-      <FilterGroup label={t("fgOrg")}>
+      <FilterGroup label={t("fgOrg")} className="max-lg:w-full">
         <Input
           type="text"
           value={filter.orgKeyword}
           onChange={(e) => setFilter({ orgKeyword: e.target.value })}
           placeholder={t("orgKeyword")}
           aria-label={t("orgKeyword")}
-          className="h-9 w-32"
+          className="h-9 w-32 max-lg:w-full"
         />
       </FilterGroup>
 
       {/* 偏好開關 */}
-      <FilterGroup label={t("fgPrefs")}>
+      <FilterGroup label={t("fgPrefs")} className="max-lg:w-full">
         <Chip
           active={filter.focusOnly}
           onClick={() => setFilter({ focusOnly: !filter.focusOnly })}
@@ -577,8 +644,8 @@ export function FilterBar() {
 
       {/* 標籤過濾 */}
       {allTags.length > 0 && (
-        <FilterGroup label={t("fgTags")}>
-          <div className="flex max-w-[18rem] flex-wrap items-center gap-1.5 overflow-y-auto lg:max-h-12">
+        <FilterGroup label={t("fgTags")} className="max-lg:w-full">
+          <div className="flex max-w-[18rem] flex-wrap items-center gap-1.5 overflow-y-auto lg:max-h-12 max-lg:max-w-none">
             {allTags.slice(0, TAG_VISIBLE_MAX).map((tag) => (
               <Chip
                 key={tag}
@@ -593,7 +660,7 @@ export function FilterBar() {
       )}
 
       {/* 右側：排序 + 收藏搜尋 + 分享／清除（手機窄寬時內部換行，避免橫向溢出） */}
-      <div className="ml-auto flex flex-wrap items-end justify-end gap-3">
+      <div className="ml-auto flex w-full flex-wrap items-end justify-between gap-3 lg:w-auto lg:justify-end">
         <FilterGroup label={t("sortBy")}>
           <select
             value={filter.sort}
@@ -660,6 +727,7 @@ export function FilterBar() {
             </Button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

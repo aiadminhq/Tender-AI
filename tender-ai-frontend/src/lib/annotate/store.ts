@@ -14,6 +14,9 @@ import type {
 
 const STORAGE_KEY = "tender-ai:design-feedback";
 const FEEDBACK_ENDPOINT = "/__design-feedback";
+const DISPATCH_ENDPOINT = "/__design-feedback/dispatch";
+const DISPATCH_JOBS_ENDPOINT = "/__design-feedback/jobs/";
+const DIRECT_CLI_TARGETS = new Set(["claude", "codex", "gemini", "opencode"]);
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
   "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
@@ -125,6 +128,7 @@ export function useAnnotateState(): State {
 // ── 回傳給 CLI（hybrid：寫檔優先，後援複製／下載）─────────────
 
 export type ExportOutcome =
+  | { ok: true; via: "cli"; targetCli: string; jobId: string }
   | { ok: true; via: "file"; path?: string }
   | { ok: true; via: "backend"; batchId?: string }
   | { ok: true; via: "clipboard" }
@@ -149,6 +153,16 @@ export async function exportAnnotations(
     new Date().toISOString(),
   );
   const targetCli = targetToCli(target);
+
+  // 本機開發優先直接派送到 CLI；回饋仍會 best-effort 留在後端，供多人彙整與日後追溯。
+  // Vite middleware 會限制 loopback，避免區網瀏覽者藉由 dev server 執行本機命令。
+  if (targetCli && DIRECT_CLI_TARGETS.has(targetCli)) {
+    const dispatched = await dispatchToCli(targetCli, markdown);
+    if (dispatched.ok) {
+      void postBackend(targetCli);
+      return { outcome: dispatched, markdown };
+    }
+  }
 
   if (target === "backend") {
     const backend = await postBackend(targetCli);
@@ -203,8 +217,46 @@ export async function exportAnnotations(
   }
 }
 
+export type CliDispatchStatus = "queued" | "running" | "completed" | "failed";
+
+export async function getCliDispatchStatus(jobId: string): Promise<{
+  status: CliDispatchStatus;
+  error?: string;
+} | null> {
+  try {
+    const res = await fetch(`${DISPATCH_JOBS_ENDPOINT}${encodeURIComponent(jobId)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      job?: { status?: CliDispatchStatus; error?: string };
+    };
+    if (!data.job?.status) return null;
+    return { status: data.job.status, error: data.job.error };
+  } catch {
+    return null;
+  }
+}
+
 function targetToCli(target: DesignFeedbackTarget): string | null {
   return target === "local" || target === "backend" ? null : target;
+}
+
+async function dispatchToCli(
+  targetCli: string,
+  markdown: string,
+): Promise<Extract<ExportOutcome, { via: "cli" }> | { ok: false; error: string }> {
+  try {
+    const res = await fetch(DISPATCH_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markdown, targetCli }),
+    });
+    if (!res.ok) return { ok: false, error: `local CLI dispatch ${res.status}` };
+    const data = (await res.json()) as { job?: { id?: string } };
+    if (!data.job?.id) return { ok: false, error: "missing local CLI job id" };
+    return { ok: true, via: "cli", targetCli, jobId: data.job.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 function authHeaders(): Record<string, string> {

@@ -20,11 +20,11 @@ export function KanbanColumn({
   return (
     <section
       aria-label={label}
-      className="flex min-w-0 flex-col rounded-lg border border-border bg-card"
+      className="flex min-w-0 flex-col rounded-md border border-border bg-muted/45"
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <span className="text-[12px] font-semibold text-ink">{label}</span>
-        <span className="tnum grid h-5 min-w-5 place-items-center rounded-full bg-surface-2 px-1.5 text-[11px] text-ink-muted">
+      <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+        <span className="text-[12px] font-semibold text-foreground">{label}</span>
+        <span className="tnum grid h-5 min-w-5 place-items-center rounded-full bg-primary/10 px-1.5 text-[11px] text-sidebar-accent-foreground">
           {cards.length}
         </span>
       </header>
@@ -50,8 +50,8 @@ export function KanbanColumn({
           if (id) onDropCard(id);
         }}
         className={cn(
-          "flex min-h-28 flex-1 flex-col gap-2 p-2 transition-colors",
-          over && "bg-accent/60",
+          "flex min-h-28 flex-1 flex-col gap-2 p-2.5 transition-colors",
+          over && "bg-sidebar-accent",
         )}
       >
         {cards.map((card) => (

@@ -8,7 +8,7 @@ import { SelectionMenu } from "@/components/selection/selection-menu";
 export function AppShell() {
   const { t } = useApp();
   return (
-    <div className="flex min-h-svh bg-canvas text-ink">
+    <div className="flex min-h-svh bg-background text-foreground">
       {/* 鍵盤可及性：Tab 第一站即可跳過側欄／頂列，直達主要內容（房規 a11y）。 */}
       <a
         href="#main-content"
@@ -22,7 +22,7 @@ export function AppShell() {
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 px-4 pb-24 pt-5 outline-none md:px-6 md:pb-8 lg:px-8"
+          className="min-w-0 flex-1 bg-background px-4 pb-24 pt-5 outline-none md:px-6 md:pb-8 lg:px-8"
         >
           <Outlet />
         </main>

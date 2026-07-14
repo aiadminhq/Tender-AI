@@ -8,11 +8,13 @@ CLI 開發接手。
 1. 啟動前端 dev server，開啟任一頁面的「設計標註」工具。
 2. 點選畫面元素，填寫視覺、互動、文案、版面或其他回饋。
 3. 在右下角 dock 選擇目標：
-   - `本地 inbox`：append 到 ignored runtime 檔 `design-feedback/inbox.md`。
-   - `後端彙整`：POST 到 `/api/v1/design-feedback`，保留帳號與批次。
-   - `Claude Code`、`Codex`、`Hermes`、`OpenCode`、`Antigravity`、`Gemini`：同時寫入
-     `design-feedback/inbox.md` 與 `design-feedback/outbox/<cli>/latest.md`。
-4. CLI 讀 `outbox/<cli>/latest.md` 後，依現有設計系統與測試門檻執行優化。
+   - `Codex`、`Claude Code`、`Gemini`、`OpenCode`（本機開發預設為 Codex）：直接由 Vite dev middleware
+     派送至對應的 `ccw cli --mode write`。回饋會 best-effort 同步至後端，供多人彙整，但**不會建立 inbox／outbox 檔案**。
+   - `後端彙整`：只 POST 到 `/api/v1/design-feedback`，保留帳號與批次。
+   - `手動匯出（inbox）`：append 到 ignored runtime 檔 `design-feedback/inbox.md`；僅供無法直接派送時的備援。
+4. Dock 會顯示本機 CLI 的 queued／processing／completed 狀態。若派送端點不存在、CLI 未啟動或非本機瀏覽器，介面會明確退回剪貼簿／下載備援，不會假稱已派送。
+
+> 安全邊界：Vite server 即使對區網開放，`/__design-feedback/dispatch` 與 job status 僅接受 loopback request；只有開發機本身的瀏覽器能啟動 CLI。
 
 ## 後端 API
 
@@ -27,7 +29,7 @@ CLI 開發接手。
 
 ## CLI outbox
 
-每個 CLI 目標會產生：
+手動同步或特別需要可審閱 handoff 檔時，每個 CLI 目標仍可產生：
 
 - `design-feedback/outbox/<cli>/latest.md`：完整任務 prompt 與本批設計回饋。
 - `design-feedback/outbox/<cli>/run.command.md`：可在 repo root 執行的參考命令。

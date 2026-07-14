@@ -6,71 +6,83 @@ import {
   Inbox,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
 import { useApp } from "@/store/app-context";
 import { useAppData, type Metrics } from "@/store/app-data";
 import type { TextKey } from "@/i18n/strings";
-import { BarSpark, LineSpark, StreakDots } from "@/components/ui/sparkline";
 import { KpiCard, type KpiAccent } from "./kpi-card";
+
+interface KpiScopeContext {
+  activeTenders: number;
+  tendersWithDeadline: number;
+  activeCards: number;
+  allCards: number;
+}
 
 interface KpiDef {
   key: TextKey;
+  hintKey: TextKey;
   metric: keyof Metrics;
   icon: LucideIcon;
   accent: KpiAccent;
-  /** 趨勢百分比（示意，待接真實時序資料後改由後端供給）。 */
-  delta?: number;
-  /** 迷你趨勢圖；接收當前值以呈現 streak（示意資料）。 */
-  spark?: (value: number) => ReactNode;
+  scope: (context: KpiScopeContext) => number;
 }
 
-// 註：以下 spark/delta 皆為「示意」資料——目前 metrics 無時序欄位，
-// 比照 /knowvio 參考頁先給靜態趨勢，待後端補上歷史序列再換真實值。
+// 不以靜態 sparkline 偽裝成趨勢。每張卡的 coverage 皆由目前資料範圍即時計算。
 const KPIS: KpiDef[] = [
   {
     key: "kpiNew",
+    hintKey: "kpiNewHint",
     metric: "kpiNew",
     icon: Inbox,
     accent: "signal",
-    delta: 12,
-    spark: () => <BarSpark data={[10, 16, 12, 22, 18, 28, 24, 34]} />,
+    scope: ({ activeTenders }) => activeTenders,
   },
   {
     key: "kpiHigh",
+    hintKey: "kpiHighHint",
     metric: "kpiHigh",
     icon: Flame,
     accent: "high",
-    delta: 8,
-    spark: () => <LineSpark data={[6, 9, 7, 12, 10, 15, 14, 18]} />,
+    scope: ({ activeTenders }) => activeTenders,
   },
   {
     key: "kpiClosing",
+    hintKey: "kpiClosingHint",
     metric: "kpiClosing",
     icon: Clock,
     accent: "low",
-    delta: -5,
-    spark: () => <BarSpark data={[20, 18, 22, 16, 14, 12, 10, 8]} />,
+    scope: ({ tendersWithDeadline }) => tendersWithDeadline,
   },
   {
     key: "kpiInProgress",
+    hintKey: "kpiInProgressHint",
     metric: "kpiInProgress",
     icon: Activity,
     accent: "priority",
-    delta: 6,
-    spark: () => <LineSpark data={[4, 5, 7, 6, 9, 8, 11, 12]} />,
+    scope: ({ activeCards }) => activeCards,
   },
   {
     key: "kpiAccepted",
+    hintKey: "kpiAcceptedHint",
     metric: "kpiAccepted",
     icon: CircleCheck,
     accent: "high",
-    spark: (value) => <StreakDots active={value} />,
+    scope: ({ allCards }) => allCards,
   },
 ];
 
 export function KpiRow() {
   const { t } = useApp();
-  const { metrics } = useAppData();
+  const { metrics, tenders, cards, isExcluded } = useAppData();
+  const activeTenders = tenders.filter((tender) => !isExcluded(tender));
+  const scope: KpiScopeContext = {
+    activeTenders: activeTenders.length,
+    tendersWithDeadline: activeTenders.filter((tender) => tender.deadline)
+      .length,
+    activeCards: cards.filter((card) => card.status !== "done").length,
+    allCards: cards.length,
+  };
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {KPIS.map((k) => (
@@ -80,8 +92,9 @@ export function KpiRow() {
           value={metrics[k.metric]}
           icon={k.icon}
           accent={k.accent}
-          delta={k.delta}
-          spark={k.spark?.(metrics[k.metric])}
+          hint={t(k.hintKey)}
+          scopeTotal={k.scope(scope)}
+          scopeLabel={t("kpiScope")}
         />
       ))}
     </div>

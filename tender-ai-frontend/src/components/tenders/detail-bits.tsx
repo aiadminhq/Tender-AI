@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { Lang, TextKey } from "@/i18n/strings";
 import type {
@@ -14,7 +14,15 @@ import type {
   SimilarTender,
 } from "@/lib/api";
 import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
-import { Star, Clock, FileText } from "lucide-react";
+import {
+  ChevronDown,
+  ClipboardList,
+  Clock,
+  FileText,
+  Files,
+  Star,
+  type LucideIcon,
+} from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { TierBadge } from "@/components/ui/tier-badge";
@@ -388,9 +396,134 @@ function EmptyValue() {
   return <span className="text-ink-dim">—</span>;
 }
 
-/** 標案詳情版本：把履約/資格/押標金/類別/附件/附註整合為「一張常態性規格表」。
- *  顯示哪些欄位由團隊共用設定（後台 /settings/detail-fields）決定；被隱藏的欄位整列不出。
- *  未 enrich（revision 為 null）時優雅退化為空狀態提示。 */
+type DetailGroup = {
+  key: "core" | "supporting";
+  labelKey: TextKey;
+  icon: LucideIcon;
+  fieldKeys: readonly string[];
+  defaultExpanded: boolean;
+};
+
+/**
+ * 將同一份後台 revision 資料分為「履約與決標」及「資格、附件與補充」。
+ * 欄位鍵仍完全沿用 DETAIL_FIELDS，因此後台的欄位可見性設定會同時套用。
+ */
+const DETAIL_GROUPS: readonly DetailGroup[] = [
+  {
+    key: "core",
+    labelKey: "revisionCoreInfo",
+    icon: ClipboardList,
+    fieldKeys: [
+      "performanceLocation",
+      "performancePeriod",
+      "awardMethod",
+      "deposit",
+      "category",
+      "subsidySource",
+    ],
+    defaultExpanded: true,
+  },
+  {
+    key: "supporting",
+    labelKey: "revisionSupportingInfo",
+    icon: Files,
+    fieldKeys: ["qualification", "attachments", "extraNote"],
+    defaultExpanded: false,
+  },
+] as const;
+
+function RevisionDetailGroup({
+  group,
+  fields,
+  revision,
+  lang,
+  t,
+}: {
+  group: DetailGroup;
+  fields: readonly (typeof DETAIL_FIELDS)[number][];
+  revision: TenderRevisionDetail;
+  lang: Lang;
+  t: (k: TextKey) => string;
+}) {
+  const [expanded, setExpanded] = useState(group.defaultExpanded);
+  const contentId = `revision-detail-${group.key}`;
+  const Icon = group.icon;
+
+  return (
+    <section className="rounded-xl border border-hairline bg-card">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={contentId}
+        onClick={() => setExpanded((current) => !current)}
+        className="group flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-surface-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal focus-visible:ring-inset sm:px-4"
+      >
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-surface-1 text-signal">
+          <Icon size={15} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 text-[13px] font-medium text-ink">
+          {t(group.labelKey)}
+        </span>
+        <span className="tnum rounded-full bg-surface-1 px-2 py-0.5 text-[11px] text-ink-dim">
+          {fields.length}
+        </span>
+        <ChevronDown
+          size={16}
+          aria-hidden
+          className={cn(
+            "shrink-0 text-ink-dim transition-transform duration-200 motion-reduce:transition-none",
+            expanded && "rotate-180",
+          )}
+        />
+      </button>
+
+      <div
+        id={contentId}
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <dl className="mx-3.5 mb-3.5 border-l border-dashed border-hairline pl-4 sm:mx-4 sm:mb-4">
+            <div className="grid gap-x-6 sm:grid-cols-2">
+              {fields.map((field) => {
+                const label = t(field.labelKey);
+                const rich = RICH_DETAIL_FIELDS.has(field.key);
+                const value = rich
+                  ? richDetailValue(field.key, revision, t)
+                  : scalarDetailValue(field.key, revision, lang, t);
+
+                return (
+                  <div
+                    key={field.key}
+                    className={cn(
+                      "border-b border-hairline py-3 last:border-b-0 sm:py-3.5",
+                      rich && "sm:col-span-2",
+                    )}
+                  >
+                    <dt className="text-[11px] font-medium text-ink-dim">
+                      {label}
+                    </dt>
+                    <dd className="mt-1 break-words text-[13px] leading-relaxed text-ink">
+                      {value ?? <EmptyValue />}
+                    </dd>
+                  </div>
+                );
+              })}
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * 標案詳情版本：以可收合的資訊層級展示 revision 的真實後台欄位。
+ * 桌面版保留雙欄效率；手機版改為單欄標籤在上、內容在下，避免長文字擠壓或橫向溢位。
+ * 顯示哪些欄位仍由團隊共用設定（後台 /settings/detail-fields）決定。
+ */
 export function RevisionDetailBlock({
   revision,
   lang,
@@ -433,36 +566,23 @@ export function RevisionDetailBlock({
           {t("revisionEmpty")}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-hairline">
-          <table className="w-full border-collapse text-[13px]">
-            <tbody className="divide-y divide-hairline">
-              {visible.map((f) => {
-                const label = t(f.labelKey);
-                if (RICH_DETAIL_FIELDS.has(f.key)) {
-                  const value = richDetailValue(f.key, revision, t);
-                  return (
-                    <tr key={f.key}>
-                      <td colSpan={2} className="px-3 py-2.5 align-top">
-                        <div className="text-[11px] text-ink-dim">{label}</div>
-                        <div className="mt-1">{value ?? <EmptyValue />}</div>
-                      </td>
-                    </tr>
-                  );
-                }
-                const value = scalarDetailValue(f.key, revision, lang, t);
-                return (
-                  <tr key={f.key}>
-                    <td className="w-[32%] px-3 py-2.5 align-top text-[11px] text-ink-dim">
-                      {label}
-                    </td>
-                    <td className="px-3 py-2.5 align-top leading-relaxed text-ink">
-                      {value ?? <EmptyValue />}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-2.5">
+          {DETAIL_GROUPS.map((group) => {
+            const fields = visible.filter((field) =>
+              group.fieldKeys.includes(field.key),
+            );
+            if (fields.length === 0) return null;
+            return (
+              <RevisionDetailGroup
+                key={group.key}
+                group={group}
+                fields={fields}
+                revision={revision}
+                lang={lang}
+                t={t}
+              />
+            );
+          })}
         </div>
       )}
     </div>
