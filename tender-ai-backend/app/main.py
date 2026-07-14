@@ -106,4 +106,10 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/v1/health")
+async def api_v1_health() -> dict[str, str]:
+    """同源 Vercel 部署的健康檢查；不依賴資料庫或 API key。"""
+    return {"status": "ok"}
+
+
 app.include_router(api_router, dependencies=[Depends(require_api_key)])
