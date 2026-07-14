@@ -32,6 +32,8 @@
 - **分支**：在指定的 `claude/<主題>` 分支開發（本任務：`claude/codex-cloud-deployment-form-um3w96`）；未經同意不推到別的分支、不開 PR。
 - **Commit**：Conventional Commits ＋ 範圍標籤（`be`/`fe`/`data`/`infra`/`docs`）。
 - **雲端環境**：用完即丟，沒 push 就不存在；**連不到 PCC 招標網與本機 Ollama**，相關工作需在能連線的環境驗證。
+- **後台串接先讀 Lessons**：處理 Vercel／Supabase／API 資料異常前，先讀 `docs/governance/08-本地雲端後台串接Lessons.md`；production 是 Vercel 同源 `/api/v1`，不要假設仍使用舊 Railway API。
+- **資料筆數先驗證 API**：看到 UI 只有部分標案時，先用 production `health`、`tenders?page_size=3`、`next_cursor` 驗證，再查前端 filter／mock／分頁；不要直接改 page size 或切回 mock。
 - **覆蓋前先看**：要改/刪既有檔案先讀內容；與描述不符或非你所建，停下回報而非覆蓋。
 - **碰到 Layer B**：在需求單與 PR 寫清楚 ①同意基礎 ②共享範圍 ③對外隔離方式。
 
