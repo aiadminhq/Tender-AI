@@ -5,10 +5,10 @@
 目前版本已發布至 `origin/main`，最新 commit 為 `77c6809`。建議在工作區根目錄執行以下命令，先做唯讀稽核：
 
 ```bash
-ccw cli --tool claude --mode review --cd "." -p "$(cat docs/claude-code-uiux-data-audit.md)"
+ccw cli --tool claude --mode analysis --cd "." -p "$(cat docs/claude-code-uiux-data-audit.md)"
 ```
 
-若需在稽核後直接實作，請先保留稽核報告，再將 prompt 內的 `MODE: review` 改為 `MODE: write`，並確認 Claude Code 使用獨立分支，不要直接覆蓋其他未完成工作。
+若需在稽核後直接實作，請先保留稽核報告，再將 prompt 內的 `MODE: analysis` 改為 `MODE: write`，並確認 Claude Code 使用獨立分支，不要直接覆蓋其他未完成工作。
 
 ## 完整任務提示詞（可直接交給 Claude Code）
 
@@ -79,7 +79,7 @@ Phase 3 — 驗證與報告
 - 請建立 docs/claude-code-uiux-data-audit-report.md，內容包含：摘要、版本基線、路由覆蓋矩陣、UI/UX 問題表、資料串接矩陣、嚴重度（P0/P1/P2/P3）、證據 file:line／route／viewport、修復建議、測試結果、尚未驗證項目與下一階段計畫。
 - 報告不可只列「可再優化」；每一項必須說明使用者影響、根因、驗證方式與最小修復範圍。
 
-MODE: review
+MODE: analysis
 
 CONTEXT:
 @AGENTS.md @CLAUDE.md @docs/governance/**/* @docs/design-feedback-workflow.md
