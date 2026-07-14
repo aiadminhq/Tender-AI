@@ -18,12 +18,11 @@ import type {
   Tier,
 } from "@/types/domain";
 
+const configuredApiBase = import.meta.env.VITE_API_BASE as string | undefined;
 const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  // 同源部署預設：/api/v1 在 dev 由 vite proxy 轉本機後端、在 Vercel 由同站
-  // Python function（/api/*）服務，任何部署網域都自動對齊，免設環境變數。
-  // 要打外部後端（如 Railway）時以 VITE_API_BASE 覆寫。
-  "/api/v1";
+  // Vercel 的 root vercel.json 已把 Python function 與 SPA 部署在同一專案；
+  // production 必須走同源 API，避免殘留的 Railway URL 讓畫面讀到舊分頁／資料集。
+  import.meta.env.PROD ? "/api/v1" : (configuredApiBase ?? "/api/v1");
 
 // 選用 API 金鑰：設定 VITE_API_KEY 時帶上 X-API-Key（dev/staging 可不設）。
 // Phase 2：有 Bearer token 時一併帶上 Authorization header。
