@@ -20,9 +20,25 @@ from typing import Generator
 
 from bs4 import BeautifulSoup
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.session import AsyncSessionLocal
-from app.models.tender import Tender
+from app.models.tender import DailyTender, Source, Tender
+
+# 日報潛力等級 → daily_tender.tier（供 dashboard 高潛力 KPI／標案分級篩選使用）。
+_POTENCY_TIER = {"高潛力": "high", "中潛力": "mid"}
+
+
+def potency_to_tier(potency: str | None) -> str | None:
+    return _POTENCY_TIER.get(potency or "")
+
+
+def compute_days_left(deadline_iso: str | None, report_date: str) -> int | None:
+    if not deadline_iso:
+        return None
+    deadline = datetime.fromisoformat(deadline_iso).date()
+    report = datetime.fromisoformat(report_date).date()
+    return (deadline - report).days
 
 
 def parse_roc_date(roc_str: str) -> str:
@@ -182,6 +198,17 @@ async def ingest_daily_reports(
     html_files = sorted(report_dir_path.glob("tender-*.html"))
 
     async with session_factory() as session:
+        # 確保 PCC Source 存在
+        pcc_source = await session.execute(
+            select(Source).where(Source.name == "PCC")
+        )
+        pcc_source_obj = pcc_source.scalar()
+        if not pcc_source_obj:
+            pcc_source_obj = Source(name="PCC", base_url="https://web.pcc.gov.tw")
+            session.add(pcc_source_obj)
+            await session.flush()
+        source_id = pcc_source_obj.id
+
         for html_path in html_files:
             stats['reports_processed'] += 1
 
@@ -214,7 +241,7 @@ async def ingest_daily_reports(
                 else:
                     # 建立新標案（回填）
                     tender_obj = Tender(
-                        source_id=1,  # PCC 預設 source_id（需確認 backfill 中的值）
+                        source_id=source_id,
                         case_pk=parsed['case_pk'],
                         name=parsed['tender_name'],
                         org=parsed['agency'],
@@ -232,6 +259,25 @@ async def ingest_daily_reports(
                     )
                     session.add(tender_obj)
                     stats['tenders_created'] += 1
+
+                await session.flush()
+
+                # 每日快照（tier／days_left）：dashboard 高潛力 KPI 與標案分級篩選
+                # 皆讀 daily_tender 最新一筆，日報匯入若不寫這裡，這批標案的分級會恆為 NULL。
+                tier = potency_to_tier(potency)
+                if tier is not None:
+                    days_left = compute_days_left(parsed['deadline_iso'], parsed['report_date'])
+                    stmt = pg_insert(DailyTender).values(
+                        run_date=parsed['report_date'],
+                        tender_id=tender_obj.id,
+                        tier=tier,
+                        days_left=days_left,
+                    )
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["run_date", "tender_id"],
+                        set_={"tier": stmt.excluded.tier, "days_left": stmt.excluded.days_left},
+                    )
+                    await session.execute(stmt)
 
         await session.commit()
 

@@ -6,8 +6,7 @@ import { getToken } from "@/lib/auth-token";
 // api.ts 未 export API_BASE，比照其定義一份。
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  // 區網分享：dev 走相對 /api/v1（由 vite proxy 轉本機後端），靜態 build 維持絕對 localhost。
-  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
+  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 // 對齊後端 EventRequest.type（app/schemas）。
 // 註：kanban 註記／轉傳三類為前端先行（Layer B 行為訊號），後端 EventRequest.type

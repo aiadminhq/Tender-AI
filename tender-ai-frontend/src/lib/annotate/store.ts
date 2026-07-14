@@ -16,7 +16,7 @@ const STORAGE_KEY = "tender-ai:design-feedback";
 const FEEDBACK_ENDPOINT = "/__design-feedback";
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8000/api/v1");
+  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 interface State {
   enabled: boolean;

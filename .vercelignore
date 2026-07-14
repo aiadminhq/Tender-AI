@@ -1,0 +1,23 @@
+# 縮小部署上傳與 Python function 打包體積：
+# 設計資產、規劃文件與 agent 工具不參與 build 也不需進 serverless bundle。
+# 注意：tender-ai-frontend/（build 需要）與 tender-ai-backend/app（function 需要）不可排除。
+.git
+.claude
+.design-sync
+.stitch
+Design System
+prd-progress
+open-design
+prototype
+plans
+docs
+codex
+supabase
+*.md
+Schema Visualizer*.svg
+**/.venv
+tender-ai-backend/tests
+tender-ai-backend/scripts
+tender-ai-backend/data
+tender-ai-frontend/node_modules
+tender-ai-frontend/dist
