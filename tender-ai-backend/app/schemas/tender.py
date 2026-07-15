@@ -36,6 +36,9 @@ class TenderQuery(BaseModel):
     avoid: list[str] = Field(default_factory=list)
     q: str | None = None
     sort: SortKey = "feas"
+    # 預設只回「有效」標案（deadline_iso >= 今天 或 為 NULL）；置 True 才含已截止案。
+    # 於資料層過濾，避免大量過期案稀釋首頁、把「今日焦點」擠出視野。
+    include_expired: bool = False
     # 分頁：cursor（keyset）優先，帶了就走 keyset；未帶則沿用舊 page（offset）相容路徑。
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=50, ge=1, le=200)

@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import (
     and_,
@@ -60,6 +62,15 @@ from app.services.detail_parser import structure_text
 
 # q 斷詞：空白／半形逗號／全形逗號／頓號
 _Q_SPLIT = re.compile(r"[\s,，、]+")
+
+_TAIPEI = ZoneInfo("Asia/Taipei")
+
+
+def taipei_today() -> date:
+    """以台灣時區推得「今天」。deadline_iso 為台灣日期的 naive date，
+    後端可能跑在 UTC，用本地日期會在跨日邊界誤判有效性，故一律以 Asia/Taipei 為準。
+    """
+    return datetime.now(_TAIPEI).date()
 
 
 def _latest_snapshot_subq():
@@ -196,11 +207,14 @@ def _derived_tier_expr(latest, c_high: int, c_low: int):
     )
 
 
-def _build_filtered(q: TenderQuery, c_high: int, c_low: int):
+def _build_filtered(q: TenderQuery, c_high: int, c_low: int, today: date):
     """組裝主查詢（含 join 與篩選），回傳 (stmt, latest 子查詢, feas_raw, derived_tier)。
 
     tier 的投影與篩選一律用 _derived_tier_expr（潛力分級＝可行性分數分帶），
     而非報表快照 tier；feas_raw 僅供冷啟動（feasibility_team 為 NULL）時的顯示回退。
+
+    ``today`` 為判定「有效」的基準日（Asia/Taipei）；``q.include_expired`` 為 False 時
+    只留 deadline_iso 為 NULL 或 >= today 的案（在資料層擋掉已截止案）。
     """
     latest = _latest_snapshot_subq()
     feas_raw = _feasibility_score_expr()
@@ -218,6 +232,9 @@ def _build_filtered(q: TenderQuery, c_high: int, c_low: int):
     )
 
     conds = []
+    if not q.include_expired:
+        # 有效案＝未設截止日（NULL）或截止日尚未過（>= 今天）。
+        conds.append(or_(Tender.deadline_iso.is_(None), Tender.deadline_iso >= today))
     if q.tier:
         conds.append(derived_tier.in_(q.tier))
     if q.cat:
@@ -400,7 +417,7 @@ def _row_to_item(row) -> TenderListItem:
 
 
 async def list_tenders(
-    session: AsyncSession, q: TenderQuery
+    session: AsyncSession, q: TenderQuery, *, today: date | None = None
 ) -> tuple[list[TenderListItem], int, str | None]:
     """回傳 (分頁後清單, 符合條件總數, next_cursor)。
 
@@ -415,7 +432,8 @@ async def list_tenders(
     兩種模式皆多回一個 ``next_cursor``：尚有下一頁時為 opaque token，否則為 None。
     """
     c_high, c_low = await _latest_tier_thresholds(session)
-    stmt, latest, feas_raw, derived_tier = _build_filtered(q, c_high, c_low)
+    today = today or taipei_today()
+    stmt, latest, feas_raw, derived_tier = _build_filtered(q, c_high, c_low, today)
 
     total = await session.scalar(
         select(func.count()).select_from(stmt.order_by(None).subquery())

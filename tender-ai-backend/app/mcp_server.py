@@ -114,6 +114,9 @@ async def search_tenders(
         budget_max=budget_max,
         deadline=deadline_days,
         sort=sort,  # type: ignore[arg-type]
+        # include_expired=True 保留 MCP 查詢工具既有契約：不套用清單 API 的
+        # 「預設只回 active」；工具已提供 deadline_days 供 agent 自行收斂時效。
+        include_expired=True,
         page=page,
         page_size=page_size,
     )

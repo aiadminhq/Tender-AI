@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 import app.models  # noqa: F401  匯入所有 model 進 Base.metadata
+from app.api.v1.tenders import get_today
 from app.core.auth import get_current_user, issue_token, require_admin_user
 from app.core.config import settings
 from app.core.errors import PermissionDenied
@@ -102,6 +103,9 @@ async def _override_get_session():
 app.dependency_overrides[get_session] = _override_get_session
 # 自管 session 生命週期的服務（如 SL6 run_evolution）注入的是 factory；整路改走測試庫。
 app.dependency_overrides[get_session_factory] = lambda: TestSessionLocal
+# 凍結「今天」為種子資料的概念性今日（d_new=2026-06-17），使 active 過濾預設下
+# 四筆種子（deadline 06-20/06-24/07-07/NULL）皆為有效案，維持既有測試語義穩定。
+app.dependency_overrides[get_today] = lambda: date(2026, 6, 17)
 
 
 def _admin_dsn() -> str:
