@@ -404,24 +404,46 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const ac = new AbortController();
     setTendersLoading(true);
     // 初次載入＋server-filter 變動皆走此路徑：cursor 依篩選指紋失效，故重抓「第一頁」。
-    fetchTenderPage(null, ac.signal, serverFilter)
-      .then((page) => {
+    // 後端預設只回有效案（約 2 頁），故此處沿 next_cursor 一次抓完整個有效集，
+    // 讓清單與「今日焦點」直接填滿，不必靠使用者手動載入更多。
+    (async () => {
+      try {
+        const first = await fetchTenderPage(null, ac.signal, serverFilter);
         // 有下推篩選時整批替換為新篩選集第一頁（含空集＝真實 0 筆）；
         // 無篩選且回空則保留 mock（後端未起／空庫時 UI 不空白）。
         const hasFilter = Boolean(serverFilter);
-        if (page.tenders.length || hasFilter) {
-          setTenders(page.tenders);
+        if (first.tenders.length || hasFilter) {
+          setTenders(first.tenders);
           setUsingLiveData(true);
         }
-        nextCursorRef.current = page.nextCursor;
-        setHasMore(Boolean(page.nextCursor));
+        // 沿游標續抓剩餘有效頁；以 id 去重防重疊，逐頁附加。
+        let cursor = first.nextCursor;
+        let total = first.tenders.length;
+        while (cursor) {
+          const next = await fetchTenderPage(cursor, ac.signal, serverFilter);
+          if (next.tenders.length) {
+            setTenders((prev) => {
+              const seen = new Set(prev.map((t) => t.id));
+              const fresh = next.tenders.filter((t) => !seen.has(t.id));
+              return fresh.length ? [...prev, ...fresh] : prev;
+            });
+            setUsingLiveData(true);
+            total += next.tenders.length;
+          }
+          if (!next.tenders.length) break; // 防呆：空頁即停
+          cursor = next.nextCursor;
+        }
+        // 有效集已抓完：無殘留游標。loadMore 仍保留給未來大量集合情境。
+        nextCursorRef.current = null;
+        setHasMore(false);
         // 列表載入完成送一次 view（不帶 tender_id）。
-        trackEvent("view", { payload: { count: page.tenders.length } });
-      })
-      .catch(() => {
-        /* 後端未啟動／錯誤：保留現有資料 */
-      })
-      .finally(() => setTendersLoading(false));
+        trackEvent("view", { payload: { count: total } });
+      } catch {
+        /* 後端未啟動／錯誤／abort：保留現有資料 */
+      } finally {
+        setTendersLoading(false);
+      }
+    })();
     return () => ac.abort();
     // sfKey 為 server-filter 穩定指紋；變動即重取第一頁。
     // eslint-disable-next-line react-hooks/exhaustive-deps

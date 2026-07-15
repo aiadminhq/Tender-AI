@@ -50,6 +50,9 @@ def filters_fingerprint(q: Any) -> str:
         "focus": sorted(q.focus or []),
         "avoid": sorted(q.avoid or []),
         "q": (q.q or "").strip(),
+        # include_expired 會改變結果集（含/不含已截止案），必須納入指紋，
+        # 否則切換此開關後沿用舊 cursor 會拿到跨集合、跳號的錯誤結果。
+        "include_expired": bool(getattr(q, "include_expired", False)),
     }
     blob = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]

@@ -281,9 +281,12 @@ async def _collect_candidates(
         for hit in similar_hits:
             add(_source_payload(hit, kind="similar", score=hit.score))
 
+    # include_expired=True 保留助手既有取材契約：不套用清單 API 的「預設只回 active」，
+    # 讓助手仍能引用近期已截止案作為佐證來源（active 預設屬列表消費端的產品決定）。
     query = TenderQuery(
         q=prompt or None,
         page_size=5,
+        include_expired=True,
     )
     tender_items, _, _ = await query_svc.list_tenders(session, query)
     for item in tender_items:

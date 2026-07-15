@@ -104,7 +104,12 @@ async def run_push(
         run_date = date.today()
 
     # 1) 候選池：以學習可行度排序，取較寬的前段（再於下方過濾／去重）
-    q = TenderQuery(sort="feas", page=1, page_size=max(limit * 6, 30))
+    #    明確 include_expired=True 以保留 push 既有契約：候選池不套用清單 API 的
+    #    「預設只回 active」過濾（該預設是為了前端首頁焦點，屬列表消費端的決定）。
+    #    push 是否該剔除已截止案是另一個獨立產品決策，若要開啟需連同 push 測試一併調整。
+    q = TenderQuery(
+        sort="feas", page=1, page_size=max(limit * 6, 30), include_expired=True
+    )
     items, _, _ = await list_tenders(session, q)
 
     # 2) 顯示可行度門檻
