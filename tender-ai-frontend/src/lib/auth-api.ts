@@ -4,11 +4,8 @@
 // Phase 2：帶 Bearer token（HMAC-signed，由登入後 setToken 存入 localStorage）。
 // 密碼明文僅於送出當下存在於記憶體，不落地、不寫版控。
 import { getToken } from "@/lib/auth-token";
+import { API_BASE } from "@/lib/api-base";
 import type { FilterState } from "@/types/domain";
-
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};

@@ -3,12 +3,9 @@
 // 契約見 tender-ai-backend/app/schemas/assistant.py。失敗時 throw，由 UI fallback。
 import type { SourceKey } from "@/types/domain";
 import { getToken } from "@/lib/auth-token";
+import { API_BASE } from "@/lib/api-base";
 import type { AssistantArtifact } from "@/components/assistant/assistant-artifact-types";
 import { adaptAssistantArtifact } from "@/components/assistant/assistant-artifact-adapter";
-
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};

@@ -8,11 +8,8 @@
 //  - module-level store + useSyncExternalStore：跨元件共享隱藏集合，毋須掛 Provider（不動 App.tsx）。
 //  - 後端連不到時優雅退化為「全部顯示」（空集合），不阻斷 UI。
 import { useEffect, useSyncExternalStore } from "react";
+import { API_BASE } from "@/lib/api-base";
 import type { TextKey } from "@/i18n/strings";
-
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 function authHeaders(): Record<string, string> {
   const key = import.meta.env.VITE_API_KEY as string | undefined;

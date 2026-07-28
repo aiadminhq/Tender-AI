@@ -3,6 +3,7 @@
 // - annotations：持久化到 localStorage，重整不掉。
 
 import { useSyncExternalStore } from "react";
+import { API_BASE } from "@/lib/api-base";
 import { getToken } from "@/lib/auth-token";
 import { serializeAnnotations } from "./serialize";
 import type {
@@ -13,9 +14,6 @@ import type {
 } from "./types";
 
 const STORAGE_KEY = "tender-ai:design-feedback";
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ?? "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
-
 interface State {
   enabled: boolean;
   annotations: Annotation[];
@@ -157,7 +155,6 @@ export async function exportAnnotations(
       "tender-ai-design-feedback-task.md",
     );
     if (delivery.ok) {
-      void postBackend(targetCli);
       return {
         outcome: {
           ok: true,

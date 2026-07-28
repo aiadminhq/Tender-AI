@@ -23,23 +23,10 @@ try {
     localStorage.setItem("tender-theme", "dark");
     localStorage.setItem("tender-lang", "zh-Hant-TW");
     localStorage.removeItem("tender-ai:design-feedback");
+    localStorage.removeItem("tender:auth-user");
+    localStorage.removeItem("tender:auth-token");
     // 跳過小助手首訪導覽（z-[60] 全螢幕遮罩會攔截點擊）。
     localStorage.setItem("tender-assistant-onboarded", "1");
-    // 繞過登入閘門：種一筆合法身分（mock/後端不可達 → 沿用快取身分，status=authed）。
-    localStorage.setItem(
-      "tender:auth-user",
-      JSON.stringify({
-        id: 1,
-        name: "Verify Bot",
-        email: "alex@hqdesign.tw",
-        role: "admin",
-        isAdmin: true,
-        whitelistActive: true,
-        consentShared: true,
-        consentAt: "2026-06-24T00:00:00Z",
-        passwordIsDefault: false,
-      }),
-    );
   });
   const page = await ctx.newPage();
   page.on("console", (m) => {
@@ -47,8 +34,16 @@ try {
   });
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  // 1) design-system 頁渲染 + dev toggle 出現
+  // 先明確走 dev-only 示範模式；直接種快取 user 會被 fail-closed Auth 正確登出。
+  await page.route("**/api/v1/auth/login", (route) => route.abort());
   await page.goto(`${BASE}/design-system`, { waitUntil: "networkidle" });
+  await page.getByLabel("公司信箱").fill("verify@hqdesign.tw");
+  await page.getByLabel("密碼").fill("not-a-real-password");
+  await page.getByRole("button", { name: "登入", exact: true }).click();
+  await page.getByRole("button", { name: "改用示範模式（離線瀏覽）" }).click();
+  await page.waitForTimeout(200);
+
+  // 1) design-system 頁渲染 + dev toggle 出現
   await page.waitForTimeout(500);
   const heading = await page.locator("h1", { hasText: "設計系統" }).count();
   heading

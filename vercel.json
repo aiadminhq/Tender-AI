@@ -4,7 +4,13 @@
   "buildCommand": "npx --yes pnpm@11.9.0 --dir tender-ai-frontend build",
   "outputDirectory": "tender-ai-frontend/dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
