@@ -1,6 +1,7 @@
 // 後端 API 對接：抓真實標案，映射成前端 Tender 契約。
 // 失敗（後端未啟動／網路錯誤）時拋出，由呼叫端 fallback 回 mock。
 import { getToken } from "@/lib/auth-token";
+import { API_BASE } from "@/lib/api-base";
 import type {
   Category,
   CategorySignal,
@@ -17,12 +18,6 @@ import type {
   TenderRevisionDetail,
   Tier,
 } from "@/types/domain";
-
-const configuredApiBase = import.meta.env.VITE_API_BASE as string | undefined;
-const API_BASE =
-  // Vercel 的 root vercel.json 已把 Python function 與 SPA 部署在同一專案；
-  // production 必須走同源 API，避免殘留的 Railway URL 讓畫面讀到舊分頁／資料集。
-  import.meta.env.PROD ? "/api/v1" : (configuredApiBase ?? "/api/v1");
 
 // 選用 API 金鑰：設定 VITE_API_KEY 時帶上 X-API-Key（dev/staging 可不設）。
 // Phase 2：有 Bearer token 時一併帶上 Authorization header。

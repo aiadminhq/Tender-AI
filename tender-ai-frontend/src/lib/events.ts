@@ -2,11 +2,7 @@
 // 沿用 api.ts 的 API_BASE。不阻塞 UI、catch 吞錯（比照 fetchTenders 容錯）。
 // VITE_USE_API === "false" 全 mock 不打 API；VITE_TRACK === "false" 可單獨關埋點。
 import { getToken } from "@/lib/auth-token";
-
-// api.ts 未 export API_BASE，比照其定義一份。
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
+import { API_BASE } from "@/lib/api-base";
 
 // 對齊後端 EventRequest.type（app/schemas）。
 // 註：kanban 註記／轉傳三類為前端先行（Layer B 行為訊號），後端 EventRequest.type
@@ -29,6 +25,17 @@ export type EventType =
 interface TrackOptions {
   tenderId?: string;
   payload?: Record<string, unknown>;
+}
+
+function eventHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const key = import.meta.env.VITE_API_KEY as string | undefined;
+  if (key) headers["X-API-Key"] = key;
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
 }
 
 function trackingEnabled(): boolean {
@@ -58,16 +65,10 @@ export function trackEvent(type: EventType, opts: TrackOptions = {}): void {
   }
   if (opts.payload) body.payload = opts.payload;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
   try {
     void fetch(`${API_BASE}/events`, {
       method: "POST",
-      headers,
+      headers: eventHeaders(),
       body: JSON.stringify(body),
       keepalive: true, // 卸載時（dwell）仍能送達
     }).catch(() => {
@@ -102,16 +103,10 @@ export async function trackEventAwait(
   }
   if (opts.payload) body.payload = opts.payload;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
   try {
     const res = await fetch(`${API_BASE}/events`, {
       method: "POST",
-      headers,
+      headers: eventHeaders(),
       body: JSON.stringify(body),
     });
     return res.ok;

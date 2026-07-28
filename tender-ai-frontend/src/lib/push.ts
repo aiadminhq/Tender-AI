@@ -3,11 +3,8 @@
 //   POST /push/run    → 觸發一次每日推播批次（依承標判準挑高潛力標案）
 //   POST /push/read   → 標記已讀（單筆或全部）
 // 契約見 tender-ai-backend/app/schemas/push.py。沿用 assistant.ts 的 API_BASE / authHeaders。
+import { API_BASE } from "@/lib/api-base";
 import type { Tier } from "@/types/domain";
-
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 function authHeaders(): Record<string, string> {
   const key = import.meta.env.VITE_API_KEY as string | undefined;

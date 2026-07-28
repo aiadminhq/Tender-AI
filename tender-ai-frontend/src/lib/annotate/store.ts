@@ -3,6 +3,7 @@
 // - annotations：持久化到 localStorage，重整不掉。
 
 import { useSyncExternalStore } from "react";
+import { API_BASE } from "@/lib/api-base";
 import { getToken } from "@/lib/auth-token";
 import { serializeAnnotations } from "./serialize";
 import type {
@@ -17,10 +18,6 @@ const FEEDBACK_ENDPOINT = "/__design-feedback";
 const DISPATCH_ENDPOINT = "/__design-feedback/dispatch";
 const DISPATCH_JOBS_ENDPOINT = "/__design-feedback/jobs/";
 const DIRECT_CLI_TARGETS = new Set(["claude", "codex", "gemini", "opencode"]);
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
-
 interface State {
   enabled: boolean;
   annotations: Annotation[];

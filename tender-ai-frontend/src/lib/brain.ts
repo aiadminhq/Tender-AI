@@ -5,9 +5,7 @@
 // byokKeySet 為唯讀衍生布林（金鑰是否已設定），永不取得金鑰本體。
 // 契約見 tender-ai-backend/app/schemas/settings.py。
 
-const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
+import { API_BASE } from "@/lib/api-base";
 
 function authHeaders(): Record<string, string> {
   const key = import.meta.env.VITE_API_KEY as string | undefined;
