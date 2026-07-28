@@ -307,6 +307,87 @@ async def test_stream_cli_codex_nonzero_exit_raises(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_stream_cli_falls_back_to_next_verified_agent(monkeypatch):
+    calls: list[tuple[str, ...]] = []
+    codex_line = json.dumps(
+        {
+            "type": "item.completed",
+            "item": {"type": "agent_message", "text": "Codex 接手完成"},
+        }
+    )
+
+    async def fake_exec(*argv, stdout=None, stderr=None):
+        calls.append(argv)
+        if argv[0] == "claude":
+            raise FileNotFoundError
+        assert argv[0] == "codex"
+        return _FakeProc([codex_line], returncode=0)
+
+    monkeypatch.setattr(brain.asyncio, "create_subprocess_exec", fake_exec)
+    chunks = await _collect(
+        brain.stream(
+            config=_Cfg(
+                provider="cli",
+                cli_agent="claude",
+                cli_model="claude-sonnet-5",
+            ),
+            messages=[],
+            prompt="x",
+        )
+    )
+
+    assert [argv[0] for argv in calls] == ["claude", "codex"]
+    assert "--model" in calls[0]
+    assert "--model" not in calls[1]
+    assert chunks == [
+        BrainChunk("progress", "claude 無法使用，改由 codex 接手"),
+        BrainChunk("delta", "Codex 接手完成"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_stream_cli_fallback_excludes_unverified_agents(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_exec(*argv, stdout=None, stderr=None):
+        calls.append(argv[0])
+        raise FileNotFoundError
+
+    monkeypatch.setattr(brain.asyncio, "create_subprocess_exec", fake_exec)
+    with pytest.raises(BrainError, match="所有 CLI 代理皆失敗"):
+        await _collect(
+            brain.stream(
+                config=_Cfg(provider="cli", cli_agent="claude"),
+                messages=[],
+                prompt="x",
+            )
+        )
+
+    assert calls == ["claude", "codex", "hermes"]
+
+
+@pytest.mark.asyncio
+async def test_stream_cli_does_not_fallback_after_partial_answer(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_exec(*argv, stdout=None, stderr=None):
+        calls.append(argv[0])
+        return _FakeProc(["第一段回答"], returncode=1)
+
+    monkeypatch.setattr(brain.asyncio, "create_subprocess_exec", fake_exec)
+    with pytest.raises(BrainError, match="CLI 非零退出"):
+        await _collect(
+            brain.stream(
+                config=_Cfg(provider="cli", cli_agent="hermes"),
+                messages=[],
+                prompt="x",
+            )
+        )
+
+    assert calls == ["hermes"]
+
+
+@pytest.mark.asyncio
 async def test_stream_cli_hermes_streams_plaintext_deltas(monkeypatch):
     async def fake_exec(*argv, stdout=None, stderr=None):
         assert argv[0] == "hermes"

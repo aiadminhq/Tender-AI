@@ -31,7 +31,7 @@ import httpx
 
 from app.core.config import settings
 from app.services import llm
-from app.services.brain_cli_registry import get_spec
+from app.services.brain_cli_registry import CLI_REGISTRY, get_spec
 
 
 class BrainError(RuntimeError):
@@ -208,9 +208,53 @@ def _cli_argv(agent: str, prompt: str, model: str | None = None) -> list[str]:
 async def _stream_cli(
     config: Any, *, prompt: str, focus_note: str
 ) -> AsyncIterator[BrainChunk]:
-    agent = getattr(config, "cli_agent", None) or "claude"
-    model = getattr(config, "cli_model", None) or None
+    selected_agent = getattr(config, "cli_agent", None) or "claude"
+    selected_model = getattr(config, "cli_model", None) or None
     full_prompt = _build_cli_prompt(prompt, focus_note)
+    attempts = _cli_attempt_order(selected_agent)
+    errors: list[str] = []
+
+    for index, agent in enumerate(attempts):
+        emitted_answer = False
+        try:
+            async for chunk in _stream_cli_once(
+                agent=agent,
+                model=selected_model if agent == selected_agent else None,
+                full_prompt=full_prompt,
+            ):
+                if chunk.kind == "delta":
+                    emitted_answer = True
+                yield chunk
+            return
+        except BrainError as e:
+            # 已輸出部分答案時不可改由另一代理重跑，避免前端收到重複或矛盾內容。
+            if emitted_answer:
+                raise
+            errors.append(f"{agent}: {e}")
+            if index + 1 < len(attempts):
+                next_agent = attempts[index + 1]
+                yield BrainChunk(
+                    "progress",
+                    f"{agent} 無法使用，改由 {next_agent} 接手",
+                )
+
+    raise BrainError(f"所有 CLI 代理皆失敗：{'；'.join(errors)}")
+
+
+def _cli_attempt_order(selected_agent: str) -> list[str]:
+    """首選代理優先，其後只加入本機已驗證的 fallback 代理。"""
+    verified = [
+        key
+        for key, spec in CLI_REGISTRY.items()
+        if not spec.needs_local_verify and key != selected_agent
+    ]
+    return [selected_agent, *verified]
+
+
+async def _stream_cli_once(
+    *, agent: str, model: str | None, full_prompt: str
+) -> AsyncIterator[BrainChunk]:
+    """執行單一 CLI；fallback 策略由 ``_stream_cli`` 統一處理。"""
     argv = _cli_argv(agent, full_prompt, model)
 
     try:
