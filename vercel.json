@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm i -g pnpm@10 && pnpm --dir tender-ai-frontend install --frozen-lockfile",
+  "installCommand": "npm i -g pnpm@11.9.0 && pnpm --dir tender-ai-frontend install --frozen-lockfile",
   "buildCommand": "pnpm --dir tender-ai-frontend build",
   "outputDirectory": "tender-ai-frontend/dist",
   "rewrites": [
