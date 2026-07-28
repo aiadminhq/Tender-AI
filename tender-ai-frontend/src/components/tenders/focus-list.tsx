@@ -1,39 +1,50 @@
 import { useMemo, useState } from "react";
-import type { Tender } from "@/types/domain";
+import type { SortDir, Tender } from "@/types/domain";
 import { useAppData } from "@/store/app-data";
-import { daysLeft } from "@/lib/format";
-import {
-  FocusSortBar,
-  type FocusSort,
-} from "@/components/tenders/focus-sort-bar";
+import { FocusSortBar } from "@/components/tenders/focus-sort-bar";
 import { FocusRow } from "@/components/tenders/focus-row";
 import { TenderDrawer } from "@/components/tenders/tender-drawer";
+import {
+  FOCUS_SORT_DEFAULT_DIR,
+  sortFocusItems,
+  type FocusSort,
+} from "@/lib/focus-sort";
 
 // 今日焦點專用列表（取代 <TenderTable bare>）：
 // 本地排序（不動全域 filter.sort）＋ 同卡可多列展開 ＋ 共用 TenderDrawer 作快速預覽入口。
 
 /** 今日焦點列表（R1 密度／R2+R4 多列就地展開／R3 兩顆入口／R7 本地排序）。 */
-export function FocusList({ tenders }: { tenders: Tender[] }) {
+export function FocusList({
+  tenders,
+  limit = 8,
+}: {
+  tenders: Tender[];
+  limit?: number;
+}) {
   const { feasOf } = useAppData();
-  const [sort, setSort] = useState<FocusSort>("feasibility");
+  const [sort, setSort] = useState<FocusSort>("deadline");
+  const [sortDirection, setSortDirection] = useState<SortDir>(
+    FOCUS_SORT_DEFAULT_DIR.deadline,
+  );
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [drawerId, setDrawerId] = useState<string | null>(null);
 
-  // 本地排序：匹配度（feasOf().score）由高到低；金額由高到低；截止日由近到遠。
-  const sorted = useMemo(() => {
-    const list = [...tenders];
-    switch (sort) {
-      case "budget":
-        return list.sort((a, b) => (b.budget ?? 0) - (a.budget ?? 0));
-      case "deadline":
-        return list.sort(
-          (a, b) => deadlineRank(a.deadline) - deadlineRank(b.deadline),
-        );
-      case "feasibility":
-      default:
-        return list.sort((a, b) => feasOf(b).score - feasOf(a).score);
-    }
-  }, [tenders, sort, feasOf]);
+  // 先依使用者指定的對象與方向排序，再截取首頁顯示筆數。
+  const sorted = useMemo(
+    () =>
+      sortFocusItems(
+        tenders,
+        sort,
+        sortDirection,
+        (tender) => feasOf(tender).score,
+      ).slice(0, limit),
+    [tenders, sort, sortDirection, feasOf, limit],
+  );
+
+  const changeSort = (nextSort: FocusSort) => {
+    setSort(nextSort);
+    setSortDirection(FOCUS_SORT_DEFAULT_DIR[nextSort]);
+  };
 
   const toggle = (id: string) =>
     setExpandedIds((prev) => {
@@ -50,7 +61,12 @@ export function FocusList({ tenders }: { tenders: Tender[] }) {
   return (
     <div className="space-y-2.5">
       <div className="flex justify-end">
-        <FocusSortBar value={sort} onChange={setSort} />
+        <FocusSortBar
+          value={sort}
+          direction={sortDirection}
+          onChange={changeSort}
+          onDirectionChange={setSortDirection}
+        />
       </div>
       <div className="space-y-1.5">
         {sorted.map((tender) => (
@@ -66,12 +82,4 @@ export function FocusList({ tenders }: { tenders: Tender[] }) {
       <TenderDrawer tender={drawerTender} onClose={() => setDrawerId(null)} />
     </div>
   );
-}
-
-// 截止日排序鍵：無截止／無效日期排到最後（近到遠）。
-function deadlineRank(iso?: string): number {
-  if (!iso) return Number.POSITIVE_INFINITY;
-  const ms = new Date(iso).getTime();
-  if (Number.isNaN(ms)) return Number.POSITIVE_INFINITY;
-  return daysLeft(iso);
 }

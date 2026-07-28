@@ -4,7 +4,7 @@
 選擇 AI 助手視窗背後由哪個 provider 生成：
 - ``ollama``（預設）：本機換模型。
 - ``cli``：spawn 本機 headless CLI（claude/codex/hermes，已注入 tender-ai-brain MCP）自主 agentic。
-- ``byok``：自帶金鑰直連雲端 LLM（v1：Anthropic）。
+- ``byok``：自帶金鑰直連雲端 LLM（Anthropic / OpenRouter）。
 
 secret 紅線（見 CLAUDE.md）：BYOK 金鑰本體只進 ``.env``；此處只回傳／接收非密欄位，
 ``byok_key_set`` 為**唯讀**衍生布林（金鑰是否已設定），永不回傳金鑰本體。
@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.services.brain_cli_registry import cli_agent_keys
 
 BrainProvider = Literal["ollama", "cli", "byok"]
-ByokProtocol = Literal["anthropic"]
+ByokProtocol = Literal["anthropic", "openrouter"]
 
 
 class BrainConfigOut(BaseModel):

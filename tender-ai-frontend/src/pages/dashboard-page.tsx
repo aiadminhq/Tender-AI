@@ -29,9 +29,9 @@ export function DashboardPage() {
   const { t } = useApp();
   const { filteredTenders, usingLiveData } = useAppData();
   // 今日焦點只放仍可投標的案：排除已過截止日者（無截止日資料者保留）。
-  const focus = filteredTenders
-    .filter((x) => !x.deadline || daysLeft(x.deadline) >= 0)
-    .slice(0, 8);
+  const focus = filteredTenders.filter(
+    (x) => !x.deadline || daysLeft(x.deadline) >= 0,
+  );
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
@@ -48,14 +48,14 @@ export function DashboardPage() {
       {/* 主欄＝核心任務（今日焦點清單）；側欄＝概覽輔助（類型分佈、動態）。 */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <MaximizableCard title={t("focusToday")} className="min-w-0">
-          <FocusList tenders={focus} />
+          <FocusList tenders={focus} limit={8} />
         </MaximizableCard>
 
         <div className="space-y-5">
           <MaximizableCard title={t("categoryDist")}>
             <CategoryChart />
           </MaximizableCard>
-          <MaximizableCard title={t("activity")}>
+          <MaximizableCard title={t("teamProgress")}>
             <ActivityStream />
           </MaximizableCard>
         </div>

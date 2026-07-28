@@ -13,6 +13,7 @@ function authHeaders(): Record<string, string> {
 }
 
 export type BrainProvider = "ollama" | "cli" | "byok";
+export type ByokProtocol = "anthropic" | "openrouter";
 // CLI 代理 key 改為註冊表驅動（後端單一事實來源），不再是封閉 union；
 // 前端用 string，合法值由 fetchBrainAgents 動態取得。
 export type CliAgent = string;
@@ -23,7 +24,7 @@ export interface BrainConfig {
   ollamaModel: string | null;
   cliAgent: string | null;
   cliModel: string | null;
-  byokProtocol: string | null;
+  byokProtocol: ByokProtocol | null;
   byokBaseUrl: string | null;
   byokModel: string | null;
   byokKeySet: boolean;
@@ -36,7 +37,7 @@ export interface BrainConfigUpdate {
   ollamaModel?: string | null;
   cliAgent?: CliAgent | null;
   cliModel?: string | null;
-  byokProtocol?: "anthropic" | null;
+  byokProtocol?: ByokProtocol | null;
   byokBaseUrl?: string | null;
   byokModel?: string | null;
 }
@@ -46,7 +47,7 @@ interface BrainConfigDto {
   ollama_model: string | null;
   cli_agent: string | null;
   cli_model: string | null;
-  byok_protocol: string | null;
+  byok_protocol: ByokProtocol | null;
   byok_base_url: string | null;
   byok_model: string | null;
   byok_key_set: boolean;

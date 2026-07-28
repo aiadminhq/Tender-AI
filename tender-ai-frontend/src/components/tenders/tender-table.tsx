@@ -106,7 +106,7 @@ export function TenderTable({
         {/* 表頭（桌機） */}
         <div
           className={cn(
-            "hidden gap-3 border-b border-border px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-ink-dim lg:grid",
+            "hidden gap-3 border-b border-border px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-ink-dim xl:grid",
             ROW_GRID,
           )}
         >
@@ -115,7 +115,7 @@ export function TenderTable({
           <SortHead sortKey="budget" label="colBudget" align="right" />
           <SortHead sortKey="deadline" label="colDeadlineDate" align="right" />
           <SortHead sortKey="deadline" label="colDaysLeft" align="right" />
-          <SortHead sortKey="feasibility" label="colFeasibility" />
+          <SortHead sortKey="feasibility" label="colFeasibility" align="right" />
           <span className="text-center">{t("colOwner")}</span>
           <span />
         </div>

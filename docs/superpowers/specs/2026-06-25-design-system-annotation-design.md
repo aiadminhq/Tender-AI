@@ -4,7 +4,7 @@
 > 分支：`claude/busy-sagan-gm197s`
 
 > **狀態（2026-06-25 補注）**：🟡 規格定案／開發中（2026-06-25）。設計系統呈現頁＋即時標註回傳工具（Track B），dev-time 工具、不碰 Layer B。對應 commit `e1bba1f`（規格）。
-> 本規格為設計當時記錄，內文不再回改；最新行為以程式碼與 `docs/governance/05-進度與白話術語.md` 進度表為準。
+> 本規格為設計當時記錄。回饋交接機制已改為「複製／下載任務提示詞後人工遞交」，不再使用 Vite 寫檔 middleware 或自動啟動 CLI；最新行為以程式碼與 `docs/design-feedback-workflow.md` 為準。
 
 ## 目標（要解決什麼）
 
@@ -58,14 +58,13 @@ createdAt     // new Date().toISOString()（瀏覽器端允許）
 - `enabled`（標註模式開關）：暫態，不持久化。
 - `annotations`：持久化到 `localStorage` key `tender-ai:design-feedback`，重整不掉。
 
-## 回傳機制（hybrid：寫檔＋複製）
+## 回傳機制（歷史設計，已由人工提示詞交接取代）
 
 序列化所有標註成**結構化 Markdown**（依 route 分組，含 selector／componentGuess／type／severity／comment／textSnapshot）：
 
-- **首選（dev）**：`POST /__design-feedback` 到 Vite dev middleware → append 到 **repo 根 `design-feedback/inbox.md`**。Claude Code CLI 直接讀這檔，拿到明確的介面優化指示。
-- **後援**：寫檔失敗（非 dev／middleware 不在）時，**複製到剪貼簿** ＋ 提供 `.md` 下載，使用者可手動貼給 CLI。
-
-Vite plugin（`vite-plugin-design-feedback.ts`）以 `configureServer(server)` + `server.middlewares.use()` 實作，**僅 dev**；append 而非覆蓋，每批用分隔線與時間戳分段。
+- 現行作法：依使用者選擇的目標生成結構化任務提示詞，複製到剪貼簿；無法複製時下載 `.md`。
+- 使用者自行檢閱後貼入目標工具；系統不會建立本機 inbox、啟動或控制 CLI。
+- 後端彙整是獨立且可選的保存流程，規格見 `docs/design-feedback-workflow.md`。
 
 ## 檔案清單
 
@@ -78,14 +77,12 @@ Vite plugin（`vite-plugin-design-feedback.ts`）以 `configureServer(server)` +
 - `src/components/annotate/annotation-panel.tsx` — 輸入彈窗。
 - `src/components/annotate/annotation-pin.tsx` — 編號圖釘＋清單。
 - `src/components/annotate/annotation-toggle.tsx` — toolbar 箭頭按鈕。
-- `vite-plugin-design-feedback.ts` — dev 寫檔 middleware。
 - `src/pages/design-system.tsx` — 呈現頁。
 
 修改：
 
 - `src/App.tsx` — 加 dev route ＋ 掛 `<AnnotationLayer />`。
 - `src/components/layout/topbar.tsx` — 加箭頭 toggle（dev-gated）。
-- `vite.config.ts` — plugins 陣列加 design-feedback plugin。
 - `src/i18n/strings.ts` — 補 zh/en 文案。
 
 ## 邊界與非目標
@@ -98,5 +95,5 @@ Vite plugin（`vite-plugin-design-feedback.ts`）以 `configureServer(server)` +
 
 - `/design-system` 能開、tokens 即時反映 `index.css`、元件 variant 齊全。
 - toolbar 箭頭可切換標註模式；任一頁點 DOM 出彈窗、可輸入、留圖釘、重整不掉。
-- 送出後 `design-feedback/inbox.md` 出現結構化條目；middleware 不在時走複製／下載後援。
+- 送出後能取得可複製的結構化任務提示詞；剪貼簿不可用時提供下載後援。
 - House style：繁中 Noto Sans TC、16px 圓角系統、僅淡陰影、i18n 成對。

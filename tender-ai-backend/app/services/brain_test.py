@@ -34,7 +34,13 @@ def _candidate_model(provider: str, candidate: SimpleNamespace) -> str | None:
     if provider == "ollama":
         return getattr(candidate, "ollama_model", None) or settings.chat_model
     if provider == "byok":
-        return getattr(candidate, "byok_model", None) or "claude-opus-4-8"
+        protocol = getattr(candidate, "byok_protocol", None) or "anthropic"
+        default = (
+            "anthropic/claude-sonnet-5"
+            if protocol == "openrouter"
+            else "claude-sonnet-5"
+        )
+        return getattr(candidate, "byok_model", None) or default
     return None
 
 

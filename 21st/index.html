@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>戰情總覽 — 投標作戰台 Tender AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: "#0a0a0a", panel: "#111113", panel2: "#17171a",
+          ink: "#f4f4f5", inkmuted: "#a1a1aa", inkdim: "#63636b",
+          brand: "#f97316", brandsoft: "#fdba74",
+        },
+        fontFamily: { sans: ['"Noto Sans TC"', "Inter", "system-ui", "sans-serif"] },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="assets/tokens.css" />
+</head>
+<body class="bg-bg text-ink font-sans">
+
+<div class="flex min-h-screen">
+
+  <!-- ============ Sidebar（21st 14941 dashboard-sidebar 改造） ============ -->
+  <aside class="sidebar hidden lg:flex w-[232px] flex-col fixed inset-y-0 left-0 z-40">
+    <div class="flex items-center gap-3 px-5 pt-6 pb-5">
+      <div class="grid place-items-center w-9 h-9 rounded-xl text-white font-black text-sm"
+           style="background:linear-gradient(135deg,#f97316,#ea580c);box-shadow:0 4px 16px rgba(249,115,22,.4)">T</div>
+      <div>
+        <div class="text-[14px] font-bold leading-tight">投標作戰台</div>
+        <div class="text-[10.5px] text-inkdim tracking-widest">TENDER AI</div>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-3 space-y-1 overflow-y-auto">
+      <div class="px-3 pt-2 pb-1.5 text-[10px] font-semibold tracking-[.12em] text-inkdim">作戰</div>
+      <a class="nav-item active" href="index.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        戰情總覽
+      </a>
+      <a class="nav-item" href="tenders.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        標案總覽
+        <span class="ml-auto tnum text-[10.5px] px-2 py-0.5 rounded-full" style="background:rgba(249,115,22,.15);color:#fdba74">47</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></svg>
+        承接看板
+        <span class="ml-auto tnum text-[10.5px] px-2 py-0.5 rounded-full bg-white/5 text-inkmuted">14</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4-3 5.5V17a1 1 0 0 1-1 1h-6a1 1 0 0 1-1-1v-2.5C6.5 13 5 11.5 5 9a7 7 0 0 1 7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
+        知識庫
+      </a>
+
+      <div class="px-3 pt-5 pb-1.5 text-[10px] font-semibold tracking-[.12em] text-inkdim">系統</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        設定
+      </a>
+    </nav>
+
+    <!-- 底部使用者卡 -->
+    <div class="m-3 p-3 rounded-xl border border-white/[.08] bg-white/[.03] flex items-center gap-3">
+      <div class="avatar" style="background:linear-gradient(135deg,#f97316,#c2410c)">AW</div>
+      <div class="min-w-0">
+        <div class="text-[12.5px] font-semibold truncate">Aaron</div>
+        <div class="text-[10.5px] text-inkdim truncate">@hqdesign.tw</div>
+      </div>
+      <span class="ml-auto w-2 h-2 rounded-full flex-shrink-0" style="background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.7)"></span>
+    </div>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <main class="flex-1 lg:ml-[232px] relative overflow-x-hidden">
+    <div class="page-glow"></div>
+
+    <!-- Topbar：555 action-search-bar 改造 -->
+    <header class="sticky top-0 z-50 border-b border-white/[.08] px-5 lg:px-8 py-3.5 flex items-center gap-4"
+            style="background:rgba(10,10,10,.75);backdrop-filter:blur(14px)">
+      <button class="lg:hidden p-2 -ml-2 text-inkmuted" aria-label="選單">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <button class="search-trigger" id="search-trigger" aria-label="開啟搜尋">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>搜尋標案、機關、指令…</span>
+        <span class="ml-auto flex gap-1"><kbd>⌘</kbd><kbd>K</kbd></span>
+      </button>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="hidden md:inline-flex items-center gap-2 text-[12px] text-inkdim">
+          <span class="w-1.5 h-1.5 rounded-full animate-pulse" style="background:#22c55e"></span>
+          今日 08:02 已同步
+        </span>
+        <button class="btn-primary" id="refresh-btn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+          重新整理
+        </button>
+      </div>
+    </header>
+
+    <div class="px-5 lg:px-8 py-7 max-w-[1440px] mx-auto">
+
+      <!-- 頁首 -->
+      <div class="enter mb-7" style="animation-delay:0ms">
+        <div class="flex items-center gap-2.5 text-[11px] font-semibold tracking-[.14em] text-brandsoft mb-2">
+          <span class="w-5 h-px" style="background:linear-gradient(90deg,#f97316,transparent)"></span>
+          WAR ROOM · 2026-07-15（二）
+        </div>
+        <h1 class="text-[26px] lg:text-[32px] font-black leading-tight tracking-tight">
+          戰情總覽<span class="text-inkdim font-normal text-[18px] lg:text-[20px] ml-3">今天有 <span class="tnum text-brandsoft font-bold">9</span> 件高潛力案值得看</span>
+        </h1>
+      </div>
+
+      <!-- KPI 區（5007 animated-card-chart 移植，JS 渲染） -->
+      <section id="kpi-grid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-7" aria-label="關鍵指標"></section>
+
+      <!-- 主格線 -->
+      <div class="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-4">
+
+        <!-- 左欄 -->
+        <div class="space-y-4 min-w-0">
+          <!-- 今日焦點 -->
+          <section class="card p-5 enter" style="animation-delay:240ms" aria-label="今日焦點">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2.5">
+                <h2 class="text-[15px] font-bold">今日焦點</h2>
+                <span class="chip chip-save">AI 推薦 Top 5</span>
+              </div>
+              <a href="tenders.html" class="text-[12px] text-inkdim hover:text-brandsoft transition-colors">查看全部 →</a>
+            </div>
+            <div class="text-[11.5px] text-inkdim mb-4 -mt-2">滑過卡片預覽 AI 理由，點擊展開詳情（小 → 中 → 大三層）</div>
+            <div id="focus-list" class="space-y-3"></div>
+          </section>
+
+          <!-- 本週衝刺（4511 workspaces 改造） -->
+          <section class="card p-5 enter" style="animation-delay:320ms" aria-label="本週衝刺">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-[15px] font-bold">本週衝刺</h2>
+              <span class="text-[11.5px] text-inkdim">3 件備標中 · 最近截止 07-16</span>
+            </div>
+            <div id="sprint-list" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+          </section>
+        </div>
+
+        <!-- 右欄 -->
+        <div class="space-y-4 min-w-0">
+          <!-- 標案類型 donut -->
+          <section class="card p-5 enter" style="animation-delay:280ms" aria-label="標案類型分佈">
+            <h2 class="text-[15px] font-bold mb-1">標案類型分佈</h2>
+            <div class="text-[11.5px] text-inkdim mb-3">今日 47 件新案 · 滑過區段查看</div>
+            <div class="flex items-center gap-5">
+              <div class="relative flex-shrink-0">
+                <svg id="donut" class="donut" width="150" height="150" viewBox="0 0 150 150" role="img" aria-label="標案類型分佈圖"></svg>
+                <div class="absolute inset-0 grid place-items-center pointer-events-none text-center">
+                  <div>
+                    <div id="donut-num" class="tnum text-[26px] font-bold leading-none">47</div>
+                    <div id="donut-label" class="text-[10.5px] text-inkdim mt-1">全部</div>
+                  </div>
+                </div>
+              </div>
+              <div id="donut-legend" class="flex-1 min-w-0"></div>
+            </div>
+          </section>
+
+          <!-- 即時動態（8372 dashboard-activities 改造） -->
+          <section class="card p-5 enter" style="animation-delay:360ms" aria-label="即時動態">
+            <div class="flex items-center justify-between mb-1">
+              <h2 class="text-[15px] font-bold">即時動態</h2>
+              <span class="chip chip-take">Layer B · 團隊共享</span>
+            </div>
+            <div class="text-[11.5px] text-inkdim mb-2">白名單內具名共享，對外永不揭露</div>
+            <div id="feed-list"></div>
+            <button id="feed-more" class="btn-ghost w-full mt-3">載入更多</button>
+          </section>
+        </div>
+      </div>
+
+      <footer class="mt-10 pb-6 text-center text-[11px] text-inkdim">
+        設計研究原型 · 資料皆為虛構 · 元件語彙取自 21st.dev（見 README）
+      </footer>
+    </div>
+  </main>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

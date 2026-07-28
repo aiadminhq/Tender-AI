@@ -298,6 +298,10 @@ export const STRINGS = {
     trend7d: "近 7 日新案趨勢",
     activity: "即時動態",
     noActivity: "尚無動態",
+    teamProgress: "最新團隊進度",
+    noTeamProgress: "尚無承接或評論動態",
+    teamProgressUnavailable:
+      "後端目前未提供可讀取的團隊評論 activity；本機新增的承接與評論會顯示於此。",
     // filter
     filters: "篩選",
     allSources: "全部來源",
@@ -330,6 +334,8 @@ export const STRINGS = {
     sortDeadline: "截止日",
     sortBudget: "預算",
     sortFeasibility: "可行性",
+    sortAscending: "升冪",
+    sortDescending: "降冪",
     // table columns
     colTier: "分級",
     colTender: "標案",
@@ -1174,6 +1180,10 @@ export const STRINGS = {
     trend7d: "New tenders · last 7 days",
     activity: "Activity",
     noActivity: "No activity yet",
+    teamProgress: "Latest team progress",
+    noTeamProgress: "No assignment or comment activity yet",
+    teamProgressUnavailable:
+      "The backend does not currently expose readable team comment activity. Assignments and comments added locally will appear here.",
     filters: "Filters",
     allSources: "All sources",
     tier: "Potential",
@@ -1205,6 +1215,8 @@ export const STRINGS = {
     sortDeadline: "Deadline",
     sortBudget: "Budget",
     sortFeasibility: "Feasibility",
+    sortAscending: "Ascending",
+    sortDescending: "Descending",
     colTier: "Tier",
     colTender: "Tender",
     colSource: "Source",

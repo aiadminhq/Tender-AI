@@ -31,7 +31,7 @@ import httpx
 
 from app.core.config import settings
 from app.services import llm
-from app.services.brain_cli_registry import get_spec
+from app.services.brain_cli_registry import CLI_REGISTRY, get_spec
 
 
 class BrainError(RuntimeError):
@@ -89,7 +89,7 @@ async def _stream_ollama(
         raise BrainError(str(e)) from e
 
 
-# ── byok（Anthropic messages stream）─────────────────────────────────────────
+# ── byok（Anthropic-compatible messages stream）──────────────────────────────
 
 
 def _split_system(messages: list[dict[str, str]]) -> tuple[str, list[dict[str, str]]]:
@@ -108,32 +108,17 @@ def _split_system(messages: list[dict[str, str]]) -> tuple[str, list[dict[str, s
 async def _stream_byok(
     config: Any, messages: list[dict[str, str]]
 ) -> AsyncIterator[BrainChunk]:
-    protocol = getattr(config, "byok_protocol", None) or "anthropic"
-    if protocol != "anthropic":
-        raise BrainError(f"BYOK 暫不支援協定：{protocol}")
-
-    api_key = settings.anthropic_api_key
-    if not api_key:
-        raise BrainError("BYOK 金鑰未設定（ANTHROPIC_API_KEY 為空）")
-
-    base = (getattr(config, "byok_base_url", None) or "https://api.anthropic.com").rstrip("/")
-    model = getattr(config, "byok_model", None) or "claude-opus-4-8"
+    base, model, headers = _byok_connection(config)
     system, convo = _split_system(messages)
 
     body = {
         "model": model,
         "max_tokens": settings.chat_num_predict,
-        "temperature": settings.chat_temperature,
         "stream": True,
         "messages": convo,
     }
     if system:
         body["system"] = system
-    headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
 
     try:
         async with httpx.AsyncClient(timeout=settings.chat_timeout) as client:
@@ -163,6 +148,40 @@ async def _stream_byok(
         raise BrainError(f"BYOK 呼叫失敗：{e}") from e
 
 
+def _byok_connection(config: Any) -> tuple[str, str, dict[str, str]]:
+    """依協定組出 endpoint、模型與 headers；金鑰只從環境設定取得。"""
+    protocol = getattr(config, "byok_protocol", None) or "anthropic"
+    if protocol == "anthropic":
+        api_key = settings.anthropic_api_key
+        env_name = "ANTHROPIC_API_KEY"
+        default_base = "https://api.anthropic.com"
+        default_model = "claude-sonnet-5"
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+    elif protocol == "openrouter":
+        api_key = settings.openrouter_api_key
+        env_name = "OPENROUTER_API_KEY"
+        default_base = "https://openrouter.ai/api"
+        default_model = "anthropic/claude-sonnet-5"
+        headers = {
+            "authorization": f"Bearer {api_key}",
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+    else:
+        raise BrainError(f"BYOK 暫不支援協定：{protocol}")
+
+    if not api_key:
+        raise BrainError(f"BYOK 金鑰未設定（{env_name} 為空）")
+
+    base = (getattr(config, "byok_base_url", None) or default_base).rstrip("/")
+    model = getattr(config, "byok_model", None) or default_model
+    return base, model, headers
+
+
 # ── cli（headless agentic）────────────────────────────────────────────────────
 
 
@@ -189,9 +208,53 @@ def _cli_argv(agent: str, prompt: str, model: str | None = None) -> list[str]:
 async def _stream_cli(
     config: Any, *, prompt: str, focus_note: str
 ) -> AsyncIterator[BrainChunk]:
-    agent = getattr(config, "cli_agent", None) or "claude"
-    model = getattr(config, "cli_model", None) or None
+    selected_agent = getattr(config, "cli_agent", None) or "claude"
+    selected_model = getattr(config, "cli_model", None) or None
     full_prompt = _build_cli_prompt(prompt, focus_note)
+    attempts = _cli_attempt_order(selected_agent)
+    errors: list[str] = []
+
+    for index, agent in enumerate(attempts):
+        emitted_answer = False
+        try:
+            async for chunk in _stream_cli_once(
+                agent=agent,
+                model=selected_model if agent == selected_agent else None,
+                full_prompt=full_prompt,
+            ):
+                if chunk.kind == "delta":
+                    emitted_answer = True
+                yield chunk
+            return
+        except BrainError as e:
+            # 已輸出部分答案時不可改由另一代理重跑，避免前端收到重複或矛盾內容。
+            if emitted_answer:
+                raise
+            errors.append(f"{agent}: {e}")
+            if index + 1 < len(attempts):
+                next_agent = attempts[index + 1]
+                yield BrainChunk(
+                    "progress",
+                    f"{agent} 無法使用，改由 {next_agent} 接手",
+                )
+
+    raise BrainError(f"所有 CLI 代理皆失敗：{'；'.join(errors)}")
+
+
+def _cli_attempt_order(selected_agent: str) -> list[str]:
+    """首選代理優先，其後只加入本機已驗證的 fallback 代理。"""
+    verified = [
+        key
+        for key, spec in CLI_REGISTRY.items()
+        if not spec.needs_local_verify and key != selected_agent
+    ]
+    return [selected_agent, *verified]
+
+
+async def _stream_cli_once(
+    *, agent: str, model: str | None, full_prompt: str
+) -> AsyncIterator[BrainChunk]:
+    """執行單一 CLI；fallback 策略由 ``_stream_cli`` 統一處理。"""
     argv = _cli_argv(agent, full_prompt, model)
 
     try:

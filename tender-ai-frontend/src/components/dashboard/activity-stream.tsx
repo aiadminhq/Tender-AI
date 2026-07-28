@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
+import { ACTIVITY } from "@/data/activity";
 import { userById } from "@/data/users";
 import { formatRelative } from "@/lib/format";
 import type { ActivityKind } from "@/types/domain";
@@ -21,7 +22,12 @@ const kindMap: Record<
 > = {
   accept: { icon: Check, cls: "text-tier-high", zh: "承接", en: "accepted" },
   skip: { icon: X, cls: "text-ink-dim", zh: "略過", en: "skipped" },
-  comment: { icon: MessageSquare, cls: "text-signal", zh: "註記", en: "noted" },
+  comment: {
+    icon: MessageSquare,
+    cls: "text-signal",
+    zh: "評論",
+    en: "commented on",
+  },
   move: { icon: ArrowRight, cls: "text-priority", zh: "移動", en: "moved" },
   import: { icon: Download, cls: "text-ink-muted", zh: "匯入", en: "imported" },
   rule: {
@@ -33,21 +39,37 @@ const kindMap: Record<
   judge: { icon: Scale, cls: "text-signal", zh: "判斷", en: "judged" },
 };
 
+const DEMO_ACTIVITY_IDS = new Set(ACTIVITY.map((item) => item.id));
+const TEAM_PROGRESS_KINDS = new Set<ActivityKind>(["accept", "comment"]);
+
 export function ActivityStream({ limit = 8 }: { limit?: number }) {
   const { t, lang } = useApp();
-  const { activity } = useAppData();
-  const items = activity.slice(0, limit);
+  const { activity, memberById, usingLiveData } = useAppData();
+  const items = activity
+    .filter((item) => TEAM_PROGRESS_KINDS.has(item.kind))
+    .filter((item) => !usingLiveData || !DEMO_ACTIVITY_IDS.has(item.id))
+    .slice(0, limit);
 
   return (
     <div>
       {items.length === 0 ? (
-        <p className="text-[12px] text-ink-dim">{t("noActivity")}</p>
+        <p className="text-[12px] leading-relaxed text-ink-dim">
+          {usingLiveData
+            ? t("teamProgressUnavailable")
+            : t("noTeamProgress")}
+        </p>
       ) : (
         <ul className="space-y-3">
           {items.map((a) => {
             const m = kindMap[a.kind];
             const Icon = m.icon;
-            const name = userById(a.userId)?.name ?? a.userId;
+            const numericMemberId = Number(a.userId);
+            const name =
+              userById(a.userId)?.name ??
+              (Number.isSafeInteger(numericMemberId)
+                ? memberById(numericMemberId)?.name
+                : undefined) ??
+              a.userId;
             return (
               <li key={a.id} className="flex gap-3">
                 <span

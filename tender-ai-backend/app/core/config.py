@@ -2,7 +2,8 @@
 
 欄位名對應 .env 的大寫變數（pydantic-settings 不分大小寫）。
 預設值即本機 brew 原生開發環境，故無 .env 時亦可直接跑起來；
-secret（ANTHROPIC_API_KEY／APP_API_KEY）預設空字串，正式環境放系統 secret。
+secret（ANTHROPIC_API_KEY／OPENROUTER_API_KEY／APP_API_KEY）預設空字串，
+正式環境放系統 secret。
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -30,6 +31,7 @@ class Settings(BaseSettings):
 
     # 高品質推理/摘要（P5）；勿入版控
     anthropic_api_key: str = ""
+    openrouter_api_key: str = ""
 
     # 既有爬蟲核心位置（包裝呼叫，不重寫）
     pcc_scraper_path: str = "../tender-bot/tender_daily.py"
