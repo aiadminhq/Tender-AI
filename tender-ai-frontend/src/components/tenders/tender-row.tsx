@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 // 桌機表格欄寬（與 TenderTable 表頭共用，務必同步）。
 // 8 欄：分級／標案／預算／截止日期／剩餘天數／可行性／負責人／操作。
 export const ROW_GRID =
-  "lg:grid-cols-[76px_minmax(0,1fr)_92px_96px_76px_110px_44px_112px]";
+  "xl:grid-cols-[64px_minmax(0,2fr)_84px_92px_72px_56px_40px_104px]";
 
 // 後端可能無截止日（deadline_iso=null → adapt 給空字串）。無效日期會讓
 // Intl.DateTimeFormat.format(Invalid Date) 拋 RangeError 進而整列崩潰，故先驗證。
@@ -218,7 +218,7 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "hidden cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:grid",
+          "hidden cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none xl:grid",
           ROW_GRID,
           excluded && "opacity-60",
         )}
@@ -229,7 +229,7 @@ export function TenderRow({
         <div className="flex min-w-0 items-center gap-2.5">
           <CategoryIcon category={tender.category} />
           <div className="min-w-0">
-            <div className="truncate text-[13px] font-medium text-ink">
+            <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-ink">
               {tender.title}
             </div>
             <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-ink-dim">
@@ -270,7 +270,7 @@ export function TenderRow({
           }
         }}
         className={cn(
-          "cursor-pointer p-4 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none lg:hidden",
+          "cursor-pointer p-4 transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none xl:hidden",
           excluded && "opacity-60",
         )}
       >
