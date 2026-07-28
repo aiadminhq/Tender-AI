@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { designFeedback } from "./vite-plugin-design-feedback";
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
@@ -15,7 +14,7 @@ export default defineConfig(({ command }) => {
     process.env.NODE_ENV = "development";
   }
   return {
-    plugins: [react(), tailwindcss(), designFeedback()],
+    plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "./src"),
