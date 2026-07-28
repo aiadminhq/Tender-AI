@@ -155,7 +155,6 @@ export async function exportAnnotations(
       "tender-ai-design-feedback-task.md",
     );
     if (delivery.ok) {
-      void postBackend(targetCli);
       return {
         outcome: {
           ok: true,
