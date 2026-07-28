@@ -1,21 +1,19 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import {
+  CalendarDays,
+  Check,
   ChevronDown,
-  Eye,
-  EyeOff,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   Link2,
   Save,
-  Target,
   X,
 } from "lucide-react";
 import type { Category, SortKey, SourceKey } from "@/types/domain";
@@ -23,22 +21,9 @@ import type { TextKey } from "@/i18n/strings";
 import { useApp } from "@/store/app-context";
 import { useAppData, SORT_DEFAULT_DIR } from "@/store/app-data";
 import { SOURCES } from "@/data/sources";
-import { formatBudget } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { serializeFilter } from "@/lib/url-filter";
-
-const BUDGET_MIN = 1_000_000;
-const BUDGET_MAX = 50_000_000;
-const BUDGET_STEP = 1_000_000;
-const BUDGET_BUCKETS = 42;
-
-// 可行性：連續刻度 0–99（與 Tender.feasibility 一致）。上限刻意取 99 而非 100，
-// 讓「拉滿」＝「不設上限」（feasibility=100 的標案仍通過，避免誤殺滿分案）。
-const FEAS_MIN = 0;
-const FEAS_MAX = 99;
-const FEAS_STEP = 1;
 
 // 一次顯示的標籤 chips 上限（超過則隱藏於可捲動區，避免 filter-bar 爆量）
 const TAG_VISIBLE_MAX = 12;
@@ -105,200 +90,267 @@ function FilterGroup({
   );
 }
 
-function clampBudget(value: number): number {
-  return Math.min(BUDGET_MAX, Math.max(BUDGET_MIN, value));
+function MultiSelectDropdown<T extends string>({
+  label,
+  placeholder,
+  options,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  placeholder: string;
+  options: { key: T; label: string }[];
+  selected: T[];
+  onToggle: (key: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const closeOnOutside = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
+  const selectedOptions = options.filter((option) => selected.includes(option.key));
+
+  return (
+    <div ref={rootRef} className="relative min-w-40 max-lg:w-full">
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex min-h-9 w-full items-center gap-1.5 rounded-md border border-input bg-surface-1 px-2.5 py-1 text-left text-[12px] text-ink outline-none transition-colors hover:bg-accent focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
+      >
+        <span className="flex min-w-0 flex-1 flex-wrap gap-1">
+          {selectedOptions.length ? (
+            selectedOptions.map((option) => (
+              <span
+                key={option.key}
+                className="max-w-full truncate rounded-full bg-signal/12 px-2 py-0.5 font-medium text-signal"
+              >
+                {option.label}
+              </span>
+            ))
+          ) : (
+            <span className="text-ink-muted">{placeholder}</span>
+          )}
+        </span>
+        <ChevronDown
+          size={15}
+          className={cn("shrink-0 text-ink-dim transition-transform", open && "rotate-180")}
+        />
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          aria-label={label}
+          aria-multiselectable="true"
+          className="absolute left-0 z-40 mt-1 grid min-w-full overflow-hidden rounded-md border border-border bg-popover p-1 shadow-[var(--elev-float)]"
+        >
+          {options.map((option) => {
+            const active = selected.includes(option.key);
+            return (
+              <button
+                key={option.key}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => onToggle(option.key)}
+                className={cn(
+                  "flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[12px] transition-colors",
+                  active
+                    ? "bg-signal/12 text-signal"
+                    : "text-ink-muted hover:bg-accent hover:text-ink",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-4 shrink-0 place-items-center rounded border",
+                    active
+                      ? "border-signal bg-signal text-white"
+                      : "border-input bg-card text-transparent",
+                  )}
+                >
+                  <Check size={11} strokeWidth={3} />
+                </span>
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
-// 通用雙握把區間 slider：軌道視覺由 renderTrack 決定（預算＝直方圖、可行性＝細軌），
-// 標題／範圍不進 slider；值僅呈現於左右下角落（見任務需求）。
-function RangeSlider({
-  min,
-  max,
-  step,
-  lowValue,
-  highValue,
+function dateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(value: string | null): Date | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function DateRangePicker({
+  from,
+  to,
   onChange,
-  minLabel,
-  maxLabel,
-  minTitle,
-  maxTitle,
-  ariaValueText,
-  renderTrack,
-  trackClassName,
-  className,
-  minGap = 0,
+  lang,
+  clearLabel,
+  fromLabel,
+  toLabel,
 }: {
-  min: number;
-  max: number;
-  step: number;
-  lowValue: number;
-  highValue: number;
-  onChange: (next: [number, number]) => void;
-  minLabel: string;
-  maxLabel: string;
-  minTitle: string;
-  maxTitle: string;
-  ariaValueText?: (value: number) => string;
-  renderTrack: (pct: { lowPercent: number; highPercent: number }) => ReactNode;
-  trackClassName?: string;
-  className?: string;
-  minGap?: number;
+  from: string | null;
+  to: string | null;
+  onChange: (from: string | null, to: string | null) => void;
+  lang: "zh" | "en";
+  clearLabel: string;
+  fromLabel: string;
+  toLabel: string;
 }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState<"min" | "max" | null>(null);
-
-  const span = max - min || 1;
-  const toPercent = (value: number) => ((value - min) / span) * 100;
-  const lowPercent = toPercent(lowValue);
-  const highPercent = toPercent(highValue);
-
-  const snap = useCallback(
-    (value: number) => {
-      const snapped = Math.round((value - min) / step) * step + min;
-      return Math.min(max, Math.max(min, snapped));
-    },
-    [max, min, step],
-  );
-
-  // 允許 low === high（minGap=0 時可鎖單一值）；夾住 low ≤ high - minGap
-  const commit = useCallback(
-    (thumb: "min" | "max", raw: number) => {
-      const value = snap(raw);
-      if (thumb === "min") {
-        onChange([Math.min(value, highValue - minGap), highValue]);
-      } else {
-        onChange([lowValue, Math.max(value, lowValue + minGap)]);
-      }
-    },
-    [highValue, lowValue, minGap, onChange, snap],
-  );
-
-  const pointerToValue = useCallback(
-    (clientX: number): number | null => {
-      const rect = trackRef.current?.getBoundingClientRect();
-      if (!rect || rect.width === 0) return null;
-      const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-      return snap(min + pct * span);
-    },
-    [min, snap, span],
-  );
-
-  const moveThumb = useCallback(
-    (thumb: "min" | "max", clientX: number) => {
-      const value = pointerToValue(clientX);
-      if (value != null) commit(thumb, value);
-    },
-    [commit, pointerToValue],
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selectedFrom = parseDateKey(from);
+  const selectedTo = parseDateKey(to);
+  const [month, setMonth] = useState(() =>
+    new Date((selectedFrom ?? selectedTo ?? new Date()).getFullYear(), (selectedFrom ?? selectedTo ?? new Date()).getMonth(), 1),
   );
 
   useEffect(() => {
-    if (!dragging) return;
-    const onPointerMove = (event: PointerEvent) =>
-      moveThumb(dragging, event.clientX);
-    const onPointerUp = () => setDragging(null);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerUp);
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerUp);
+    const closeOnOutside = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
-  }, [dragging, moveThumb]);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
 
-  const handleTrackPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const value = pointerToValue(event.clientX);
-    if (value == null) return;
-    // 區間外 → 動該側握把以擴張；區間內 → 動較近者。握把重疊時亦能正確分開。
-    const thumb =
-      value < lowValue
-        ? "min"
-        : value > highValue
-          ? "max"
-          : Math.abs(value - lowValue) <= Math.abs(value - highValue)
-            ? "min"
-            : "max";
-    commit(thumb, value);
-    setDragging(thumb);
-  };
+  const monthLabel = new Intl.DateTimeFormat(
+    lang === "zh" ? "zh-TW" : "en-US",
+    { year: "numeric", month: "long" },
+  ).format(month);
+  const weekdays = lang === "zh" ? ["日", "一", "二", "三", "四", "五", "六"] : ["S", "M", "T", "W", "T", "F", "S"];
+  const firstWeekday = month.getDay();
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const fromKey = from ?? "";
+  const toKey = to ?? "";
+  const rangeLabel =
+    from && to ? `${from} – ${to}` : from ? `${from} –` : to ? `– ${to}` : fromLabel;
 
-  const handleKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    thumb: "min" | "max",
-  ) => {
-    let delta: number;
-    if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
-      delta = -step;
-    } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
-      delta = step;
-    } else if (event.key === "PageDown") {
-      delta = -step * 5;
-    } else if (event.key === "PageUp") {
-      delta = step * 5;
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      commit(thumb, thumb === "min" ? min : lowValue + minGap);
-      return;
-    } else if (event.key === "End") {
-      event.preventDefault();
-      commit(thumb, thumb === "min" ? highValue - minGap : max);
-      return;
-    } else {
+  const selectDay = (value: string) => {
+    if (!from || to) {
+      onChange(value, null);
       return;
     }
-    event.preventDefault();
-    commit(thumb, (thumb === "min" ? lowValue : highValue) + delta);
+    if (value < from) {
+      onChange(value, null);
+      return;
+    }
+    onChange(from, value);
+    setOpen(false);
   };
 
   return (
-    <div className={cn("select-none", className)}>
-      <div
-        ref={trackRef}
-        className={cn("relative touch-none", trackClassName)}
-        onPointerDown={handleTrackPointerDown}
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-label={`${fromLabel} ${toLabel}`}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex h-9 min-w-44 items-center gap-2 rounded-md border border-input bg-surface-1 px-2.5 text-[12px] text-ink outline-none transition-colors hover:bg-accent focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
       >
-        {renderTrack({ lowPercent, highPercent })}
-        {(["min", "max"] as const).map((thumb) => {
-          const isMin = thumb === "min";
-          const value = isMin ? lowValue : highValue;
-          const percent = isMin ? lowPercent : highPercent;
-          return (
+        <CalendarDays size={15} className="shrink-0 text-signal" />
+        <span className="tnum min-w-0 flex-1 truncate text-left">{rangeLabel}</span>
+        <ChevronDown
+          size={14}
+          className={cn("shrink-0 text-ink-dim transition-transform", open && "rotate-180")}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 z-40 mt-1 w-72 rounded-md border border-border bg-popover p-3 shadow-[var(--elev-float)]">
+          <div className="mb-2 flex items-center justify-between">
             <button
-              key={thumb}
               type="button"
-              role="slider"
-              aria-label={isMin ? minTitle : maxTitle}
-              aria-valuemin={isMin ? min : lowValue + minGap}
-              aria-valuemax={isMin ? highValue - minGap : max}
-              aria-valuenow={value}
-              aria-valuetext={ariaValueText?.(value)}
-              onPointerDown={(event) => {
-                event.stopPropagation();
-                setDragging(thumb);
-              }}
-              onKeyDown={(event) => handleKeyDown(event, thumb)}
-              className={cn(
-                "absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-card shadow-[var(--elev-rest)] transition-transform",
-                "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card",
-                // 握把重疊時上層者優先被指標命中；拖曳中者置頂
-                isMin ? "z-10" : "z-20",
-                dragging === thumb && "z-30 scale-110",
-              )}
-              style={{ left: `${percent}%` }}
-            />
-          );
-        })}
-      </div>
-
-      {/* 值僅呈現於左右下角落（無上緣標題／範圍） */}
-      <div className="mt-1 flex items-center justify-between">
-        <span className="tnum text-[11px] font-medium text-ink-muted">
-          {minLabel}
-        </span>
-        <span className="tnum text-[11px] font-medium text-ink-muted">
-          {maxLabel}
-        </span>
-      </div>
+              aria-label={lang === "zh" ? "上個月" : "Previous month"}
+              onClick={() => setMonth((value) => new Date(value.getFullYear(), value.getMonth() - 1, 1))}
+              className="grid size-7 place-items-center rounded-sm text-ink-muted hover:bg-accent hover:text-ink"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-[12px] font-semibold text-ink">{monthLabel}</span>
+            <button
+              type="button"
+              aria-label={lang === "zh" ? "下個月" : "Next month"}
+              onClick={() => setMonth((value) => new Date(value.getFullYear(), value.getMonth() + 1, 1))}
+              className="grid size-7 place-items-center rounded-sm text-ink-muted hover:bg-accent hover:text-ink"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-0.5 text-center">
+            {weekdays.map((day, index) => (
+              <span key={`${day}-${index}`} className="py-1 text-[10px] font-medium text-ink-dim">
+                {day}
+              </span>
+            ))}
+            {Array.from({ length: firstWeekday }).map((_, index) => (
+              <span key={`pad-${index}`} />
+            ))}
+            {Array.from({ length: daysInMonth }, (_, index) => {
+              const value = dateKey(new Date(month.getFullYear(), month.getMonth(), index + 1));
+              const selected = value === fromKey || value === toKey;
+              const inRange = Boolean(fromKey && toKey && value > fromKey && value < toKey);
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => selectDay(value)}
+                  className={cn(
+                    "h-8 rounded-sm text-[12px] transition-colors",
+                    selected && "bg-signal font-semibold text-white",
+                    !selected && inRange && "bg-signal/12 text-signal",
+                    !selected && !inRange && "text-ink-muted hover:bg-accent hover:text-ink",
+                  )}
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
+          </div>
+          {(from || to) && (
+            <div className="mt-2 flex justify-end border-t border-border pt-2">
+              <Button variant="ghost" size="sm" onClick={() => onChange(null, null)}>
+                {clearLabel}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -345,44 +397,6 @@ export function FilterBar() {
     }
     return [...seen];
   }, [tenders]);
-
-  const budgetBuckets = useMemo(() => {
-    const buckets = Array.from({ length: BUDGET_BUCKETS }, () => 0);
-    for (const tender of tenders) {
-      const budget = clampBudget(tender.budget);
-      const index = Math.min(
-        BUDGET_BUCKETS - 1,
-        Math.max(
-          0,
-          Math.floor(
-            ((budget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) *
-              BUDGET_BUCKETS,
-          ),
-        ),
-      );
-      buckets[index] += 1;
-    }
-    const max = Math.max(...buckets, 1);
-    return buckets.map((count) => count / max);
-  }, [tenders]);
-
-  const selectedMinBudget = clampBudget(filter.minBudget ?? BUDGET_MIN);
-  const selectedMaxBudget = clampBudget(filter.maxBudget ?? BUDGET_MAX);
-  const sliderMinBudget = clampBudget(
-    Math.min(selectedMinBudget, selectedMaxBudget - BUDGET_STEP),
-  );
-  const sliderMaxBudget = clampBudget(
-    Math.max(selectedMaxBudget, sliderMinBudget + BUDGET_STEP),
-  );
-
-  const selectedMinFeas = Math.min(
-    FEAS_MAX,
-    Math.max(FEAS_MIN, filter.minFeasibility ?? FEAS_MIN),
-  );
-  const selectedMaxFeas = Math.min(
-    FEAS_MAX,
-    Math.max(selectedMinFeas, filter.maxFeasibility ?? FEAS_MAX),
-  );
 
   const active =
     !!filter.query ||
@@ -462,184 +476,46 @@ export function FilterBar() {
           expanded && "border-t border-border lg:border-t-0",
         )}
       >
-      {/* 資料源 */}
+      {/* 資料源與採購類別：複選 dropdown，選取結果直接顯示為 tag。 */}
       <FilterGroup label={t("fgSources")} className="max-lg:w-full">
-        {SOURCES.map((s) => (
-          <Chip
-            key={s.key}
-            active={filter.sources.includes(s.key)}
-            onClick={() => toggleSource(s.key)}
-            title={s.name}
-          >
-            {s.shortName}
-          </Chip>
-        ))}
-      </FilterGroup>
-
-      {/* 採購類別 */}
-      <FilterGroup label={t("fgCategory")} className="max-lg:w-full">
-        {CATEGORIES.map((cat) => (
-          <Chip
-            key={cat.key}
-            active={filter.categories.includes(cat.key)}
-            onClick={() => toggleCategory(cat.key)}
-          >
-            {t(cat.label)}
-          </Chip>
-        ))}
-      </FilterGroup>
-
-      {/* 可行性（0–99，雙握把；細軌、低高度） */}
-      <FilterGroup label={t("feasibilityRange")} className="max-lg:w-full">
-        <RangeSlider
-          className="w-44 max-w-full max-lg:w-full"
-          trackClassName="h-5"
-          min={FEAS_MIN}
-          max={FEAS_MAX}
-          step={FEAS_STEP}
-          lowValue={selectedMinFeas}
-          highValue={selectedMaxFeas}
-          minLabel={String(selectedMinFeas)}
-          maxLabel={String(selectedMaxFeas)}
-          minTitle={t("feasibilityMinimum")}
-          maxTitle={t("feasibilityMaximum")}
-          onChange={([lo, hi]) =>
-            setFilter({
-              minFeasibility: lo <= FEAS_MIN ? null : lo,
-              maxFeasibility: hi >= FEAS_MAX ? null : hi,
-            })
-          }
-          renderTrack={({ lowPercent, highPercent }) => (
-            <>
-              <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-hairline" />
-              <div
-                className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-signal"
-                style={{
-                  left: `${lowPercent}%`,
-                  right: `${100 - highPercent}%`,
-                }}
-              />
-            </>
-          )}
+        <MultiSelectDropdown
+          label={t("fgSources")}
+          placeholder={t("allSources")}
+          options={SOURCES.map((source) => ({
+            key: source.key,
+            label: source.shortName,
+          }))}
+          selected={filter.sources}
+          onToggle={toggleSource}
         />
       </FilterGroup>
 
-      {/* 預算區間（直方圖，雙握把；壓低高度） */}
-      <FilterGroup label={t("budgetRange")} className="max-lg:w-full">
-        <RangeSlider
-          className="w-60 max-w-full max-lg:w-full"
-          trackClassName="h-8"
-          min={BUDGET_MIN}
-          max={BUDGET_MAX}
-          step={BUDGET_STEP}
-          minGap={BUDGET_STEP}
-          lowValue={sliderMinBudget}
-          highValue={sliderMaxBudget}
-          minLabel={formatBudget(sliderMinBudget, lang)}
-          maxLabel={formatBudget(sliderMaxBudget, lang)}
-          minTitle={t("budgetMinimum")}
-          maxTitle={t("budgetMaximum")}
-          onChange={([min, max]) =>
-            setFilter({
-              minBudget: min <= BUDGET_MIN ? null : min,
-              maxBudget: max >= BUDGET_MAX ? null : max,
-            })
-          }
-          renderTrack={({ lowPercent, highPercent }) => (
-            <>
-              <div className="absolute inset-x-0 bottom-1 top-0 flex items-end gap-px">
-                {budgetBuckets.map((height, index) => {
-                  const pct =
-                    budgetBuckets.length <= 1
-                      ? 0
-                      : (index / (budgetBuckets.length - 1)) * 100;
-                  const selected = pct >= lowPercent && pct <= highPercent;
-                  return (
-                    <span
-                      key={index}
-                      className={cn(
-                        "min-w-0 flex-1 rounded-t-sm transition-colors",
-                        selected ? "bg-ink" : "bg-hairline",
-                      )}
-                      style={{ height: `${Math.max(12, height * 100)}%` }}
-                    />
-                  );
-                })}
-              </div>
-              <div
-                className="absolute bottom-0 top-0 border-l border-r border-signal/40"
-                style={{
-                  left: `${lowPercent}%`,
-                  right: `${100 - highPercent}%`,
-                }}
-              />
-            </>
-          )}
+      <FilterGroup label={t("fgCategory")} className="max-lg:w-full">
+        <MultiSelectDropdown
+          label={t("fgCategory")}
+          placeholder={t("tierAll")}
+          options={CATEGORIES.map((category) => ({
+            key: category.key,
+            label: t(category.label),
+          }))}
+          selected={filter.categories}
+          onToggle={toggleCategory}
         />
       </FilterGroup>
 
       {/* 截止日區間 */}
       <FilterGroup label={t("fgDeadline")} className="max-lg:w-full">
-        <input
-          type="date"
-          value={filter.deadlineFrom ?? ""}
-          onChange={(e) => setFilter({ deadlineFrom: e.target.value || null })}
-          aria-label={t("deadlineFrom")}
-          title={t("deadlineFrom")}
-          className="h-9 cursor-pointer rounded-md border border-input bg-surface-1 px-2 text-[12px] text-ink outline-none transition-colors focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
+        <DateRangePicker
+          from={filter.deadlineFrom}
+          to={filter.deadlineTo}
+          onChange={(deadlineFrom, deadlineTo) =>
+            setFilter({ deadlineFrom, deadlineTo })
+          }
+          lang={lang}
+          clearLabel={t("clear")}
+          fromLabel={t("deadlineFrom")}
+          toLabel={t("deadlineTo")}
         />
-        <span className="text-[12px] text-ink-muted">–</span>
-        <input
-          type="date"
-          value={filter.deadlineTo ?? ""}
-          onChange={(e) => setFilter({ deadlineTo: e.target.value || null })}
-          aria-label={t("deadlineTo")}
-          title={t("deadlineTo")}
-          className="h-9 cursor-pointer rounded-md border border-input bg-surface-1 px-2 text-[12px] text-ink outline-none transition-colors focus-visible:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/25"
-        />
-      </FilterGroup>
-
-      {/* 機關關鍵字 */}
-      <FilterGroup label={t("fgOrg")} className="max-lg:w-full">
-        <Input
-          type="text"
-          value={filter.orgKeyword}
-          onChange={(e) => setFilter({ orgKeyword: e.target.value })}
-          placeholder={t("orgKeyword")}
-          aria-label={t("orgKeyword")}
-          className="h-9 w-32 max-lg:w-full"
-        />
-      </FilterGroup>
-
-      {/* 偏好開關 */}
-      <FilterGroup label={t("fgPrefs")} className="max-lg:w-full">
-        <Chip
-          active={filter.focusOnly}
-          onClick={() => setFilter({ focusOnly: !filter.focusOnly })}
-        >
-          <Target size={13} />
-          {t("focusOnly")}
-        </Chip>
-        <Chip
-          active={!filter.hideExcluded}
-          onClick={() => setFilter({ hideExcluded: !filter.hideExcluded })}
-          title={t("hideExcluded")}
-        >
-          {filter.hideExcluded ? <EyeOff size={13} /> : <Eye size={13} />}
-          {t("hideExcluded")}
-        </Chip>
-        <Chip
-          active={filter.northOnly}
-          onClick={() => setFilter({ northOnly: !filter.northOnly })}
-        >
-          {t("northOnly")}
-        </Chip>
-        <Chip
-          active={filter.newToday}
-          onClick={() => setFilter({ newToday: !filter.newToday })}
-        >
-          {t("newToday")}
-        </Chip>
       </FilterGroup>
 
       {/* 標籤過濾 */}
