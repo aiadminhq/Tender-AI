@@ -79,3 +79,4 @@ ds-bundle/
 .design-sync/node_modules/
 # Tailwind 4 編譯出的完整 CSS（cssEntry heal 用，可重新產生）
 tender-ai-frontend/.design-sync-tw.css
+.vercel
