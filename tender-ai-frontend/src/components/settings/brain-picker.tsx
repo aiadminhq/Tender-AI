@@ -4,13 +4,14 @@
 // 與「需本機驗證」徽章；可在儲存前用「測試」鈕對候選設定做煙測。
 // secret 紅線（見 CLAUDE.md）：BYOK 金鑰本體只進後端 .env；此表單只讀寫非密欄位，
 // byokKeySet 為唯讀狀態（金鑰是否已設定），永不顯示/輸入金鑰本體。
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useApp } from "@/store/app-context";
 import {
   updateBrainConfig,
   testBrainConfig,
   type BrainConfig,
   type BrainProvider,
+  type ByokProtocol,
   type BrainAgentSpec,
   type BrainTestResult,
 } from "@/lib/brain";
@@ -21,22 +22,51 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type { TextKey } from "@/i18n/strings";
 
+const BYOK_MODEL_OPTIONS: Record<
+  ByokProtocol,
+  { value: string; label: string }[]
+> = {
+  anthropic: [
+    { value: "claude-fable-5", label: "Claude Fable 5" },
+    { value: "claude-opus-5", label: "Claude Opus 5" },
+    { value: "claude-sonnet-5", label: "Claude Sonnet 5" },
+    { value: "claude-opus-4-8", label: "Claude Opus 4.8" },
+    {
+      value: "claude-haiku-4-5-20251001",
+      label: "Claude Haiku 4.5",
+    },
+  ],
+  openrouter: [
+    {
+      value: "anthropic/claude-fable-5",
+      label: "Claude Fable 5 · OpenRouter",
+    },
+    {
+      value: "anthropic/claude-sonnet-5",
+      label: "Claude Sonnet 5 · OpenRouter",
+    },
+    {
+      value: "anthropic/claude-opus-4.8",
+      label: "Claude Opus 4.8 · OpenRouter",
+    },
+    { value: "openai/gpt-5.5", label: "GPT-5.5 · OpenRouter" },
+    { value: "openai/gpt-5.5-pro", label: "GPT-5.5 Pro · OpenRouter" },
+  ],
+};
+
 export function BrainPicker() {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const { config: storeConfig, agents, loaded, error } = useBrainStore();
 
   // 受控編輯狀態：自共享 store 初始化一次，儲存時才送 PUT。
-  const [config, setConfig] = useState<BrainConfig | null>(null);
+  const [draftConfig, setConfig] = useState<BrainConfig | null>(null);
+  const config = draftConfig ?? storeConfig;
   const [saveErr, setSaveErr] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<BrainTestResult | null>(null);
-
-  // store 首次載入完成後，把目前設定灌進本地編輯狀態。
-  useEffect(() => {
-    if (storeConfig && config === null) setConfig(storeConfig);
-  }, [storeConfig, config]);
+  const [customByokModel, setCustomByokModel] = useState(false);
 
   // key → 代理規格，供 label／模型／徽章查詢。
   const agentByKey = useMemo(() => {
@@ -60,9 +90,10 @@ export function BrainPicker() {
     }
     if (c.provider === "byok") {
       const model = c.byokModel?.trim();
+      const protocol = c.byokProtocol === "openrouter" ? "OpenRouter" : "Anthropic";
       return model
-        ? `${t("brainProviderByok")} · ${model}`
-        : t("brainProviderByok");
+        ? `${t("brainProviderByok")} · ${protocol} · ${model}`
+        : `${t("brainProviderByok")} · ${protocol}`;
     }
     const model = c.ollamaModel?.trim();
     return model
@@ -81,7 +112,10 @@ export function BrainPicker() {
 
   // 受控編輯：就地改 config，儲存時才送 PUT。
   function patch(changes: Partial<BrainConfig>) {
-    setConfig((prev) => (prev ? { ...prev, ...changes } : prev));
+    setConfig((prev) => {
+      const current = prev ?? storeConfig;
+      return current ? { ...current, ...changes } : prev;
+    });
     setSaved(false);
     setSaveErr(false);
     setTestResult(null);
@@ -109,7 +143,7 @@ export function BrainPicker() {
         ollamaModel: config.ollamaModel || null,
         cliAgent: config.cliAgent || null,
         cliModel: config.cliModel || null,
-        byokProtocol: "anthropic",
+        byokProtocol: config.byokProtocol ?? "anthropic",
         byokBaseUrl: config.byokBaseUrl || null,
         byokModel: config.byokModel || null,
       });
@@ -134,7 +168,7 @@ export function BrainPicker() {
         ollamaModel: config.ollamaModel || null,
         cliAgent: config.cliAgent || null,
         cliModel: config.cliModel || null,
-        byokProtocol: "anthropic",
+        byokProtocol: config.byokProtocol ?? "anthropic",
         byokBaseUrl: config.byokBaseUrl || null,
         byokModel: config.byokModel || null,
       });
@@ -167,6 +201,33 @@ export function BrainPicker() {
           ...selectedAgent.models.map((m) => ({ value: m, label: m })),
         ]
       : null;
+
+  const byokProtocol: ByokProtocol =
+    config.byokProtocol === "openrouter" ? "openrouter" : "anthropic";
+  const storedByokProtocol: ByokProtocol =
+    storeConfig?.byokProtocol === "openrouter" ? "openrouter" : "anthropic";
+  const byokKeyStatusKnown = storedByokProtocol === byokProtocol;
+  const byokModels = BYOK_MODEL_OPTIONS[byokProtocol];
+  const selectedByokModelIsCustom =
+    customByokModel ||
+    Boolean(
+      config.byokModel?.trim() &&
+        !byokModels.some((option) => option.value === config.byokModel),
+    );
+  const byokModelOptions = [
+    {
+      value: "",
+      label:
+        byokProtocol === "openrouter"
+          ? "Default · Claude Sonnet 5 · OpenRouter"
+          : "Default · Claude Sonnet 5",
+    },
+    ...byokModels,
+    {
+      value: "__custom__",
+      label: lang === "zh" ? "自訂 model ID" : "Custom model ID",
+    },
+  ];
 
   return (
     <form onSubmit={onSubmit} className="max-w-md space-y-4">
@@ -276,14 +337,57 @@ export function BrainPicker() {
         <div className="space-y-4">
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-medium text-ink-muted">
-              {t("brainByokModel")}
+              API
             </span>
-            <Input
-              value={config.byokModel ?? ""}
-              placeholder={t("brainByokModelPh")}
-              onChange={(e) => patch({ byokModel: e.target.value })}
+            <Select
+              value={byokProtocol}
+              onValueChange={(value) => {
+                const protocol = value as ByokProtocol;
+                setCustomByokModel(false);
+                patch({
+                  byokProtocol: protocol,
+                  byokBaseUrl: null,
+                  byokModel: BYOK_MODEL_OPTIONS[protocol][0].value,
+                });
+              }}
+              options={[
+                { value: "anthropic", label: "Anthropic API" },
+                { value: "openrouter", label: "OpenRouter" },
+              ]}
               disabled={busy}
             />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[12px] font-medium text-ink-muted">
+              {t("brainByokModel")}
+            </span>
+            <Select
+              value={
+                selectedByokModelIsCustom
+                  ? "__custom__"
+                  : (config.byokModel ?? "")
+              }
+              onValueChange={(value) => {
+                if (value === "__custom__") {
+                  setCustomByokModel(true);
+                  patch({ byokModel: "" });
+                  return;
+                }
+                setCustomByokModel(false);
+                patch({ byokModel: value });
+              }}
+              options={byokModelOptions}
+              disabled={busy}
+            />
+            {selectedByokModelIsCustom && (
+              <Input
+                className="mt-2"
+                value={config.byokModel ?? ""}
+                placeholder="provider/model-id"
+                onChange={(e) => patch({ byokModel: e.target.value })}
+                disabled={busy}
+              />
+            )}
           </label>
           <label className="block">
             <span className="mb-1.5 block text-[12px] font-medium text-ink-muted">
@@ -291,21 +395,33 @@ export function BrainPicker() {
             </span>
             <Input
               value={config.byokBaseUrl ?? ""}
-              placeholder={t("brainByokBaseUrlPh")}
+              placeholder={
+                byokProtocol === "openrouter"
+                  ? "https://openrouter.ai/api"
+                  : "https://api.anthropic.com"
+              }
               onChange={(e) => patch({ byokBaseUrl: e.target.value })}
               disabled={busy}
             />
           </label>
           <p
             className={
-              config.byokKeySet
+              byokKeyStatusKnown && config.byokKeySet
                 ? "text-[12px] font-medium text-success"
                 : "text-[12px] font-medium text-tier-mid"
             }
           >
-            {config.byokKeySet
-              ? t("brainByokKeySet")
-              : t("brainByokKeyMissing")}
+            {!byokKeyStatusKnown
+              ? lang === "zh"
+                ? "儲存後確認此 API 的金鑰狀態"
+                : "Save to verify the API key status"
+              : config.byokKeySet
+                ? t("brainByokKeySet")
+                : byokProtocol === "openrouter"
+                  ? lang === "zh"
+                    ? "尚未設定金鑰——請在後端 .env 設 OPENROUTER_API_KEY"
+                    : "API key missing — set OPENROUTER_API_KEY in the backend .env"
+                  : t("brainByokKeyMissing")}
           </p>
         </div>
       )}

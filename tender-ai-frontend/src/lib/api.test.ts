@@ -4,6 +4,7 @@ import {
   fetchSavedSearches,
   postSavedSearch,
   fetchUserDecisions,
+  displayCaseNo,
 } from "@/lib/api";
 import type { FilterState } from "@/types/domain";
 
@@ -29,6 +30,18 @@ function makeItem(id: number) {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("displayCaseNo", () => {
+  it("將 PCC 純數字 base64 token 顯示為真實案號", () => {
+    expect(displayCaseNo("NzEyNzQwMjA=", "PCC")).toBe("71274020");
+  });
+
+  it("保留數字案號、非 PCC token 與無法安全解碼的值", () => {
+    expect(displayCaseNo("71274020", "PCC")).toBe("71274020");
+    expect(displayCaseNo("NzEyNzQwMjA=", "TMU")).toBe("NzEyNzQwMjA=");
+    expect(displayCaseNo("not-base64", "PCC")).toBe("not-base64");
+  });
+});
 
 describe("fetchTenders 分頁（cursor keyset）", () => {
   it("沿 next_cursor 逐頁抓取直到游標為 null", async () => {

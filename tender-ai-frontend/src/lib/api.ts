@@ -212,13 +212,30 @@ function synthScore(tier: Tier, daysLeft: number | null): number {
 const FEAS_BY_TIER: Record<Tier, number> = { high: 85, mid: 65, low: 40 };
 const COVER_BY_TIER: Record<Tier, number> = { high: 88, mid: 66, low: 42 };
 
+/** PCC 舊資料可能把純數字案號存成 base64 token；只在可安全解成數字時轉為顯示值。 */
+export function displayCaseNo(
+  casePk: string | null,
+  source: SourceKey,
+): string | undefined {
+  const raw = casePk?.trim();
+  if (!raw) return undefined;
+  if (source !== "PCC" || /^\d+$/.test(raw)) return raw;
+  try {
+    const decoded = globalThis.atob(raw).trim();
+    return /^\d+$/.test(decoded) ? decoded : raw;
+  } catch {
+    return raw;
+  }
+}
+
 function adapt(item: TenderListItem): Tender {
   const tier = toTier(item.tier);
+  const source = toSource(item.source);
   return {
     id: String(item.id),
     title: item.name,
     org: item.org ?? "",
-    source: toSource(item.source),
+    source,
     budget: (item.budget_wan ?? 0) * 10000, // 萬元 → TWD
     deadline: item.deadline_iso ?? "",
     publishedAt: item.first_seen ?? item.deadline_iso ?? "",
@@ -230,7 +247,7 @@ function adapt(item: TenderListItem): Tender {
     category: toCategory(item.category, item.name),
     tags: [], // 關鍵字命中於 P4 學習迴圈後補；focus/exclude 仍會比對標題
     // ── 後端額外欄位（live 才有）：詳情頁／抽屜用，null → undefined ──
-    caseNo: item.case_pk ?? undefined,
+    caseNo: displayCaseNo(item.case_pk, source),
     tenderMethod: item.tender_method ?? undefined,
     link: item.link ?? undefined,
     deadlineRoc: item.deadline_roc ?? undefined,

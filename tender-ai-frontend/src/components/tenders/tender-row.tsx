@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ExternalLink, Star, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { Tender, Verdict } from "@/types/domain";
 import { useApp } from "@/store/app-context";
 import { useAppData } from "@/store/app-data";
@@ -8,7 +8,6 @@ import { userById } from "@/data/users";
 import { formatBudget, formatDate, daysLeft } from "@/lib/format";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { CategoryIcon } from "@/components/ui/category-badge";
-import { FeasibilityMeter } from "@/components/ui/feasibility-meter";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -174,6 +173,23 @@ function OwnerCell({ ownerId }: { ownerId?: string }) {
   return <Avatar user={u} size="sm" />;
 }
 
+function SourceLink({ tender, label }: { tender: Tender; label: string }) {
+  if (!tender.link) return null;
+  return (
+    <a
+      href={tender.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-signal hover:underline"
+    >
+      <ExternalLink size={12} />
+      {label}
+    </a>
+  );
+}
+
 export function TenderRow({
   tender,
   onOpen,
@@ -186,6 +202,7 @@ export function TenderRow({
   const excluded = isExcluded(tender);
   const reason = excluded ? excludeReasonOf(tender) : undefined;
   const source = sourceByKey(tender.source).shortName;
+  const sourceLinkLabel = lang === "zh" ? "查看標案來源" : "View source";
 
   return (
     <>
@@ -215,9 +232,12 @@ export function TenderRow({
             <div className="truncate text-[13px] font-medium text-ink">
               {tender.title}
             </div>
-            <div className="truncate text-[11px] text-ink-dim">
-              {tender.org} · {source}
-              {reason ? ` · ${reason}` : ""}
+            <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-ink-dim">
+              <span className="truncate">
+                {tender.org} · {source}
+                {reason ? ` · ${reason}` : ""}
+              </span>
+              <SourceLink tender={tender} label={sourceLinkLabel} />
             </div>
           </div>
         </div>
@@ -226,7 +246,12 @@ export function TenderRow({
         </div>
         <DeadlineDateCell iso={tender.deadline} />
         <DaysLeftCell iso={tender.deadline} />
-        <FeasibilityMeter value={tender.feasibility} showLabel />
+        <div
+          className="tnum text-right text-[12px] text-ink-muted"
+          aria-label={t("feasibility")}
+        >
+          {Math.round(tender.feasibility)}
+        </div>
         <div className="flex justify-center">
           <OwnerCell ownerId={tender.owner} />
         </div>
@@ -250,7 +275,7 @@ export function TenderRow({
         )}
       >
         {/* 標題獨佔首行、全寬，不再被右上角屬性擠壓 */}
-        <div className="line-clamp-2 text-[14px] font-medium leading-snug text-ink">
+        <div className="whitespace-normal break-words text-[14px] font-medium leading-snug text-ink">
           {tender.title}
         </div>
         {/* 屬性另起一行：分級 · 類別 · 機關 · 來源 · 預算 */}
@@ -274,15 +299,19 @@ export function TenderRow({
         ) : (
           <div className="mt-2 flex items-center gap-3">
             <DeadlineCell iso={tender.deadline} />
-            <FeasibilityMeter
-              value={tender.feasibility}
-              showLabel
-              className="max-w-[140px]"
-            />
+            <span
+              className="tnum text-[12px] text-ink-muted"
+              aria-label={t("feasibility")}
+            >
+              {Math.round(tender.feasibility)}
+            </span>
           </div>
         )}
         <div className="mt-3 flex items-center justify-between">
-          <OwnerCell ownerId={tender.owner} />
+          <div className="flex min-w-0 items-center gap-3">
+            <OwnerCell ownerId={tender.owner} />
+            <SourceLink tender={tender} label={sourceLinkLabel} />
+          </div>
           <JudgmentActions tender={tender} />
         </div>
       </div>

@@ -407,3 +407,25 @@ def test_split_system_empty_convo_gets_placeholder():
     system, convo = brain._split_system([{"role": "system", "content": "S"}])
     assert system == "S"
     assert len(convo) == 1 and convo[0]["role"] == "user"
+
+
+def test_byok_connection_anthropic_uses_current_default(monkeypatch):
+    monkeypatch.setattr(brain.settings, "anthropic_api_key", "sk-ant-test")
+    base, model, headers = brain._byok_connection(
+        _Cfg(byok_protocol="anthropic", byok_base_url=None, byok_model=None)
+    )
+    assert base == "https://api.anthropic.com"
+    assert model == "claude-sonnet-5"
+    assert headers["x-api-key"] == "sk-ant-test"
+    assert "authorization" not in headers
+
+
+def test_byok_connection_openrouter_uses_bearer_and_model_slug(monkeypatch):
+    monkeypatch.setattr(brain.settings, "openrouter_api_key", "sk-or-test")
+    base, model, headers = brain._byok_connection(
+        _Cfg(byok_protocol="openrouter", byok_base_url=None, byok_model="openai/gpt-5.5")
+    )
+    assert base == "https://openrouter.ai/api"
+    assert model == "openai/gpt-5.5"
+    assert headers["authorization"] == "Bearer sk-or-test"
+    assert "x-api-key" not in headers

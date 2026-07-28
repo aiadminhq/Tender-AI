@@ -13,13 +13,8 @@ import type {
 } from "./types";
 
 const STORAGE_KEY = "tender-ai:design-feedback";
-const FEEDBACK_ENDPOINT = "/__design-feedback";
-const DISPATCH_ENDPOINT = "/__design-feedback/dispatch";
-const DISPATCH_JOBS_ENDPOINT = "/__design-feedback/jobs/";
-const DIRECT_CLI_TARGETS = new Set(["claude", "codex", "gemini", "opencode"]);
 const API_BASE =
-  (import.meta.env.VITE_API_BASE as string | undefined) ??
-  "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
+  (import.meta.env.VITE_API_BASE as string | undefined) ?? "/api/v1"; // 同源部署預設：dev 由 vite proxy、正式由同站 /api function 服務；VITE_API_BASE 可覆寫。
 
 interface State {
   enabled: boolean;
@@ -125,22 +120,23 @@ export function useAnnotateState(): State {
   return useSyncExternalStore(subscribe, getState, getState);
 }
 
-// ── 回傳給 CLI（hybrid：寫檔優先，後援複製／下載）─────────────
+// ── 回饋交接（僅複製／下載，絕不自動啟動 CLI）──────────────────
 
 export type ExportOutcome =
-  | { ok: true; via: "cli"; targetCli: string; jobId: string }
-  | { ok: true; via: "file"; path?: string }
+  | {
+      ok: true;
+      via: "handoff";
+      targetCli: string;
+      delivery: "clipboard" | "download";
+    }
   | { ok: true; via: "backend"; batchId?: string }
   | { ok: true; via: "clipboard" }
   | { ok: true; via: "download" }
   | { ok: false; error: string };
 
 /**
- * 匯出目前所有標註：
- *  1) 先試寫檔（POST 到 dev middleware → design-feedback/inbox.md）。
- *  2) 失敗則複製到剪貼簿。
- *  3) 再失敗則觸發 .md 下載。
- * 不論結果為何，markdown 內容都會回傳給呼叫端顯示。
+ * 匯出目前所有標註：CLI 目標產生可複製的任務提示詞；本地目標複製原始 Markdown。
+ * 不會寫入交接檔案，也不會啟動任何 CLI 程序。
  */
 export async function exportAnnotations(
   target: DesignFeedbackTarget = "local",
@@ -154,14 +150,25 @@ export async function exportAnnotations(
   );
   const targetCli = targetToCli(target);
 
-  // 本機開發優先直接派送到 CLI；回饋仍會 best-effort 留在後端，供多人彙整與日後追溯。
-  // Vite middleware 會限制 loopback，避免區網瀏覽者藉由 dev server 執行本機命令。
-  if (targetCli && DIRECT_CLI_TARGETS.has(targetCli)) {
-    const dispatched = await dispatchToCli(targetCli, markdown);
-    if (dispatched.ok) {
+  if (targetCli) {
+    const prompt = renderHandoffPrompt(targetCli, markdown);
+    const delivery = await copyOrDownload(
+      prompt,
+      "tender-ai-design-feedback-task.md",
+    );
+    if (delivery.ok) {
       void postBackend(targetCli);
-      return { outcome: dispatched, markdown };
+      return {
+        outcome: {
+          ok: true,
+          via: "handoff",
+          targetCli,
+          delivery: delivery.via,
+        },
+        markdown: prompt,
+      };
     }
+    return { outcome: delivery, markdown: prompt };
   }
 
   if (target === "backend") {
@@ -169,70 +176,39 @@ export async function exportAnnotations(
     if (backend.ok) return { outcome: backend, markdown };
   }
 
-  // 1) 寫檔（dev only；正式 build 無此端點會 fetch 失敗 → 落到後援）
-  try {
-    const res = await fetch(FEEDBACK_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        markdown,
-        annotations: state.annotations,
-        targetCli,
-      }),
-    });
-    if (res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { path?: string };
-      if (targetCli) void postBackend(targetCli);
-      return { outcome: { ok: true, via: "file", path: data.path }, markdown };
-    }
-  } catch {
-    /* fall through */
-  }
+  const delivery = await copyOrDownload(markdown, "design-feedback.md");
+  return { outcome: delivery, markdown };
+}
 
-  // 2) 剪貼簿
+async function copyOrDownload(
+  content: string,
+  filename: string,
+): Promise<
+  { ok: true; via: "clipboard" | "download" } | { ok: false; error: string }
+> {
   try {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(markdown);
-      return { outcome: { ok: true, via: "clipboard" }, markdown };
+      await navigator.clipboard.writeText(content);
+      return { ok: true, via: "clipboard" };
     }
   } catch {
     /* fall through */
   }
 
-  // 3) 下載
   try {
-    const blob = new Blob([markdown], { type: "text/markdown" });
+    const blob = new Blob([content], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "design-feedback.md";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    return { outcome: { ok: true, via: "download" }, markdown };
+    return { ok: true, via: "download" };
   } catch (e) {
     return {
-      outcome: { ok: false, error: e instanceof Error ? e.message : String(e) },
-      markdown,
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
     };
-  }
-}
-
-export type CliDispatchStatus = "queued" | "running" | "completed" | "failed";
-
-export async function getCliDispatchStatus(jobId: string): Promise<{
-  status: CliDispatchStatus;
-  error?: string;
-} | null> {
-  try {
-    const res = await fetch(`${DISPATCH_JOBS_ENDPOINT}${encodeURIComponent(jobId)}`);
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      job?: { status?: CliDispatchStatus; error?: string };
-    };
-    if (!data.job?.status) return null;
-    return { status: data.job.status, error: data.job.error };
-  } catch {
-    return null;
   }
 }
 
@@ -240,23 +216,19 @@ function targetToCli(target: DesignFeedbackTarget): string | null {
   return target === "local" || target === "backend" ? null : target;
 }
 
-async function dispatchToCli(
-  targetCli: string,
-  markdown: string,
-): Promise<Extract<ExportOutcome, { via: "cli" }> | { ok: false; error: string }> {
-  try {
-    const res = await fetch(DISPATCH_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markdown, targetCli }),
-    });
-    if (!res.ok) return { ok: false, error: `local CLI dispatch ${res.status}` };
-    const data = (await res.json()) as { job?: { id?: string } };
-    if (!data.job?.id) return { ok: false, error: "missing local CLI job id" };
-    return { ok: true, via: "cli", targetCli, jobId: data.job.id };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+function renderHandoffPrompt(targetCli: string, markdown: string): string {
+  return `# Tender AI 設計回饋交接 → ${targetCli}
+
+請依下列已選取的真實介面回饋執行修改。不要自行啟動其他 CLI、不要寫入交接檔案，也不要變更未列出的工作範圍。
+
+PURPOSE: 將已標註的 UI/UX 問題收斂為最小且可驗證的 Tender AI 改動。
+TASK: 閱讀每則回饋 | 對照目前元件與資料欄位 | 實作必要修改 | 執行相關 build／tests | 回報變更檔案與驗證結果。
+CONTEXT: tender-ai-frontend/src/**/* | tender-ai-backend/app/**/* | docs/design-feedback-workflow.md
+EXPECTED: 只處理本批標註；說明每則回饋如何處理；列出未處理的阻礙（若有）。
+CONSTRAINTS: 保留既有設計系統與真實資料契約 | 不碰無關 WIP | 不要自動 stage 或 commit。
+
+${markdown}
+`;
 }
 
 function authHeaders(): Record<string, string> {
@@ -270,7 +242,9 @@ function authHeaders(): Record<string, string> {
 
 async function postBackend(
   targetCli: string | null,
-): Promise<Extract<ExportOutcome, { via: "backend" }> | { ok: false; error: string }> {
+): Promise<
+  Extract<ExportOutcome, { via: "backend" }> | { ok: false; error: string }
+> {
   try {
     const res = await fetch(`${API_BASE}/design-feedback`, {
       method: "POST",
@@ -291,7 +265,8 @@ async function postBackend(
         })),
       }),
     });
-    if (!res.ok) return { ok: false, error: `design feedback API ${res.status}` };
+    if (!res.ok)
+      return { ok: false, error: `design feedback API ${res.status}` };
     const data = (await res.json().catch(() => ({}))) as { batch_id?: string };
     return { ok: true, via: "backend", batchId: data.batch_id };
   } catch (e) {

@@ -35,8 +35,14 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 def _to_out(config: AssistantBrainConfig) -> BrainConfigOut:
     out = BrainConfigOut.model_validate(config)
-    # byok_key_set 以 .env 是否設定金鑰為準（不外洩金鑰本體）。
-    out.byok_key_set = bool(settings.anthropic_api_key)
+    # 依目前選取的雲端協定回報對應金鑰狀態（不外洩金鑰本體）。
+    protocol = config.byok_protocol or "anthropic"
+    key = (
+        settings.openrouter_api_key
+        if protocol == "openrouter"
+        else settings.anthropic_api_key
+    )
+    out.byok_key_set = bool(key)
     return out
 
 

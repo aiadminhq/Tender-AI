@@ -86,6 +86,27 @@ async def test_byok_key_set_follows_env_not_payload(client, monkeypatch):
     assert body2["byok_key_set"] is False
 
 
+async def test_openrouter_protocol_uses_its_own_key_status(client, monkeypatch):
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    monkeypatch.setattr(settings, "openrouter_api_key", "sk-or-test")
+    r = await client.put(
+        BRAIN,
+        json={
+            "provider": "byok",
+            "byok_protocol": "openrouter",
+            "byok_model": "openai/gpt-5.5",
+        },
+    )
+    assert r.status_code == 200
+    assert r.json()["byok_protocol"] == "openrouter"
+    assert r.json()["byok_key_set"] is True
+
+
+async def test_put_brain_rejects_unknown_byok_protocol(client):
+    r = await client.put(BRAIN, json={"byok_protocol": "unknown"})
+    assert r.status_code == 422
+
+
 # ── service：get_or_create / update ───────────────────────────────────────────
 
 
@@ -146,6 +167,9 @@ async def test_get_brain_agents_shape(client):
     # claude/codex 支援指定模型；hermes 不支援。
     assert agents["claude"]["supports_model"] is True
     assert agents["hermes"]["supports_model"] is False
+    assert "claude-sonnet-5" in agents["claude"]["models"]
+    assert "claude-fable-5" in agents["claude"]["models"]
+    assert "gpt-5.5" in agents["codex"]["models"]
     # 每筆都帶 i18n label key 與 models 清單。
     for spec in agents.values():
         assert spec["label_i18n"] and isinstance(spec["models"], list)

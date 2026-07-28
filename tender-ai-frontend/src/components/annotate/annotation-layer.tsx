@@ -5,7 +5,7 @@
 // 僅供開發期使用：掛載點以 import.meta.env.DEV 把關，正式 build 不含此層。
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Download, Send, Trash2, X } from "lucide-react";
+import { Copy, Download, Trash2, X } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import {
   buildSelector,
@@ -16,7 +16,6 @@ import {
   addAnnotation,
   clearAnnotations,
   exportAnnotations,
-  getCliDispatchStatus,
   removeAnnotation,
   setEnabled,
   useAnnotateState,
@@ -134,31 +133,19 @@ export function AnnotationLayer() {
   async function onExport() {
     setStatus(t("annExporting"));
     const { outcome } = await exportAnnotations(target);
-    if (outcome.ok && outcome.via === "cli") {
-      setStatus(`${cliDisplay(outcome.targetCli)} · ${t("annCliQueued")}`);
-      void watchCliDispatch(outcome.jobId, outcome.targetCli);
-      return;
-    }
-    setStatus(t(outcomeKey(outcome)));
-    window.setTimeout(() => setStatus(null), 4000);
-  }
-
-  async function watchCliDispatch(jobId: string, targetCli: string) {
-    for (let attempt = 0; attempt < 40; attempt += 1) {
-      await new Promise((resolve) => window.setTimeout(resolve, 1500));
-      const job = await getCliDispatchStatus(jobId);
-      if (!job || job.status === "queued" || job.status === "running") {
-        setStatus(`${cliDisplay(targetCli)} · ${t("annCliWorking")}`);
-        continue;
-      }
+    if (outcome.ok && outcome.via === "handoff") {
       setStatus(
-        `${cliDisplay(targetCli)} · ${
-          job.status === "completed" ? t("annCliCompleted") : t("annCliFailed")
+        `${cliDisplay(outcome.targetCli)} · ${
+          outcome.delivery === "clipboard"
+            ? t("annHandoffCopied")
+            : t("annHandoffDownloaded")
         }`,
       );
       window.setTimeout(() => setStatus(null), 5000);
       return;
     }
+    setStatus(t(outcomeKey(outcome)));
+    window.setTimeout(() => setStatus(null), 4000);
   }
 
   return (
@@ -275,12 +262,15 @@ export function AnnotationLayer() {
 
           <div className="flex flex-col gap-2 border-t border-border px-3 py-3">
             <div className="min-w-0">
-              <span className="block truncate text-[11px] text-ink-muted" aria-live="polite">
+              <span
+                className="block truncate text-[11px] text-ink-muted"
+                aria-live="polite"
+              >
                 {status ?? t("annHintBar")}
               </span>
               {target !== "local" && target !== "backend" && !status && (
                 <span className="mt-1 block text-[10px] text-success">
-                  {t("annCliDirectHint")}
+                  {t("annHandoffHint")}
                 </span>
               )}
             </div>
@@ -291,7 +281,9 @@ export function AnnotationLayer() {
               <select
                 id="annotation-export-target"
                 value={target}
-                onChange={(e) => setTarget(e.target.value as DesignFeedbackTarget)}
+                onChange={(e) =>
+                  setTarget(e.target.value as DesignFeedbackTarget)
+                }
                 className="min-w-0 flex-1 rounded-md border border-border bg-surface-1 px-2.5 py-2 text-[12px] text-ink outline-none focus:border-ring"
               >
                 {DESIGN_FEEDBACK_TARGETS.map((value) => (
@@ -300,21 +292,21 @@ export function AnnotationLayer() {
                   </option>
                 ))}
               </select>
-            <button
-              type="button"
-              disabled={annotations.length === 0}
-              onClick={onExport}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
-            >
-              {target === "local" || target === "backend" ? (
-                <Download size={14} />
-              ) : (
-                <Send size={14} />
-              )}
-              {target === "local" || target === "backend"
-                ? t("annExport")
-                : t("annSendToCli")}
-            </button>
+              <button
+                type="button"
+                disabled={annotations.length === 0}
+                onClick={onExport}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+              >
+                {target === "local" || target === "backend" ? (
+                  <Download size={14} />
+                ) : (
+                  <Copy size={14} />
+                )}
+                {target === "local" || target === "backend"
+                  ? t("annExport")
+                  : t("annCopyTaskPrompt")}
+              </button>
             </div>
           </div>
         </div>
@@ -325,9 +317,8 @@ export function AnnotationLayer() {
 
 function outcomeKey(outcome: ExportOutcome) {
   if (!outcome.ok) return "annExportFailed" as const;
-  if (outcome.via === "cli") return "annCliQueued" as const;
+  if (outcome.via === "handoff") return "annHandoffCopied" as const;
   if (outcome.via === "backend") return "annExportedBackend" as const;
-  if (outcome.via === "file") return "annExportedFile" as const;
   if (outcome.via === "clipboard") return "annExportedClipboard" as const;
   return "annExportedDownload" as const;
 }

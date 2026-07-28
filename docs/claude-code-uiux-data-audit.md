@@ -2,13 +2,9 @@
 
 ## 使用方式
 
-目前版本已發布至 `origin/main`，最新 commit 為 `77c6809`。建議在工作區根目錄執行以下命令，先做唯讀稽核：
+目前版本已發布至 `origin/main`，最新 commit 為 `77c6809`。請直接複製下方完整任務提示詞，人工貼入 Claude Code 進行唯讀稽核。
 
-```bash
-ccw cli --tool claude --mode analysis --cd "." -p "$(cat docs/claude-code-uiux-data-audit.md)"
-```
-
-若需在稽核後直接實作，請先保留稽核報告，再將 prompt 內的 `MODE: analysis` 改為 `MODE: write`，並確認 Claude Code 使用獨立分支，不要直接覆蓋其他未完成工作。
+若需在稽核後直接實作，請先保留稽核報告，再將 prompt 內的 `MODE: analysis` 改為 `MODE: write`，並確認使用獨立分支，不要直接覆蓋其他未完成工作。
 
 ## 完整任務提示詞（可直接交給 Claude Code）
 
@@ -50,7 +46,7 @@ UI/UX 檢查清單：
 - 視覺：設計系統 token 是否一致使用；white/orange palette、border、radius、shadow、Noto Sans、數字等寬字、icon stroke 與密度是否統一。
 - 文案與 i18n：繁中／英文是否完整成對；數字、日期、金額、狀態文字是否不會截斷或產生歧義。
 - 圖表：圖例、tooltip、座標、單位、0 值、只有一種分類、資料不足與 responsive resize 是否正確。
-- feedback flow：標註面板是否能清楚區分 direct CLI、backend aggregate、manual inbox；成功、排隊、執行中、失敗與 fallback 是否可理解。
+- feedback flow：標註面板是否能清楚區分「複製任務提示詞」、後端彙整與原始 Markdown；成功、下載後援與手動遞交狀態是否可理解。
 
 Phase 2 — 後台資料串接稽核
 請沿著「後端 endpoint → schema → service/query → frontend API client → store/context → component」逐條追蹤，不可只看型別名稱。
@@ -62,7 +58,7 @@ Phase 2 — 後台資料串接稽核
 - 使用者狀態 API：accept、save/star、skip/reclassify、undo、kanban 卡片與 decisions 是否一致且不重複寫入。
 - dashboard KPI 與圖表是否以同一批資料、同一時間範圍、同一分母計算；確認百分比與「總數／進行中／截止／承接」沒有混用。
 - push notifications 的 unread、搜尋、篩選與 read state 是否與後端資料一致。
-- design-feedback 的 localStorage、Vite dev middleware、direct CLI dispatch、backend POST、summary/sync 是否符合目前文件；不得把 token、payload 或 Layer B 個資寫入公開文件或 log。
+- design-feedback 的 localStorage、手動提示詞複製／下載、backend POST、summary/sync 是否符合目前文件；不得把 token、payload 或 Layer B 個資寫入公開文件或 log。
 - 所有日期與金額的 timezone、民國／西元顯示、TWD 單位與 null／0 的處理。
 - mock、fixture、fallback、cached data 與 live API 的邊界；標記任何會在 production 被誤當真實資料的路徑。
 
@@ -83,7 +79,7 @@ MODE: analysis
 
 CONTEXT:
 @AGENTS.md @CLAUDE.md @docs/governance/**/* @docs/design-feedback-workflow.md
-@tender-ai-frontend/src/**/* @tender-ai-frontend/vite.config.ts @tender-ai-frontend/vite-plugin-design-feedback.ts
+@tender-ai-frontend/src/**/* @tender-ai-frontend/vite.config.ts
 @tender-ai-frontend/package.json @tender-ai-backend/app/**/* @tender-ai-backend/tests/**/*
 Memory: Tender AI 已有 backend design_feedback_items、POST/GET /api/v1/design-feedback、summary/sync 與 frontend dev annotation flow；請以目前程式碼與 live payload 重新驗證，不要直接相信歷史文件。
 

@@ -89,7 +89,7 @@ async def _stream_ollama(
         raise BrainError(str(e)) from e
 
 
-# ── byok（Anthropic messages stream）─────────────────────────────────────────
+# ── byok（Anthropic-compatible messages stream）──────────────────────────────
 
 
 def _split_system(messages: list[dict[str, str]]) -> tuple[str, list[dict[str, str]]]:
@@ -108,32 +108,17 @@ def _split_system(messages: list[dict[str, str]]) -> tuple[str, list[dict[str, s
 async def _stream_byok(
     config: Any, messages: list[dict[str, str]]
 ) -> AsyncIterator[BrainChunk]:
-    protocol = getattr(config, "byok_protocol", None) or "anthropic"
-    if protocol != "anthropic":
-        raise BrainError(f"BYOK 暫不支援協定：{protocol}")
-
-    api_key = settings.anthropic_api_key
-    if not api_key:
-        raise BrainError("BYOK 金鑰未設定（ANTHROPIC_API_KEY 為空）")
-
-    base = (getattr(config, "byok_base_url", None) or "https://api.anthropic.com").rstrip("/")
-    model = getattr(config, "byok_model", None) or "claude-opus-4-8"
+    base, model, headers = _byok_connection(config)
     system, convo = _split_system(messages)
 
     body = {
         "model": model,
         "max_tokens": settings.chat_num_predict,
-        "temperature": settings.chat_temperature,
         "stream": True,
         "messages": convo,
     }
     if system:
         body["system"] = system
-    headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
 
     try:
         async with httpx.AsyncClient(timeout=settings.chat_timeout) as client:
@@ -161,6 +146,40 @@ async def _stream_byok(
                         raise BrainError(f"BYOK 回報錯誤：{msg}")
     except httpx.HTTPError as e:
         raise BrainError(f"BYOK 呼叫失敗：{e}") from e
+
+
+def _byok_connection(config: Any) -> tuple[str, str, dict[str, str]]:
+    """依協定組出 endpoint、模型與 headers；金鑰只從環境設定取得。"""
+    protocol = getattr(config, "byok_protocol", None) or "anthropic"
+    if protocol == "anthropic":
+        api_key = settings.anthropic_api_key
+        env_name = "ANTHROPIC_API_KEY"
+        default_base = "https://api.anthropic.com"
+        default_model = "claude-sonnet-5"
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+    elif protocol == "openrouter":
+        api_key = settings.openrouter_api_key
+        env_name = "OPENROUTER_API_KEY"
+        default_base = "https://openrouter.ai/api"
+        default_model = "anthropic/claude-sonnet-5"
+        headers = {
+            "authorization": f"Bearer {api_key}",
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+    else:
+        raise BrainError(f"BYOK 暫不支援協定：{protocol}")
+
+    if not api_key:
+        raise BrainError(f"BYOK 金鑰未設定（{env_name} 為空）")
+
+    base = (getattr(config, "byok_base_url", None) or default_base).rstrip("/")
+    model = getattr(config, "byok_model", None) or default_model
+    return base, model, headers
 
 
 # ── cli（headless agentic）────────────────────────────────────────────────────

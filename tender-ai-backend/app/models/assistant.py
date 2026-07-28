@@ -107,7 +107,7 @@ class AssistantBrainConfig(Base):
     )
     # provider=cli 時傳給該 CLI 代理的模型名稱；NULL → 用代理預設 / 不帶 model flag。
     cli_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # provider=byok 的協定（v1 先支援 anthropic）。
+    # provider=byok 的協定（anthropic | openrouter）。
     byok_protocol: Mapped[str | None] = mapped_column(String(16), nullable=True)
     byok_base_url: Mapped[str | None] = mapped_column(String(256), nullable=True)
     byok_model: Mapped[str | None] = mapped_column(String(64), nullable=True)
