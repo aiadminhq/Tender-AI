@@ -618,6 +618,7 @@ export const STRINGS = {
     loginGoogle: "使用 Google 公司帳號登入",
     loginAccessScope: "白名單協作範圍內使用",
     loginErrCredentials: "信箱或密碼錯誤，請再試一次",
+    loginOAuthError: "Google 登入未完成，請確認帳號權限或稍後再試",
     loginErrNetwork: "連不到後端伺服器",
     loginUseMock: "改用示範模式（離線瀏覽）",
     loginMockHint: "示範模式不會記錄具名行為，僅供離線瀏覽。",
@@ -1504,6 +1505,7 @@ export const STRINGS = {
     loginGoogle: "Continue with Google Workspace",
     loginAccessScope: "For allowlisted team collaboration only",
     loginErrCredentials: "Wrong email or password, please try again",
+    loginOAuthError: "Google sign-in could not be completed; check access or try again",
     loginErrNetwork: "Cannot reach the backend server",
     loginUseMock: "Use demo mode (offline browsing)",
     loginMockHint:

@@ -45,6 +45,12 @@ class LoginIn(BaseModel):
     password: str
 
 
+class SupabaseLoginIn(BaseModel):
+    """以 Supabase browser session 的 access token 登入 Tender AI。"""
+
+    access_token: str
+
+
 class LoginOut(BaseModel):
     """登入成功後回傳的帳戶資料（Phase 2：含 HMAC token）。
 

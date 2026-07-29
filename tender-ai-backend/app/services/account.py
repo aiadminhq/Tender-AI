@@ -11,9 +11,11 @@ Phase 2 工作。此處只強制可驗證的業務規則（白名單前置、信
 """
 from __future__ import annotations
 
+import httpx
 from sqlalchemy import delete as sa_delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.errors import DomainValidationError, EntityNotFound, PermissionDenied
 from app.core.security import hash_password, verify_password
 from app.models.behavior import User
@@ -74,6 +76,48 @@ async def authenticate(session: AsyncSession, email: str, password: str) -> User
     ).scalar_one_or_none()
     if user is None or not verify_password(password, user.password_hash):
         raise PermissionDenied("invalid email or password")
+    return user
+
+
+async def authenticate_supabase(session: AsyncSession, access_token: str) -> User:
+    """向 Supabase 驗證 access token，再以本地白名單建立登入身分。
+
+    不直接在本地解碼 JWT，避免把 Supabase signing-key／claim 規則複製到後端；
+    `/auth/v1/user` 是 GoTrue 的 token introspection 入口，回傳的 email 只作為
+    本地 `users` 表查找鍵。
+    """
+    token = (access_token or "").strip()
+    if not token or not settings.supabase_url or not settings.supabase_publishable_key:
+        raise PermissionDenied("Supabase authentication is not configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=settings.supabase_auth_timeout) as client:
+            response = await client.get(
+                f"{settings.supabase_url.rstrip('/')}/auth/v1/user",
+                headers={
+                    "apikey": settings.supabase_publishable_key,
+                    "Authorization": f"Bearer {token}",
+                },
+            )
+    except httpx.HTTPError as exc:
+        raise PermissionDenied("Supabase authentication is unavailable") from exc
+
+    if response.status_code != 200:
+        raise PermissionDenied("invalid Supabase session")
+
+    try:
+        payload = response.json()
+        email = str(payload.get("email") or "").strip().lower()
+    except (AttributeError, TypeError, ValueError):
+        raise PermissionDenied("invalid Supabase session response")
+    if not email.endswith(ALLOWED_EMAIL_DOMAIN):
+        raise PermissionDenied("account is outside the collaboration domain")
+
+    user = (
+        await session.execute(select(User).where(User.email == email))
+    ).scalar_one_or_none()
+    if user is None or not user.whitelist_active:
+        raise PermissionDenied("account is not in the whitelist")
     return user
 
 

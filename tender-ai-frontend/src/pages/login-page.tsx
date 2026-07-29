@@ -4,24 +4,22 @@ import { useState, type FormEvent } from "react";
 import { Check, KeyRound } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { useAuth } from "@/store/auth-context";
+import { isSupabaseAuthConfigured } from "@/lib/supabase-auth";
 import { BrandMark } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type ErrState = null | "credentials" | "network";
+type ErrState = null | "credentials" | "network" | "oauth";
 
 export function LoginPage() {
   const { t, lang, toggleLang } = useApp();
-  const { login, enterMock } = useAuth();
+  const { login, loginWithGoogle, enterMock } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<ErrState>(null);
   const [busy, setBusy] = useState(false);
   const [acceptedAgreement, setAcceptedAgreement] = useState(false);
   const [shareLayerB, setShareLayerB] = useState(false);
-  const oauthGoogleStart = import.meta.env.VITE_AUTH_GOOGLE_START_URL as
-    | string
-    | undefined;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,6 +32,18 @@ export function LoginPage() {
     } catch {
       setErr("network"); // LoginError("network")：後端不可達
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onGoogleSignIn() {
+    if (busy) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await loginWithGoogle();
+    } catch {
+      setErr("oauth");
       setBusy(false);
     }
   }
@@ -113,6 +123,15 @@ export function LoginPage() {
             </p>
           )}
 
+          {err === "oauth" && (
+            <p
+              role="alert"
+              className="mb-3 text-[12px] font-medium text-destructive"
+            >
+              {t("loginOAuthError")}
+            </p>
+          )}
+
           <Button
             type="submit"
             variant="primary"
@@ -122,13 +141,13 @@ export function LoginPage() {
             {busy ? t("loginSubmitting") : t("loginSubmit")}
           </Button>
 
-          {oauthGoogleStart && (
+          {isSupabaseAuthConfigured() && (
             <Button
               type="button"
               variant="outline"
               className="mt-2.5 w-full"
               disabled={busy}
-              onClick={() => window.location.assign(oauthGoogleStart)}
+              onClick={() => void onGoogleSignIn()}
             >
               <KeyRound size={15} />
               {t("loginGoogle")}
