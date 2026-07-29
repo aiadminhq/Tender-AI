@@ -18,12 +18,19 @@ import {
 import {
   fetchMe,
   login as apiLogin,
+  loginWithSupabaseToken,
   setConsent as apiSetConsent,
   type AuthUser,
 } from "@/lib/auth-api";
 import { setCurrentUserId } from "@/lib/api";
 import { load, remove, save } from "@/lib/storage";
 import { getToken, setToken, clearToken } from "@/lib/auth-token";
+import {
+  getSupabaseSession,
+  signInWithGoogle,
+  signOutSupabase,
+  supabase,
+} from "@/lib/supabase-auth";
 
 const STORAGE_KEY = "auth-user"; // tender:auth-user
 
@@ -38,7 +45,9 @@ interface AuthContextValue {
   /** 是否為退化／示範模式（後端不可達）。 */
   isMock: boolean;
   /** 登入：成功回 true；憑證錯誤回 false；後端不可達拋給呼叫端決定是否退化。 */
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, shareLayerB?: boolean) => Promise<boolean>;
+  /** 以 Supabase Google OAuth 登入；回呼後仍由後端白名單核准。 */
+  loginWithGoogle: () => Promise<void>;
   /** 進入示範模式（後端不可達時的明確降級入口）。 */
   enterMock: () => void;
   logout: () => void;
@@ -71,6 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     load<AuthUser | null>(STORAGE_KEY, null) ? "loading" : "anonymous",
   );
 
+  const exchangeSupabaseSession = useCallback(async (accessToken: string) => {
+    const { user: nextUser, token } = await loginWithSupabaseToken(accessToken);
+    setToken(token);
+    save(STORAGE_KEY, nextUser);
+    setUser(nextUser);
+    setStatus("authed");
+  }, []);
+
   // 已登入身分 → 注入 api.ts 供行為具名回寫；登出／示範模式清除。
   useEffect(() => {
     setCurrentUserId(status === "authed" && user ? user.id : null);
@@ -102,18 +119,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       alive = false;
     };
     // 僅在掛載時核對一次
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // OAuth callback 會把 Supabase session 留在 browser storage；交換成 Tender AI
+  // token 後，後續 API 仍沿用既有後端信任邊界。
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    const exchange = async (accessToken: string) => {
+      if (!alive || getToken()) return;
+      try {
+        await exchangeSupabaseSession(accessToken);
+      } catch {
+        if (!alive) return;
+        clearToken();
+        remove(STORAGE_KEY);
+        setUser(null);
+        setStatus("anonymous");
+        void signOutSupabase();
+      }
+    };
+
+    void getSupabaseSession().then((session) => {
+      if (session?.access_token) void exchange(session.access_token);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) void exchange(session.access_token);
+    });
+    return () => {
+      alive = false;
+      data.subscription.unsubscribe();
+    };
+  }, [exchangeSupabaseSession]);
+
   const login = useCallback(
-    async (email: string, password: string): Promise<boolean> => {
+    async (
+      email: string,
+      password: string,
+      shareLayerB = false,
+    ): Promise<boolean> => {
       // 憑證錯誤 → 回 false；網路錯誤 → 由 apiLogin 拋 LoginError("network")，
       // 交呼叫端（登入頁）決定是否提示「改用示範模式」。
       try {
         const { user: u, token } = await apiLogin(email, password);
         setToken(token);
-        setUser(u);
-        save(STORAGE_KEY, u);
+        let nextUser = u;
+        if (shareLayerB && !u.consentShared) {
+          const consent = await apiSetConsent(true);
+          if (consent) {
+            nextUser = {
+              ...u,
+              consentShared: consent.consentShared,
+              consentAt: consent.consentAt,
+            };
+          }
+        }
+        setUser(nextUser);
+        save(STORAGE_KEY, nextUser);
         setStatus("authed");
         return true;
       } catch (err) {
@@ -136,6 +198,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(MOCK_USER);
     setStatus("mock");
     remove(STORAGE_KEY); // 示範身分不留存
+  }, []);
+
+  const loginWithGoogle = useCallback(async () => {
+    await signInWithGoogle();
   }, []);
 
   const logout = useCallback(() => {
@@ -179,12 +245,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: status === "authed" && !!user?.isAdmin,
       isMock: status === "mock",
       login,
+      loginWithGoogle,
       enterMock,
       logout,
       refreshUser,
       updateConsent,
     }),
-    [status, user, login, enterMock, logout, refreshUser, updateConsent],
+    [
+      status,
+      user,
+      login,
+      loginWithGoogle,
+      enterMock,
+      logout,
+      refreshUser,
+      updateConsent,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

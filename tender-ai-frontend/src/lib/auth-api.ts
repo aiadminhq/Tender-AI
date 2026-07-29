@@ -151,6 +151,35 @@ export async function login(
   };
 }
 
+/** POST /auth/supabase：以 Supabase access token 換取 Tender AI HMAC token。 */
+export async function loginWithSupabaseToken(
+  accessToken: string,
+): Promise<{ user: AuthUser; token: string; expiresAt: string | null }> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/auth/supabase`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ access_token: accessToken }),
+    });
+  } catch {
+    throw new LoginError("network", "backend unreachable");
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new LoginError("credentials", "Supabase account is not allowlisted");
+  }
+  if (!res.ok) throw new LoginError("network", `Supabase login API ${res.status}`);
+  const raw = (await res.json()) as AuthUserRaw & {
+    token: string;
+    expires_at: string | null;
+  };
+  return {
+    user: adaptAuthUser(raw),
+    token: raw.token,
+    expiresAt: raw.expires_at ?? null,
+  };
+}
+
 /** GET /me：以 Bearer token 刷新帳戶狀態（重新整理頁面後沿用）。失敗回 null。 */
 export async function fetchMe(): Promise<AuthUser | null> {
   try {

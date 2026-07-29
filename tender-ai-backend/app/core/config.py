@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     # Token 有效時數（預設 7 天）
     auth_token_ttl_hours: int = 168
 
+    # Supabase Auth：只存公開 project URL／publishable key，OAuth secret 留在 Supabase。
+    supabase_url: str = ""
+    supabase_publishable_key: str = ""
+    supabase_auth_timeout: float = 5.0
+
     # 前端跨源呼叫允許來源（逗號分隔字串）；預設本機 Vite 開發埠（5173／5174）
     cors_origins: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"

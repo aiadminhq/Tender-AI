@@ -49,7 +49,7 @@ class AssistantSourceOut(BaseModel):
       ``source`` 固定為「知識庫」，前端據此渲染不同樣式的來源卡。
     """
 
-    kind: Literal["tender", "semantic", "similar", "knowledge"]
+    kind: Literal["tender", "semantic", "similar", "knowledge", "collaboration"]
     tender_id: int | None = None
     title: str
     source: str
@@ -90,6 +90,17 @@ class PreferenceSuggestionOut(BaseModel):
     raw: str
 
 
+class AssistantActionOut(BaseModel):
+    """需使用者確認才由前端工作看板執行的協作動作。"""
+
+    kind: Literal["assign_tender", "create_task"]
+    tender_id: int
+    assignee_name: str
+    assignee_user_id: int
+    title: str | None = None
+    requires_confirmation: bool = True
+
+
 class AssistantChatMetaOut(BaseModel):
     """串流的第一個 meta 事件。"""
 
@@ -102,6 +113,7 @@ class AssistantChatMetaOut(BaseModel):
     tool_contract: AssistantToolContractOut
     # 偵測到對話中的長期條件時帶出（否則 None）；前端據此渲染確認 chip。
     preference_suggestion: PreferenceSuggestionOut | None = None
+    actions: list[AssistantActionOut] = Field(default_factory=list)
 
 
 class AssistantChatDeltaOut(BaseModel):
@@ -167,4 +179,3 @@ class AssistantThreadListOut(BaseModel):
     """GET /assistant/threads 的回應。"""
 
     threads: list[AssistantThreadOut] = Field(default_factory=list)
-

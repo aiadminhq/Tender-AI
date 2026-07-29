@@ -288,6 +288,23 @@ interface AppDataValue {
     deadline?: string;
     stage?: BidStage;
   }) => void;
+  /** 小助手確認後的標案負責人指派；以 tenderId 去重，不新增另一份標案資料。 */
+  assignTender: (input: {
+    tenderId: string;
+    title: string;
+    ownerId: number;
+    tier?: Tier;
+    deadline?: string;
+  }) => void;
+  /** 小助手確認後建立任務；必要時先建立既有格式的投標專案。 */
+  createTenderTask: (input: {
+    tenderId: string;
+    tenderTitle: string;
+    assigneeId: number;
+    title: string;
+    tier?: Tier;
+    deadline?: string;
+  }) => void;
   updateProject: (
     id: string,
     patch: Partial<
@@ -1511,6 +1528,102 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [currentMemberId, pushActivity],
   );
 
+  const assignTender = useCallback(
+    (input: {
+      tenderId: string;
+      title: string;
+      ownerId: number;
+      tier?: Tier;
+      deadline?: string;
+    }) => {
+      const ts = nowISO();
+      setProjects((prev) => {
+        const existing = prev.find((project) => project.tenderId === input.tenderId);
+        if (existing) {
+          return prev.map((project) =>
+            project.id === existing.id
+              ? { ...project, ownerId: input.ownerId, updatedAt: ts }
+              : project,
+          );
+        }
+        return [
+          {
+            id: `p-${uid()}`,
+            tenderId: input.tenderId,
+            title: input.title,
+            stage: "watching",
+            tier: input.tier,
+            deadline: input.deadline,
+            ownerId: input.ownerId,
+            subtasks: [],
+            notes: [],
+            createdAt: ts,
+            updatedAt: ts,
+          },
+          ...prev,
+        ];
+      });
+      pushActivity("accept", input.title);
+    },
+    [pushActivity],
+  );
+
+  const createTenderTask = useCallback(
+    (input: {
+      tenderId: string;
+      tenderTitle: string;
+      assigneeId: number;
+      title: string;
+      tier?: Tier;
+      deadline?: string;
+    }) => {
+      const taskTitle = input.title.trim();
+      if (!taskTitle) return;
+      const ts = nowISO();
+      const subtask: Subtask = {
+        id: `st-${uid()}`,
+        title: taskTitle,
+        assigneeId: input.assigneeId,
+        status: "todo",
+        createdBy: currentMemberId,
+        createdAt: ts,
+      };
+      setProjects((prev) => {
+        const existing = prev.find((project) => project.tenderId === input.tenderId);
+        if (existing) {
+          return prev.map((project) =>
+            project.id === existing.id
+              ? {
+                  ...project,
+                  ownerId: input.assigneeId,
+                  subtasks: [...project.subtasks, subtask],
+                  updatedAt: ts,
+                }
+              : project,
+          );
+        }
+        return [
+          {
+            id: `p-${uid()}`,
+            tenderId: input.tenderId,
+            title: input.tenderTitle,
+            stage: "watching",
+            tier: input.tier,
+            deadline: input.deadline,
+            ownerId: input.assigneeId,
+            subtasks: [subtask],
+            notes: [],
+            createdAt: ts,
+            updatedAt: ts,
+          },
+          ...prev,
+        ];
+      });
+      pushActivity("accept", `${input.tenderTitle}：${taskTitle}`);
+    },
+    [currentMemberId, pushActivity],
+  );
+
   const updateProject = useCallback(
     (
       id: string,
@@ -1866,6 +1979,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       visibleProjects,
       moveProjectStage,
       addProject,
+      assignTender,
+      createTenderTask,
       updateProject,
       removeProject,
       addProjectNote,
@@ -1942,6 +2057,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       visibleProjects,
       moveProjectStage,
       addProject,
+      assignTender,
+      createTenderTask,
       updateProject,
       removeProject,
       addProjectNote,
