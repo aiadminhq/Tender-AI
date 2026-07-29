@@ -13,7 +13,7 @@ import {
   type AppendMessage,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
-import type { AssistantSource, PreferenceSuggestion } from "@/lib/assistant";
+import type { AssistantAction, AssistantSource, PreferenceSuggestion } from "@/lib/assistant";
 import type { AssistantArtifact } from "./assistant-artifact-types";
 import { useAssistantChat, type Turn } from "./use-assistant-chat";
 import {
@@ -28,6 +28,7 @@ export interface AssistantCustomMeta {
   preference: PreferenceSuggestion | null;
   preferenceState: "pending" | "confirmed" | "dismissed" | null;
   artifacts: AssistantArtifact[];
+  actions: AssistantAction[];
 }
 
 const convertMessage = (turn: Turn): ThreadMessageLike => ({
@@ -40,6 +41,7 @@ const convertMessage = (turn: Turn): ThreadMessageLike => ({
       preference: turn.preference ?? null,
       preferenceState: turn.preferenceState ?? null,
       artifacts: turn.artifacts ?? [],
+      actions: turn.actions ?? [],
     } satisfies AssistantCustomMeta,
   },
 });

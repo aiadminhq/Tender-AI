@@ -25,10 +25,12 @@ from dataclasses import dataclass
 from typing import Any, AsyncIterator
 from uuid import uuid4
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.schemas.assistant import (
+    AssistantActionOut,
     AssistantChatDeltaOut,
     AssistantChatDoneOut,
     AssistantChatMetaOut,
@@ -52,6 +54,11 @@ from app.services import llm
 from app.services import query as query_svc
 from app.services import search as search_svc
 from app.services.knowledge import search_knowledge
+from app.services.assistant_collaboration import (
+    CollaborationEvidence,
+    collect_collaboration_evidence,
+)
+from app.models.behavior import User
 
 _TEXT_PART_RE = re.compile(r"^(?:#|id[:\s#]|標案[:\s#])?(\d{1,8})$", re.IGNORECASE)
 _QUERY_ID_RE = re.compile(r"(?:#|id[:\s#]|標案[:\s#])(\d{1,8})", re.IGNORECASE)
@@ -94,6 +101,13 @@ class KnowledgeEvidence:
     heading: str | None
     content: str
     score: float | None
+
+
+_ASSIGN_RE = re.compile(
+    r"(?:指派|交給).{0,40}?(?:標案\s*#?\s*(\d+))?.{0,40}?(?:給|由)\s*([^\s，。；、]+)",
+    re.IGNORECASE,
+)
+_TASK_RE = re.compile(r"(?:任務|工作)\s*[:：]\s*([^\n。；]{2,80})")
 
 
 # 知識庫片段餵 LLM／來源卡時的單段字數上限（避免 grounding prompt 過長）
@@ -346,8 +360,10 @@ def _format_answer(
     prompt: str,
     evidence: list[AssistantEvidence],
     knowledge: list[KnowledgeEvidence] | None = None,
+    collaboration: list[CollaborationEvidence] | None = None,
 ) -> str:
     knowledge = knowledge or []
+    collaboration = collaboration or []
     intro = [
         "我用標案 SQL／語意檢索與知識庫一起整理這個問題。",
     ]
@@ -374,7 +390,12 @@ def _format_answer(
             head = k.title + (f"／{k.heading}" if k.heading else "")
             lines.append(f"{idx}. 〔{head}〕{_knowledge_excerpt(k.content)}")
 
-    if not evidence and not knowledge:
+    if collaboration:
+        lines.append("### 團隊協作與學習依據")
+        for item in collaboration[:8]:
+            lines.append(f"- 〔Layer {item.layer}／{item.title}〕{item.content}")
+
+    if not evidence and not knowledge and not collaboration:
         lines.append("目前還沒有足夠證據，會先退回到標案清單與語意檢索的既有範圍。")
 
     lines.append("### 下一步")
@@ -386,7 +407,7 @@ def _format_answer(
 
 _GROUNDING_SYSTEM = (
     "你是惠強設計的政府標案承標決策助手。你的回答必須完全根據下方「候選標案清單」"
-    "與「知識庫片段」，不得引用兩者以外的內容。\n"
+    "、「知識庫片段」與「團隊協作/學習證據」，不得引用三者以外的內容。\n"
     "規則：\n"
     "1. 涉及「哪些標案、案號、機關、金額、連結、截止日」等事實時，只能引用「候選標案"
     "清單」中的標案；嚴禁虛構不在清單中的標案。\n"
@@ -397,7 +418,9 @@ _GROUNDING_SYSTEM = (
     "4. 若兩者都不足以回答，直接說明證據不足，不要編造。\n"
     "5. 一律用繁體中文，條列重點：標案問題聚焦「是否值得投標、可行度、截止急迫性」，"
     "方法問題聚焦「系統用什麼標準衡量」。\n"
-    "6. 不要重複貼出完整清單；清單與知識來源會由系統另外以卡片呈現。"
+    "6. 團隊協作資料只可根據提供的 Layer B/C 證據回答，不得推測未提供的成員行為；"
+    "Layer C 團隊資料已是聚合結果，不能還原到個人。\n"
+    "7. 不要重複貼出完整清單；清單與知識來源會由系統另外以卡片呈現。"
 )
 
 
@@ -425,11 +448,55 @@ def _knowledge_block(knowledge: list[KnowledgeEvidence]) -> str:
     return "\n".join(lines)
 
 
+def _collaboration_block(collaboration: list[CollaborationEvidence]) -> str:
+    if not collaboration:
+        return "（本次問題未要求協作或學習資料。）"
+    return "\n".join(
+        f"〔Layer {item.layer}／{item.title}〕{item.content}"
+        for item in collaboration[:12]
+    )
+
+
+async def _detect_assignment_action(
+    session: AsyncSession,
+    prompt: str,
+    focus_tender_id: int | None,
+    actor: User | None,
+) -> list[AssistantActionOut]:
+    """辨識明確指派語句；只產生待確認 proposal，絕不由模型直接寫入看板。"""
+    if actor is None or not actor.whitelist_active:
+        return []
+    match = _ASSIGN_RE.search(prompt)
+    if not match:
+        return []
+    tender_id = int(match.group(1)) if match.group(1) else focus_tender_id
+    if tender_id is None:
+        return []
+    assignee_name = match.group(2).strip()
+    users = await session.execute(
+        select(User).where(User.whitelist_active.is_(True), User.name == assignee_name).limit(2)
+    )
+    assignee = users.scalars().first()
+    if assignee is None:
+        return []
+    task = _TASK_RE.search(prompt)
+    return [
+        AssistantActionOut(
+            kind="create_task" if task else "assign_tender",
+            tender_id=tender_id,
+            assignee_name=assignee.name,
+            assignee_user_id=assignee.id,
+            title=task.group(1).strip() if task else None,
+        )
+    ]
+
+
 def _build_chat_messages(
     payload: AssistantChatRequest,
     prompt: str,
     evidence: list[AssistantEvidence],
     knowledge: list[KnowledgeEvidence],
+    collaboration: list[CollaborationEvidence],
     focus_note: str = "",
 ) -> list[dict[str, str]]:
     """組裝餵給 Ollama 的訊息：grounding system + 既有對話歷史（純文字）。"""
@@ -437,7 +504,8 @@ def _build_chat_messages(
         f"{_GROUNDING_SYSTEM}\n\n"
         + (f"[目前檢視情境]\n{focus_note}\n\n" if focus_note else "")
         + f"[候選標案清單]\n{_evidence_block(evidence)}\n\n"
-        f"[知識庫片段]\n{_knowledge_block(knowledge)}"
+        f"[知識庫片段]\n{_knowledge_block(knowledge)}\n\n"
+        f"[團隊協作/學習證據]\n{_collaboration_block(collaboration)}"
     )
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
     for message in payload.messages:
@@ -464,6 +532,7 @@ async def stream_chat_events(
     payload: AssistantChatRequest,
     *,
     owner_user_id: str = "default",
+    actor_user: User | None = None,
 ) -> AsyncIterator[str]:
     prompt = _latest_user_prompt(payload)
     focus_id = _focus_tender_id(payload)
@@ -518,6 +587,7 @@ async def stream_chat_events(
             sources=[],
             tool_contract=AssistantToolContractOut(),
             preference_suggestion=None,
+            actions=[],
         )
         yield _json_line(meta.model_dump())
         yield _json_line(AssistantChatDeltaOut(text=answer_text).model_dump())
@@ -526,6 +596,10 @@ async def stream_chat_events(
 
     evidence = await _collect_candidates(session, prompt, focus_tender_id=focus_id)
     knowledge = await _collect_knowledge(session, prompt)
+    collaboration = await collect_collaboration_evidence(
+        session, actor=actor_user, prompt=prompt, focus_tender_id=focus_id
+    )
+    actions = await _detect_assignment_action(session, prompt, focus_id, actor_user)
 
     # 情境提示：把「正在檢視的那一案」明說給 LLM，讓未帶編號的指代預設指向它。
     focus_note = ""
@@ -568,6 +642,18 @@ async def stream_chat_events(
         )
         for k in knowledge
     )
+    sources.extend(
+        AssistantSourceOut(
+            kind="collaboration",
+            tender_id=item.tender_id,
+            title=item.title,
+            source=f"Layer {item.layer}",
+            url=None,
+            score=None,
+            excerpt=item.content,
+        )
+        for item in collaboration
+    )
 
     # 對話中的「長期條件」偵測（confirm-to-remember）：只當建議帶給前端，
     # 不在此寫入、不碰評分；使用者按確認後前端才 POST state_preference 事件。
@@ -598,12 +684,13 @@ async def stream_chat_events(
         await session.rollback()
 
     meta = AssistantChatMetaOut(
-        scope="tender_sql + semantic_search + knowledge_base",
+        scope="tender_sql + semantic_search + knowledge_base + collaboration",
         thread_id=thread_id,
         prompt=prompt,
         sources=sources,
         tool_contract=AssistantToolContractOut(),
         preference_suggestion=preference_suggestion,
+        actions=actions,
     )
     yield _json_line(meta.model_dump())
 
@@ -617,7 +704,7 @@ async def stream_chat_events(
             await session.rollback()
             brain_cfg = None
         messages = _build_chat_messages(
-            payload, prompt, evidence, knowledge, focus_note
+            payload, prompt, evidence, knowledge, collaboration, focus_note
         )
         history = [
             {"role": m["role"], "content": m["content"]}
@@ -671,7 +758,7 @@ async def stream_chat_events(
     if not used_llm:
         # Fallback：Ollama 不可用／逾時／空輸出 → 退回既有模板（HTTP 仍 200）。
         # delta 為 replace 語意，故即便前面已串出部分 LLM 文字，這裡會整段覆蓋。
-        answer = _format_answer(prompt, evidence, knowledge)
+        answer = _format_answer(prompt, evidence, knowledge, collaboration)
         answer_text = answer
         paragraphs = [chunk.strip() for chunk in answer.split("\n\n") if chunk.strip()]
         running: list[str] = []

@@ -38,7 +38,7 @@ interface AuthContextValue {
   /** 是否為退化／示範模式（後端不可達）。 */
   isMock: boolean;
   /** 登入：成功回 true；憑證錯誤回 false；後端不可達拋給呼叫端決定是否退化。 */
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, shareLayerB?: boolean) => Promise<boolean>;
   /** 進入示範模式（後端不可達時的明確降級入口）。 */
   enterMock: () => void;
   logout: () => void;
@@ -106,14 +106,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string): Promise<boolean> => {
+    async (
+      email: string,
+      password: string,
+      shareLayerB = false,
+    ): Promise<boolean> => {
       // 憑證錯誤 → 回 false；網路錯誤 → 由 apiLogin 拋 LoginError("network")，
       // 交呼叫端（登入頁）決定是否提示「改用示範模式」。
       try {
         const { user: u, token } = await apiLogin(email, password);
         setToken(token);
-        setUser(u);
-        save(STORAGE_KEY, u);
+        let nextUser = u;
+        if (shareLayerB && !u.consentShared) {
+          const consent = await apiSetConsent(true);
+          if (consent) {
+            nextUser = {
+              ...u,
+              consentShared: consent.consentShared,
+              consentAt: consent.consentAt,
+            };
+          }
+        }
+        setUser(nextUser);
+        save(STORAGE_KEY, nextUser);
         setStatus("authed");
         return true;
       } catch (err) {

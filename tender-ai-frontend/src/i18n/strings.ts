@@ -612,6 +612,11 @@ export const STRINGS = {
     loginPassword: "密碼",
     loginSubmit: "登入",
     loginSubmitting: "登入中…",
+    loginAgreement: "我已閱讀並理解：僅限公司白名單成員使用，團隊資料不得對外揭露。",
+    loginShareConsent:
+      "同意將我的收藏、評估與註記以具名方式提供給已同意的白名單同事使用。可隨時於設定撤回。",
+    loginGoogle: "使用 Google 公司帳號登入",
+    loginAccessScope: "白名單協作範圍內使用",
     loginErrCredentials: "信箱或密碼錯誤，請再試一次",
     loginErrNetwork: "連不到後端伺服器",
     loginUseMock: "改用示範模式（離線瀏覽）",
@@ -1492,6 +1497,12 @@ export const STRINGS = {
     loginPassword: "Password",
     loginSubmit: "Sign in",
     loginSubmitting: "Signing in…",
+    loginAgreement:
+      "I understand this is for company allowlist members only and team data must not be disclosed externally.",
+    loginShareConsent:
+      "Share my saves, evaluations, and notes by name with allowlisted teammates who have consented. This can be withdrawn in Settings.",
+    loginGoogle: "Continue with Google Workspace",
+    loginAccessScope: "For allowlisted team collaboration only",
     loginErrCredentials: "Wrong email or password, please try again",
     loginErrNetwork: "Cannot reach the backend server",
     loginUseMock: "Use demo mode (offline browsing)",

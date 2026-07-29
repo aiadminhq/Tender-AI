@@ -20,7 +20,7 @@ function authHeaders(): Record<string, string> {
 // 標案類（tender/semantic/similar）帶 tenderId 與 url；知識庫類（knowledge）tenderId 為
 // null，改帶 docId/heading 指向文件與區段（source 固定為「知識庫」）。
 export interface AssistantSource {
-  kind: "tender" | "semantic" | "similar" | "knowledge";
+  kind: "tender" | "semantic" | "similar" | "knowledge" | "collaboration";
   tenderId: number | null;
   title: string;
   source: SourceKey | string;
@@ -46,6 +46,15 @@ export interface PreferenceSuggestion {
   raw: string;
 }
 
+export interface AssistantAction {
+  kind: "assign_tender" | "create_task";
+  tenderId: number;
+  assigneeName: string;
+  assigneeUserId: number;
+  title: string | null;
+  requiresConfirmation: boolean;
+}
+
 interface MetaEvent {
   type: "meta";
   scope: string;
@@ -63,6 +72,14 @@ interface MetaEvent {
     heading: string | null;
   }[];
   preference_suggestion?: PreferenceSuggestion | null;
+  actions?: {
+    kind: AssistantAction["kind"];
+    tender_id: number;
+    assignee_name: string;
+    assignee_user_id: number;
+    title?: string | null;
+    requires_confirmation?: boolean;
+  }[];
 }
 interface DeltaEvent {
   type: "delta";
@@ -98,6 +115,7 @@ export interface StreamHandlers {
   onArtifact?: (artifact: AssistantArtifact) => void;
   /** 偵測到對話中的長期條件時回呼（否則帶 null）；UI 據此顯示確認 chip。 */
   onPreferenceSuggestion?: (suggestion: PreferenceSuggestion | null) => void;
+  onActions?: (actions: AssistantAction[]) => void;
   onDone?: () => void;
 }
 
@@ -112,6 +130,17 @@ function adaptSource(s: MetaEvent["sources"][number]): AssistantSource {
     excerpt: s.excerpt,
     docId: s.doc_id ?? null,
     heading: s.heading ?? null,
+  };
+}
+
+function adaptAction(action: NonNullable<MetaEvent["actions"]>[number]): AssistantAction {
+  return {
+    kind: action.kind,
+    tenderId: action.tender_id,
+    assigneeName: action.assignee_name,
+    assigneeUserId: action.assignee_user_id,
+    title: action.title ?? null,
+    requiresConfirmation: action.requires_confirmation ?? true,
   };
 }
 
@@ -171,6 +200,7 @@ export async function streamAssistantChat(
     if (evt.type === "meta") {
       handlers.onMeta?.(evt.scope, evt.sources.map(adaptSource), evt.thread_id);
       handlers.onPreferenceSuggestion?.(evt.preference_suggestion ?? null);
+      handlers.onActions?.((evt.actions ?? []).map(adaptAction));
     } else if (evt.type === "delta") {
       handlers.onText?.(evt.text);
     } else if (evt.type === "progress") {

@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import {
   ArrowUp,
   BookOpen,
+  ClipboardPlus,
   Check,
   ChevronRight,
   Clock,
@@ -37,6 +38,8 @@ import {
 import { useApp } from "@/store/app-context";
 import type { TextKey } from "@/i18n/strings";
 import type { AssistantSource, PreferenceSuggestion } from "@/lib/assistant";
+import type { AssistantAction } from "@/lib/assistant";
+import { useAppData } from "@/store/app-data";
 import { cn } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -57,6 +60,7 @@ const KIND_META: Record<
   semantic: { key: "assistantKindSemantic", icon: ScanSearch },
   similar: { key: "assistantKindSimilar", icon: GitCompareArrows },
   knowledge: { key: "assistantKindKnowledge", icon: BookOpen },
+  collaboration: { key: "assistantKindKnowledge", icon: MessageSquareText },
 };
 
 // 空態建議題依序對應的 icon（高潛力 / 相似案 / 即將截止 / 分級標準）。
@@ -355,6 +359,7 @@ function useMessageMeta(): AssistantCustomMeta {
       preference: null,
       preferenceState: null,
       artifacts: [],
+      actions: [],
     }
   );
 }
@@ -374,7 +379,7 @@ function AssistantMessage() {
   const { t } = useApp();
   const { onSourceClick, progress } = useAssistantBridge();
   const text = useMessageText();
-  const { sources, error, preference, preferenceState, artifacts } =
+  const { sources, error, preference, preferenceState, artifacts, actions } =
     useMessageMeta();
   const sourceCount = sources?.length ?? 0;
 
@@ -439,11 +444,81 @@ function AssistantMessage() {
         {!error && artifacts.length > 0 && (
           <AssistantArtifacts artifacts={artifacts} />
         )}
+        {!error && actions.length > 0 && <AssistantActionCards actions={actions} />}
         {preference && preferenceState && preferenceState !== "dismissed" && (
           <PreferenceChip preference={preference} state={preferenceState} />
         )}
       </div>
     </MessagePrimitive.Root>
+  );
+}
+
+function AssistantActionCards({ actions }: { actions: AssistantAction[] }) {
+  const { tenders, assignTender, createTenderTask, assignableMembers } = useAppData();
+  const [completed, setCompleted] = useState<Set<string>>(() => new Set());
+
+  return (
+    <div className="space-y-2">
+      {actions.map((action, index) => {
+        const key = `${action.kind}-${action.tenderId}-${action.assigneeUserId}-${index}`;
+        const tender = tenders.find((item) => String(item.id) === String(action.tenderId));
+        const assignee = assignableMembers.find((member) => member.id === action.assigneeUserId);
+        const canApply = !!tender && !!assignee;
+        const done = completed.has(key);
+        const label =
+          action.kind === "create_task"
+            ? `建立任務「${action.title ?? "未命名任務"}」並指派給 ${action.assigneeName}`
+            : `將標案指派給 ${action.assigneeName}`;
+
+        return (
+          <div key={key} className="rounded-lg border border-signal/30 bg-signal/8 px-3 py-2.5">
+            <div className="flex items-start gap-2">
+              <ClipboardPlus size={15} className="mt-0.5 shrink-0 text-signal" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-medium text-ink">{label}</p>
+                <p className="mt-0.5 text-[11px] text-ink-dim">
+                  {tender ? tender.title : `標案 #${action.tenderId}`}，需確認後才寫入目前看板。
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={!canApply || done}
+                onClick={() => {
+                  if (!tender || !assignee) return;
+                  if (action.kind === "create_task") {
+                    createTenderTask({
+                      tenderId: String(tender.id),
+                      tenderTitle: tender.title,
+                      assigneeId: assignee.id,
+                      title: action.title ?? "待處理任務",
+                      tier: tender.tier,
+                      deadline: tender.deadline,
+                    });
+                  } else {
+                    assignTender({
+                      tenderId: String(tender.id),
+                      title: tender.title,
+                      ownerId: assignee.id,
+                      tier: tender.tier,
+                      deadline: tender.deadline,
+                    });
+                  }
+                  setCompleted((prev) => new Set(prev).add(key));
+                }}
+              >
+                {done ? "已加入看板" : "確認指派"}
+              </Button>
+              {!canApply && (
+                <span className="text-[11px] text-danger">標案或白名單成員已不可用</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

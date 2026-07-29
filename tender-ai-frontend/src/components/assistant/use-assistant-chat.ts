@@ -11,6 +11,7 @@ import {
   fetchAssistantThread,
   type AssistantThreadSummary,
   type AssistantSource,
+  type AssistantAction,
   type ChatMessage,
   type PreferenceSuggestion,
 } from "@/lib/assistant";
@@ -26,6 +27,7 @@ export interface Turn {
   /** 偏好建議的處理狀態：待確認／已記住／不用。預設 pending（有 preference 時）。 */
   preferenceState?: "pending" | "confirmed" | "dismissed";
   artifacts?: AssistantArtifact[];
+  actions?: AssistantAction[];
 }
 
 export function useAssistantChat(scope: string, focusTenderId?: string | null) {
@@ -192,6 +194,7 @@ export function useAssistantChat(scope: string, focusTenderId?: string | null) {
                   ? { preference: suggestion, preferenceState: "pending" }
                   : {},
               ),
+            onActions: (actions) => patchLastAssistant({ actions }),
             onDone: () => {
               setProgress(null);
               setStreaming(false);

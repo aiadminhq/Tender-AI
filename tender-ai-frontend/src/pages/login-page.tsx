@@ -1,6 +1,7 @@
 // 登入閘門：未登入時取代整個 App。信箱＋密碼通過後端驗證即進入；
 // 後端不可達時提供「改用示範模式」退化入口，維持離線可用。
 import { useState, type FormEvent } from "react";
+import { Check, KeyRound } from "lucide-react";
 import { useApp } from "@/store/app-context";
 import { useAuth } from "@/store/auth-context";
 import { BrandMark } from "@/components/brand";
@@ -16,14 +17,19 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<ErrState>(null);
   const [busy, setBusy] = useState(false);
+  const [acceptedAgreement, setAcceptedAgreement] = useState(false);
+  const [shareLayerB, setShareLayerB] = useState(false);
+  const oauthGoogleStart = import.meta.env.VITE_AUTH_GOOGLE_START_URL as
+    | string
+    | undefined;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || !acceptedAgreement) return;
     setErr(null);
     setBusy(true);
     try {
-      const ok = await login(email.trim(), password);
+      const ok = await login(email.trim(), password, shareLayerB);
       if (!ok) setErr("credentials"); // 成功時 status 轉 authed，App 會切換畫面
     } catch {
       setErr("network"); // LoginError("network")：後端不可達
@@ -77,6 +83,27 @@ export function LoginPage() {
             />
           </label>
 
+          <label className="mb-2 flex cursor-pointer items-start gap-2 text-[12px] leading-relaxed text-ink-muted">
+            <input
+              type="checkbox"
+              checked={acceptedAgreement}
+              onChange={(event) => setAcceptedAgreement(event.target.checked)}
+              disabled={busy}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-signal"
+            />
+            <span>{t("loginAgreement")}</span>
+          </label>
+          <label className="mb-4 flex cursor-pointer items-start gap-2 text-[12px] leading-relaxed text-ink-muted">
+            <input
+              type="checkbox"
+              checked={shareLayerB}
+              onChange={(event) => setShareLayerB(event.target.checked)}
+              disabled={busy}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-signal"
+            />
+            <span>{t("loginShareConsent")}</span>
+          </label>
+
           {err === "credentials" && (
             <p
               role="alert"
@@ -90,10 +117,23 @@ export function LoginPage() {
             type="submit"
             variant="primary"
             className="w-full"
-            disabled={busy}
+            disabled={busy || !acceptedAgreement}
           >
             {busy ? t("loginSubmitting") : t("loginSubmit")}
           </Button>
+
+          {oauthGoogleStart && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2.5 w-full"
+              disabled={busy}
+              onClick={() => window.location.assign(oauthGoogleStart)}
+            >
+              <KeyRound size={15} />
+              {t("loginGoogle")}
+            </Button>
+          )}
 
           {err === "network" && (
             <div className="mt-4 rounded-md border border-border bg-surface-1 p-3">
@@ -119,6 +159,11 @@ export function LoginPage() {
             </div>
           )}
         </form>
+
+        <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-ink-dim">
+          <Check size={12} className="text-emerald-600" />
+          {t("loginAccessScope")}
+        </div>
 
         <div className="mt-4 text-center">
           <button

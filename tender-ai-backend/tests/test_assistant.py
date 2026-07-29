@@ -196,6 +196,27 @@ async def test_chat_template_when_llm_disabled(
     assert ("相關標案" in final) or ("下一步" in final)
 
 
+async def test_team_question_without_login_does_not_expose_layer_b_or_c(
+    client, monkeypatch, quiet_retrieval
+):
+    """未登入提問 Layer B/C 時只回權限說明，不得把任何團隊資料放進來源。"""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "assistant_use_llm", False)
+    resp = await client.post(CHAT, json=_payload("請查詢 Layer B 的同事評價"))
+    assert resp.status_code == 200
+    events = _events(resp.text)
+    collaboration = [
+        source
+        for source in _by_type(events, "meta")[0]["sources"]
+        if source["kind"] == "collaboration"
+    ]
+    assert collaboration
+    assert collaboration[0]["source"] == "Layer access"
+    assert "需要以已開通的公司白名單帳號登入" in collaboration[0]["excerpt"]
+    assert "需要以已開通的公司白名單帳號登入" in _by_type(events, "delta")[-1]["text"]
+
+
 # ── Phase 3 情境感知接線：context.focus_tender_id 進檢索與 grounding ──────────
 
 
